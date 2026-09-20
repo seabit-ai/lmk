@@ -75,3 +75,18 @@ def test_second_turn_reports_its_cache_hits_in_usage(server):
     # restore lands on the largest checkpointed 256-token boundary inside the shared prefix (research LMK-002)
     assert hits >= first["usage"]["prompt_tokens"] - (2048 + 256)
     assert second["prefill"][0]["cached"] == hits, "the first progress chunk announces the same number"
+
+
+# WISH-019 acceptance: after a warm-up, the first real request restores the prefix.
+def test_warmup_makes_the_first_real_request_hit(server):
+    system = {"role": "system", "content": "".join(f"Warm rule {i}: keep answers to one short sentence. " for i in range(250))}
+    req = urllib.request.Request(f"http://127.0.0.1:{server.port}/lmk/v1/warmup",
+                                 data=json.dumps({"model": "itest-model", "messages": [system]}).encode(),
+                                 headers={"Content-Type": "application/json"}, method="POST")
+    warm = json.loads(urllib.request.urlopen(req, timeout=600).read())
+    assert warm["cached_tokens"] == 0, "a fresh prefix starts cold"
+
+    real = chat(server, [system, {"role": "user", "content": "Say hello."}])
+    hits = real["usage"]["prompt_tokens_details"]["cached_tokens"]
+    print(f"warm prompt={warm['prompt_tokens']} real prompt={real['usage']['prompt_tokens']} hits={hits}")
+    assert hits >= warm["prompt_tokens"] - (2048 + 256)

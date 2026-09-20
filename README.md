@@ -33,6 +33,18 @@ just-in-time loading and no idle eviction.
 
 - `GET /lmk/v1/status` — the resident model, its context length, what is in flight
 - `GET /v1/models` — OpenAI-shaped list containing exactly the resident model
+- `POST /v1/chat/completions` — OpenAI-shaped chat, streaming or not, with tools. lmk's
+  additions sit where the shape allows them, so stock OpenAI clients keep working:
+  cache hits in `usage.prompt_tokens_details.cached_tokens`, reasoning in
+  `delta.reasoning_content`, prefill progress as chunks with `choices: []` and an
+  `lmk.prefill` object. Closing the connection cancels the call.
+- `POST /lmk/v1/warmup` — same body as a chat request; prefills the prefix into the
+  cache and generates nothing. Send system + tools; a later chat that starts the
+  same way restores it.
+
+Optional request headers, logged per call and shown in `/lmk/v1/status`:
+`X-Lmk-Purpose` (turn / compaction / groom / warmup …), `X-Lmk-Ref-Id` (the caller's
+own reference for this call), `traceparent`.
 
 ## Upgrading the engine
 

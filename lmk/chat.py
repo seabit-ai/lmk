@@ -116,3 +116,30 @@ def run_chat(engine: Engine, body: dict, identity: CallerIdentity,
     return {"id": completion_id, "finish_reason": finish, "usage": usage, "tool_calls": tool_calls,
             "content": "".join(state["text"]), "reasoning_content": "".join(state["reasoning"]),
             "base": base, "cancelled": state["cancelled"]}
+
+
+def run_warmup(engine: Engine, body: dict, identity: CallerIdentity) -> dict:
+    """Prefill a prefix into the cache without generating an answer (wish list
+    WISH-019). The caller sends the part it wants warm — typically system +
+    tools. A later request that starts the same way restores from the largest
+    checkpointed 256-token boundary inside the shared prefix (research LMK-002).
+    """
+    clock = get_current_clock()
+    started = clock.mono_ms()
+    fmt = engine.chat_format()
+    messages = list(body.get("messages") or [])
+    if not messages or messages[-1].get("role") != "user":
+        # chat templates want a user turn to close on; keep it tiny so the fork
+        # point stays inside the last cache block
+        messages.append({"role": "user", "content": "."})
+    prompt = fmt.render(messages, body.get("tools") or None)
+    request_id = identity.ref_id or "warmup-" + uuid.uuid4().hex[:16]
+    generation = engine.generate(prompt, max_tokens=1, request_id=request_id, on_prefill=lambda *_: True)
+    for _ in generation:
+        pass
+    stats = generation.stats
+    total_ms = clock.mono_ms() - started
+    log.info("LmkWarmupDone", "prefix warmed", purpose=identity.purpose or "warmup", refId=identity.ref_id,
+             traceparent=identity.traceparent, promptTokens=stats.prompt_tokens,
+             cachedTokens=stats.cached_tokens, totalMs=total_ms)
+    return {"prompt_tokens": stats.prompt_tokens, "cached_tokens": stats.cached_tokens, "total_ms": total_ms}

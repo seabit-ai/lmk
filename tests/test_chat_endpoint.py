@@ -167,3 +167,34 @@ def test_only_the_resident_model_is_served():
         srv.shutdown()
     err = json.loads(e.value.read())["error"]
     assert e.value.code == 404 and err["type"] == "model_not_found" and "kitten-27b" in err["message"]
+
+
+def post_path(srv, path, body, headers=None):
+    req = urllib.request.Request(f"http://127.0.0.1:{srv.port}{path}", data=json.dumps(body).encode(), method="POST",
+                                 headers={"Content-Type": "application/json", **(headers or {})})
+    return json.loads(urllib.request.urlopen(req, timeout=10).read())
+
+
+# WISH-019: warm a prefix without generating an answer.
+def test_warmup_prefills_with_one_token_and_reports_hits():
+    srv, engine, fmt = serve(["x"], stats=GenerationStats(prompt_tokens=11172, cached_tokens=0, completion_tokens=1))
+    try:
+        out = post_path(srv, "/lmk/v1/warmup", {"model": "kitten-27b", "tools": [{"type": "function"}],
+                                                "messages": [{"role": "system", "content": "SYS"}]},
+                        {"X-Lmk-Ref-Id": "warm-1"})
+    finally:
+        srv.shutdown()
+    assert out["prompt_tokens"] == 11172 and out["cached_tokens"] == 0 and out["total_ms"] >= 0
+    assert engine.requests[0]["max_tokens"] == 1 and engine.requests[0]["request_id"] == "warm-1"
+    messages, tools = fmt.rendered[0]
+    assert messages == [{"role": "system", "content": "SYS"}, {"role": "user", "content": "."}]
+    assert tools == [{"type": "function"}]
+
+
+def test_warmup_keeps_a_closing_user_message_as_sent():
+    srv, _, fmt = serve(["x"])
+    try:
+        post_path(srv, "/lmk/v1/warmup", {"model": "kitten-27b", "messages": [{"role": "user", "content": "hello"}]})
+    finally:
+        srv.shutdown()
+    assert fmt.rendered[0][0] == [{"role": "user", "content": "hello"}]

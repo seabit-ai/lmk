@@ -5,7 +5,7 @@ import threading
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 from lmk import log
-from lmk.chat import CallerIdentity, ClientGone, run_chat
+from lmk.chat import CallerIdentity, ClientGone, run_chat, run_warmup
 from lmk.clock import get_current_clock
 from lmk.engine import Engine
 
@@ -56,7 +56,7 @@ class LmkServer:
             _send_json(h, 404, {"error": {"type": "not_found", "message": f"no route for GET {h.path}"}})
 
     def _route_post(self, h: BaseHTTPRequestHandler) -> None:
-        if h.path != "/v1/chat/completions":
+        if h.path not in ("/v1/chat/completions", "/lmk/v1/warmup"):
             _send_json(h, 404, {"error": {"type": "not_found", "message": f"no route for POST {h.path}"}})
             return
         try:
@@ -72,55 +72,64 @@ class LmkServer:
             return
         identity = CallerIdentity(purpose=h.headers.get("X-Lmk-Purpose"), ref_id=h.headers.get("X-Lmk-Ref-Id"),
                                   traceparent=h.headers.get("traceparent"))
-        self._chat(h, body, identity)
+        if h.path == "/lmk/v1/warmup":
+            self._track(h, identity, "warmup", lambda _progress: _send_json(h, 200, run_warmup(self._engine, body, identity)))
+        else:
+            self._chat(h, body, identity)
+
+    def _track(self, h, identity: CallerIdentity, phase: str, work) -> None:
+        """Run work while the call is visible in /lmk/v1/status."""
+        key = str(id(h))
+        entry = {"purpose": identity.purpose, "ref_id": identity.ref_id, "traceparent": identity.traceparent,
+                 "started_mono_ms": get_current_clock().mono_ms(), "phase": phase, "prefill": None}
+        with self._in_flight_lock:
+            self._in_flight[key] = entry
+        try:
+            work(entry)
+        finally:
+            with self._in_flight_lock:
+                self._in_flight.pop(key, None)
 
     def _chat(self, h: BaseHTTPRequestHandler, body: dict, identity: CallerIdentity) -> None:
-        flight_key = str(id(h))
-        entry = {"purpose": identity.purpose, "ref_id": identity.ref_id, "traceparent": identity.traceparent,
-                 "started_mono_ms": get_current_clock().mono_ms(), "phase": "prefill", "prefill": None}
-        with self._in_flight_lock:
-            self._in_flight[flight_key] = entry
+        self._track(h, identity, "prefill", lambda entry: self._chat_tracked(h, body, identity, entry))
 
+    def _chat_tracked(self, h, body: dict, identity: CallerIdentity, entry: dict) -> None:
         def on_progress(progress: dict) -> None:
             entry["prefill"] = progress
             if progress["total"] and progress["processed"] >= progress["total"] - 1:
                 entry["phase"] = "generating"
 
-        try:
-            if body.get("stream"):
-                h.send_response(200)
-                h.send_header("Content-Type", "text/event-stream")
-                h.send_header("Cache-Control", "no-cache")
-                h.send_header("Connection", "close")
-                h.end_headers()
+        if body.get("stream"):
+            h.send_response(200)
+            h.send_header("Content-Type", "text/event-stream")
+            h.send_header("Cache-Control", "no-cache")
+            h.send_header("Connection", "close")
+            h.end_headers()
 
-                def emit(chunk: dict) -> None:
-                    try:
-                        h.wfile.write(b"data: " + json.dumps(chunk, ensure_ascii=False).encode() + b"\n\n")
-                        h.wfile.flush()
-                    except (BrokenPipeError, ConnectionResetError) as e:
-                        raise ClientGone() from e
+            def emit(chunk: dict) -> None:
+                try:
+                    h.wfile.write(b"data: " + json.dumps(chunk, ensure_ascii=False).encode() + b"\n\n")
+                    h.wfile.flush()
+                except (BrokenPipeError, ConnectionResetError) as e:
+                    raise ClientGone() from e
 
-                result = run_chat(self._engine, body, identity, emit, on_progress)
-                if not result["cancelled"]:
-                    try:
-                        h.wfile.write(b"data: [DONE]\n\n")
-                        h.wfile.flush()
-                    except (BrokenPipeError, ConnectionResetError):
-                        pass
-                h.close_connection = True
-            else:
-                result = run_chat(self._engine, body, identity, lambda _chunk: None, on_progress)
-                message = {"role": "assistant", "content": result["content"] or None}
-                if result["reasoning_content"]:
-                    message["reasoning_content"] = result["reasoning_content"]
-                if result["tool_calls"]:
-                    message["tool_calls"] = [{k: v for k, v in c.items() if k != "index"} for c in result["tool_calls"]]
-                _send_json(h, 200, {**result["base"], "object": "chat.completion", "usage": result["usage"],
-                                    "choices": [{"index": 0, "message": message, "finish_reason": result["finish_reason"]}]})
-        finally:
-            with self._in_flight_lock:
-                self._in_flight.pop(flight_key, None)
+            result = run_chat(self._engine, body, identity, emit, on_progress)
+            if not result["cancelled"]:
+                try:
+                    h.wfile.write(b"data: [DONE]\n\n")
+                    h.wfile.flush()
+                except (BrokenPipeError, ConnectionResetError):
+                    pass
+            h.close_connection = True
+            return
+        result = run_chat(self._engine, body, identity, lambda _chunk: None, on_progress)
+        message = {"role": "assistant", "content": result["content"] or None}
+        if result["reasoning_content"]:
+            message["reasoning_content"] = result["reasoning_content"]
+        if result["tool_calls"]:
+            message["tool_calls"] = [{k: v for k, v in c.items() if k != "index"} for c in result["tool_calls"]]
+        _send_json(h, 200, {**result["base"], "object": "chat.completion", "usage": result["usage"],
+                            "choices": [{"index": 0, "message": message, "finish_reason": result["finish_reason"]}]})
 
     def status(self) -> dict:
         m = self._engine.loaded_model()
