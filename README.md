@@ -146,3 +146,8 @@ Design notes are in [`docs/design`](docs/design) (Chinese). Upgrading mlx-engine
 act: run `make cache-fixture` first, change `ENGINE_COMMIT` and copy that commit's
 `requirements.txt` over ours, `make clean venv`, then `make cache-compat` and `make itest`. If
 `cache-compat` fails, the new engine cannot read the old cache: bump `CACHE_FORMAT_VERSION`.
+
+## License
+
+MIT — see [LICENSE](LICENSE). The model runtime lmk installs,
+[mlx-engine](https://github.com/lmstudio-ai/mlx-engine), is MIT as well.
