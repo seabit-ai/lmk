@@ -72,6 +72,8 @@ def cmd_pull(_args) -> int:
     except ModelNotDownloaded:
         pass
 
+    # mlx-engine, once imported, replaces snapshot_download with a function that always
+    # raises. Nothing on the `lmk pull` path imports the engine; keep it that way.
     from huggingface_hub import HfApi, snapshot_download
     from huggingface_hub.constants import HF_HUB_CACHE
 

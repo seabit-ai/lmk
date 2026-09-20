@@ -52,6 +52,22 @@ def missing_weight_files(model_dir: Path) -> list[str]:
     return sorted(s for s in shards if not (model_dir / s).exists())
 
 
+def _hf_snapshot_dir(repo: str) -> Optional[Path]:
+    """Reads the HF cache layout directly (models--org--name/refs/main names the commit
+    under snapshots/). Not huggingface_hub.snapshot_download(local_files_only=True):
+    importing mlx-engine replaces that function with one that always raises, so it
+    would work or fail depending on what the process happened to import first."""
+    from huggingface_hub.constants import HF_HUB_CACHE
+
+    repo_dir = Path(HF_HUB_CACHE) / ("models--" + repo.replace("/", "--"))
+    try:
+        commit = (repo_dir / "refs" / "main").read_text().strip()
+    except OSError:
+        return None
+    snapshot = repo_dir / "snapshots" / commit
+    return snapshot if snapshot.is_dir() else None
+
+
 def resolve_model(source) -> ResolvedModel:
     """source: lmk.config.ModelSource. Never touches the network."""
     if source.kind == "path":
@@ -59,13 +75,9 @@ def resolve_model(source) -> ResolvedModel:
             raise FileNotFoundError(f"model.path does not exist: {source.path}")
         return ResolvedModel(path=source.path, revision=None)
 
-    from huggingface_hub import snapshot_download
-    from huggingface_hub.errors import LocalEntryNotFoundError
-
-    try:
-        snapshot = Path(snapshot_download(source.repo, local_files_only=True))
-    except LocalEntryNotFoundError:
-        raise ModelNotDownloaded(source.repo, "not downloaded") from None
+    snapshot = _hf_snapshot_dir(source.repo)
+    if snapshot is None:
+        raise ModelNotDownloaded(source.repo, "not downloaded")
     missing = missing_weight_files(snapshot)
     if missing:
         raise ModelNotDownloaded(source.repo, f"download incomplete ({len(missing)} weight file(s) missing)")
