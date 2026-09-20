@@ -51,6 +51,29 @@ kitten 的用量行显示真实的 `in 11.8k (cache 93%) · ctx 6%`——命中�
 第二行里 kitten 启动时的 groom 仍会打到 lmk 上（LMS-013 未修），这次没有与主调用重叠。
 我中间一次重跑没测到东西：CLI 重新 attach 旧 session 回放了旧用量行，脚本误判完成——清掉 session 后重跑才是上表第三行。
 
+### LMK-007 kitten 固定前缀的布局：工具定义在最前、占 96% 的稳定段；会变的记忆段只占尾部 4%
+渲染后的 prompt（Qwen3.8 的聊天模板，exp02 的 `rendered-prompt.txt`）顺序是：
+`<|im_start|>system` → 模板自己的一句"思考力度"开场白（LMK-008）→ `# Tools <tools>…</tools>` →
+**然后才是** kitten 的 system 文本 → 对话。kitten 的 system 文本内部顺序（cmd/kittend/systemprompt.go:82）：
+框架 + 能力 + scopes → AGENTS.md → **记忆段**（USER.md、facts INDEX、今天与昨天的 daily）→ skills 菜单。
+量了一次真实请求（kitten 项目，`.kitten/logs/…/000009-request.json`）：工具定义 JSON 37,156 字符；
+system 文本 7,487 字符，其中记忆段起点在 5,537——**工具 + 记忆段之前的 system 合计占固定前缀的 96%**，
+记忆段及其后（1,950 字符，约 500 token）占 4%。
+含义：前缀 cache 是 256 token 一块的哈希链（LMS-005），记忆一变，只有从变化点往后的块失效。持久化
+之后（LMK-006），新 session 的第一次调用即使记忆刚变过，要重算的也只是尾部约 500 token（1–3 秒），
+不是 11k（37 秒）。会让大头失效的只有：工具集变了（换 kitten 版本）、AGENTS.md 改了、cache 被淘汰、
+模板开场白变了（LMK-008）。旁见：工具定义段不含项目路径 ⇒ **不同项目（kitten / nova）共享这 80% 以上的前缀**。
+口径：字符不是 token；只量了一个请求。
+
+### LMK-008 这个模型的聊天模板自带"思考力度"开关，而且它写在 prompt 的最开头
+`chat_template.jinja:46-54`：`enable_thinking`（缺省开）与 `reasoning_effort`（`xhigh` 缺省 / `medium` /
+`low`）；选中的力度渲染成 system 块的第一句话（"Reasoning effort is set to xhigh. Please think carefully…"）。
+两个含义：① WISH-016（按请求控制思考）在模板层面是现成的——lmk 只要把它作为模板变量传进去；今天所有
+调用都在缺省的 **xhigh** 下跑（Bruce 评测里"每个小任务先想几千 token"与此吻合，未单独验证因果）。
+② **它在 prompt 的第 0 个块里**：换一档力度 = 整条前缀哈希链换 key，11k token 全部冷算。kitten 的
+`ChatRequest.Effort` 注释说"请求参数，不进 prompt，切换不破 cache"——对云端成立，对这个本地模板不成立。
+要用它，得当成 session 级的固定值，不能每次调用随意切。
+
 ## 未测
 - 工具调用的刁钻情形：嵌套对象参数、值里含标记字样、格式写坏时语法约束能否兜住、别的模型族
 - 同一进程内的并发请求（`max_seq_nums`）、长 prompt（>32k）、图片输入
