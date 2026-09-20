@@ -1,0 +1,77 @@
+"""Integration: the real engine and the real model behind the real HTTP surface.
+LMK_ITEST=1; LMK_ITEST_MODEL overrides the model directory."""
+import json
+import os
+import threading
+import urllib.request
+from pathlib import Path
+
+import pytest
+
+pytestmark = pytest.mark.itest
+
+MODEL_DIR = Path(os.environ.get("LMK_ITEST_MODEL") or
+                 Path.home() / ".lmstudio/models/lmstudio-community/Qwen3.8-27B-MLX-4bit")
+TOOLS = [{"type": "function", "function": {
+    "name": "file_read", "description": "Read a text file and return its contents.",
+    "parameters": {"type": "object", "properties": {"path": {"type": "string"}, "max_lines": {"type": "integer"}},
+                   "required": ["path"]}}}]
+
+
+@pytest.fixture(scope="module")
+def server():
+    from lmk.engine import MlxEngine
+    from lmk.server import LmkServer
+
+    if not MODEL_DIR.exists():
+        pytest.skip(f"model not on disk: {MODEL_DIR}")
+    srv = LmkServer(MlxEngine("itest-model", MODEL_DIR, 32768), "127.0.0.1", 0)
+    threading.Thread(target=srv.serve_forever, daemon=True).start()
+    yield srv
+    srv.shutdown()
+
+
+def chat(srv, messages, **extra):
+    body = {"model": "itest-model", "stream": True, "messages": messages, **extra}
+    req = urllib.request.Request(f"http://127.0.0.1:{srv.port}/v1/chat/completions", data=json.dumps(body).encode(),
+                                 headers={"Content-Type": "application/json", "X-Lmk-Purpose": "itest"}, method="POST")
+    raw = urllib.request.urlopen(req, timeout=600).read().decode()
+    chunks = [json.loads(l[6:]) for l in raw.split("\n") if l.startswith("data: ") and l != "data: [DONE]"]
+    pick = lambda key: "".join(c["choices"][0]["delta"].get(key) or "" for c in chunks if c["choices"])
+    calls = [c["choices"][0]["delta"]["tool_calls"][0] for c in chunks if c["choices"] and c["choices"][0]["delta"].get("tool_calls")]
+    usage = next(c["usage"] for c in chunks if c.get("usage"))
+    prefill = [c["lmk"]["prefill"] for c in chunks if c.get("object") == "lmk.prefill"]
+    return {"content": pick("content"), "reasoning": pick("reasoning_content"), "calls": calls, "usage": usage, "prefill": prefill}
+
+
+# Same acceptance as kitten's lmstudio provider itest: call out, result back, text answer.
+def test_tool_call_round_trip(server):
+    system = {"role": "system", "content": "You are kitten, a coding agent. Use tools when needed."}
+    ask = {"role": "user", "content": "Read the first 20 lines of notes.md and tell me what the second bullet says."}
+    first = chat(server, [system, ask], tools=TOOLS)
+    assert len(first["calls"]) == 1
+    call = first["calls"][0]
+    assert call["function"]["name"] == "file_read"
+    args = json.loads(call["function"]["arguments"])
+    assert args["path"] == "notes.md" and args.get("max_lines", 20) == 20  # an integer, not "20"
+    assert first["reasoning"] and "think>" not in first["content"]
+
+    second = chat(server, [system, ask,
+                           {"role": "assistant", "content": None, "tool_calls": [{k: v for k, v in call.items() if k != "index"}]},
+                           {"role": "tool", "tool_call_id": call["id"], "content": "# notes\n- ship lmk\n- buy oat milk"}],
+                  tools=TOOLS)
+    assert "oat milk" in second["content"].lower()
+    assert second["calls"] == []
+
+
+# The number LM Studio never gave us (wish list WISH-002): cache hits, in usage.
+def test_second_turn_reports_its_cache_hits_in_usage(server):
+    system = {"role": "system", "content": "".join(f"Project rule {i}: answer in one short sentence. " for i in range(250))}
+    turn1 = [system, {"role": "user", "content": "Say hello."}]
+    first = chat(server, turn1)
+    second = chat(server, turn1 + [{"role": "assistant", "content": first["content"]},
+                                   {"role": "user", "content": "Now say goodbye."}])
+    hits = second["usage"]["prompt_tokens_details"]["cached_tokens"]
+    # restore lands on the largest checkpointed 256-token boundary inside the shared prefix (research LMK-002)
+    assert hits >= first["usage"]["prompt_tokens"] - (2048 + 256)
+    assert second["prefill"][0]["cached"] == hits, "the first progress chunk announces the same number"
