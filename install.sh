@@ -2,14 +2,17 @@
 # lmk installer. Everything lands under ~/.lmk (or $LMK_HOME); nothing is installed
 # system-wide, and removing that directory removes lmk. Run it again to upgrade.
 #
+#   git clone https://github.com/seabit-ai/lmk && cd lmk && ./install.sh
 #   curl -fsSL https://raw.githubusercontent.com/seabit-ai/lmk/main/install.sh | sh
-#
-# Developers: `make install` runs this with LMK_SRC pointing at the working tree.
 set -eu
 
 LMK_HOME="${LMK_HOME:-$HOME/.lmk}"
-LMK_REF="${LMK_REF:-main}"          # branch, tag or commit to install
-LMK_SRC="${LMK_SRC:-}"              # a local checkout to install from instead of GitHub
+LMK_REF="${LMK_REF:-main}"          # branch, tag or commit to fetch when not run from a checkout
+LMK_SRC="${LMK_SRC:-}"              # a checkout to install from; found by itself when run from one
+if [ -z "$LMK_SRC" ]; then
+  HERE="$(cd "$(dirname "$0")" 2>/dev/null && pwd || true)"
+  [ -n "$HERE" ] && [ -d "$HERE/lmk" ] && [ -f "$HERE/ENGINE_COMMIT" ] && LMK_SRC="$HERE"
+fi
 APP="$LMK_HOME/app"
 BIN="$LMK_HOME/bin"
 

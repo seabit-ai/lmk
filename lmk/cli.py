@@ -168,6 +168,9 @@ def cmd_up(_args) -> int:
 
     service.start(app_dir(), cfg.log_dir, dict(os.environ))
     started = clock.mono_ms()
+    live = sys.stdout.isatty()  # a counter that rewrites its line is noise in a pipe or a log
+    if not live:
+        _say(f"  loading {cfg.model.id} …")
     while True:
         status = _get_status(cfg)
         if status is not None:
@@ -177,9 +180,11 @@ def cmd_up(_args) -> int:
             return _fail("✗ lmk exited while starting.\n" + _why_it_did_not_start(cfg), 5)
         if waited > READY_TIMEOUT_S:
             return _fail(f"✗ lmk did not answer within {READY_TIMEOUT_S}s.\n" + _why_it_did_not_start(cfg), 5)
-        print(f"\r  loading {cfg.model.id} … {waited}s", end="", flush=True)
+        if live:
+            print(f"\r  loading {cfg.model.id} … {waited}s", end="", flush=True)
         clock.sleep_s(1)
-    print("\r" + " " * 60 + "\r", end="")
+    if live:
+        print("\r" + " " * 60 + "\r", end="")
 
     problem = _smoke(cfg)
     if problem:

@@ -57,7 +57,7 @@ clean: ## remove the env and the engine clone
 # The same installer users run, fed from this working tree. The service runs from
 # ~/.lmk/app, never from here: switching branches must not take the server down.
 install: ## install this tree into ~/.lmk and (re)start the service
-	LMK_SRC=$(CURDIR) sh install.sh
+	./install.sh
 	$${LMK_HOME:-$(HOME)/.lmk}/bin/lmk up
 
 uninstall: ## stop the service (keeps ~/.lmk: app, config, cache)
