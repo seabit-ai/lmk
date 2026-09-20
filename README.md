@@ -29,6 +29,11 @@ Design: `../docs/design/2026-09-19-lmk.md`. Why it exists:
 The model named there is loaded at startup and stays resident. There is no
 just-in-time loading and no idle eviction.
 
+The prefix cache is persistent: records live as files under `cache.dir`, in a
+subdirectory keyed by the model's identity (weights + config + engine commit),
+and the index is rebuilt from them at startup. A reboot no longer means a cold
+first turn. Stop the server with SIGTERM/ctrl-c so queued records are flushed.
+
 ## Endpoints
 
 - `GET /lmk/v1/status` — the resident model, its context length, what is in flight

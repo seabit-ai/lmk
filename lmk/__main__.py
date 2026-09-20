@@ -1,4 +1,5 @@
 import os
+import signal
 import sys
 from pathlib import Path
 
@@ -17,14 +18,20 @@ def main() -> int:
     log.open_log_file(cfg.log_dir)
     log.info("LmkStarting", "loading the resident model", model=cfg.model.id,
              path=str(cfg.model.path), contextLength=cfg.model.context_length)
-    engine = MlxEngine(cfg.model.id, cfg.model.path, cfg.model.context_length)
+    engine = MlxEngine(cfg.model.id, cfg.model.path, cfg.model.context_length, cache_dir=cfg.cache_dir)
     server = LmkServer(engine, cfg.host, cfg.port)
     log.info("LmkReady", "serving", host=cfg.host, port=server.port, model=cfg.model.id)
+
+    def stop(signum, _frame):  # launchd stops us with SIGTERM
+        raise KeyboardInterrupt
+
+    signal.signal(signal.SIGTERM, stop)
     try:
         server.serve_forever()
     except KeyboardInterrupt:
-        log.info("LmkStopping", "interrupted")
+        log.info("LmkStopping", "shutting down; flushing the prefix cache to disk")
         server.shutdown()
+        engine.close()
     return 0
 
 

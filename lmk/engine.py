@@ -47,13 +47,15 @@ class MlxEngine:
     """Loads the resident model at construction: there is no lazy / just-in-time
     loading in lmk (design §6.7)."""
 
-    def __init__(self, model_id: str, model_path: Path, context_length: int):
+    def __init__(self, model_id: str, model_path: Path, context_length: int, cache_dir: Optional[Path] = None):
         from mlx_engine.generate import load_model  # heavy import, kept out of module scope
 
         if not model_path.exists():
             raise FileNotFoundError(f"model path does not exist: {model_path}")
         from lmk.chatformat import TemplateChatFormat
 
+        if cache_dir is not None:
+            _install_persistent_cache(cache_dir, model_path)
         self._kit = load_model(model_path, max_kv_size=context_length, max_seq_nums=4)
         self._model = LoadedModel(id=model_id, path=model_path, context_length=context_length)
         self._format = TemplateChatFormat(self._kit.tokenizer)
@@ -63,6 +65,13 @@ class MlxEngine:
 
     def chat_format(self) -> ChatFormat:
         return self._format
+
+    def close(self) -> None:
+        """Drains the engine's cache I/O thread: records still queued for disk
+        are written before the process goes away."""
+        from mlx_engine.generate import unload
+
+        unload(self._kit)
 
     def generate(self, prompt_text, *, max_tokens, request_id, on_prefill) -> Generation:
         from mlx_engine.generate import create_generator, tokenize
@@ -93,6 +102,20 @@ class MlxEngine:
                     yield result.text
 
         return Generation(pieces=pieces(), stats=stats)
+
+
+def engine_commit() -> str:
+    return (Path(__file__).resolve().parent.parent / "ENGINE_COMMIT").read_text().strip()
+
+
+def _install_persistent_cache(cache_dir: Path, model_path: Path) -> None:
+    """The engine constructs its cache store itself (model_kit.py), with the
+    directory hard-coded; the one way in is to swap the class it names."""
+    import mlx_engine.model_kit.batched_vision.model_kit as vision_kit
+
+    from lmk.persistcache import make_persistent_store_class
+
+    vision_kit.VlmPromptCacheStore = make_persistent_store_class(cache_dir, model_path, engine_commit())
 
 
 class FakeEngine:
