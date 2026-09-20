@@ -43,7 +43,8 @@ class Engine(Protocol):
     def chat_format(self) -> ChatFormat: ...
     def cache_stats(self) -> Optional[dict]: ...
     def generate(self, prompt_text: str, *, max_tokens: Optional[int], request_id: str,
-                 on_prefill: PrefillCallback, images_b64: Optional[list[str]] = None) -> Generation: ...
+                 on_prefill: PrefillCallback, images_b64: Optional[list[str]] = None,
+                 sampling: Optional[dict] = None) -> Generation: ...
 
 
 class MlxEngine:
@@ -51,7 +52,7 @@ class MlxEngine:
     loading in lmk (design §6.7)."""
 
     def __init__(self, model_id: str, model_path: Path, context_length: Optional[int] = None, *,
-                 cache_dir: Optional[Path] = None, cache_max_bytes: int = 0,
+                 cache_dir: Optional[Path] = None, cache_max_bytes: Optional[int] = None,
                  repo: Optional[str] = None, revision: Optional[str] = None):
         from mlx_engine.generate import get_runtime_load_info, load_model  # heavy import, kept out of module scope
 
@@ -93,7 +94,7 @@ class MlxEngine:
 
         unload(self._kit)
 
-    def generate(self, prompt_text, *, max_tokens, request_id, on_prefill, images_b64=None) -> Generation:
+    def generate(self, prompt_text, *, max_tokens, request_id, on_prefill, images_b64=None, sampling=None) -> Generation:
         from mlx_engine.generate import create_generator, tokenize
         from mlx_engine.utils.prompt_progress_reporter import PromptProgressReporter
 
@@ -119,6 +120,7 @@ class MlxEngine:
             kwargs["max_tokens"] = max_tokens
         if images_b64:
             kwargs["images_b64"] = images_b64
+        kwargs.update(sampling or {})  # the engine's own names: temp, top_p, top_k, seed
 
         def pieces():
             for result in create_generator(self._kit, tokens, **kwargs):
@@ -133,7 +135,7 @@ def engine_commit() -> str:
     return (Path(__file__).resolve().parent.parent / "ENGINE_COMMIT").read_text().strip()
 
 
-def _install_persistent_cache(cache_dir: Path, max_bytes: int, model_path: Path, repo: Optional[str],
+def _install_persistent_cache(cache_dir: Path, max_bytes: Optional[int], model_path: Path, repo: Optional[str],
                               revision: Optional[str], created: list) -> None:
     """The engine constructs its cache store itself (model_kit.py), with the
     directory hard-coded; the one way in is to swap the class it names."""
@@ -142,6 +144,8 @@ def _install_persistent_cache(cache_dir: Path, max_bytes: int, model_path: Path,
     from lmk.persistcache import make_persistent_store_class, model_identity, prepare_cache_root
 
     identity = model_identity(model_path, repo=repo, revision=revision)
+    if max_bytes is None:
+        max_bytes = 1 << 62  # no limit of ours; the engine's own budget still applies
     live_budget = prepare_cache_root(cache_dir, identity, max_bytes)
     vision_kit.VlmPromptCacheStore = make_persistent_store_class(cache_dir / identity, live_budget,
                                                                  engine_commit(), created)
@@ -175,7 +179,7 @@ class FakeEngine:
     def input_modalities(self) -> list[str]:
         return self._modalities
 
-    def generate(self, prompt_text, *, max_tokens, request_id, on_prefill, images_b64=None) -> Generation:
+    def generate(self, prompt_text, *, max_tokens, request_id, on_prefill, images_b64=None, sampling=None) -> Generation:
         self.requests.append({"prompt": prompt_text, "max_tokens": max_tokens, "request_id": request_id,
                               "images_b64": images_b64})
         stats = GenerationStats(**vars(self._stats))
