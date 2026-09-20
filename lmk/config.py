@@ -3,6 +3,7 @@
 Defaults live here, in code. The seeded config.yaml is all comments, so no
 default value is ever frozen onto the user's disk.
 """
+import hashlib
 import os
 import re
 from dataclasses import dataclass
@@ -126,3 +127,22 @@ def load_config(path: Optional[Path] = None) -> LmkConfig:
         cache_max_bytes=parse_size(cache.get("max_size") or DEFAULT_CACHE_MAX_SIZE),
         log_dir=Path(str(log.get("dir") or lmk_home() / "logs")).expanduser(),
     )
+
+
+def app_dir() -> Path:
+    return Path(__file__).resolve().parent.parent
+
+
+def build_id() -> str:
+    """Written by the installer. A running service reports the build it was started
+    from, so `lmk up` can tell that the code on disk is newer."""
+    try:
+        return (app_dir() / "BUILD").read_text().strip() or "dev"
+    except OSError:
+        return "dev"
+
+
+def fingerprint(cfg: LmkConfig, revision: Optional[str]) -> str:
+    """Everything a running service was started with. `lmk up` compares the running
+    one's with what the files on disk say now; different means restart."""
+    return hashlib.sha256(f"{build_id()}|{cfg!r}|{revision}".encode()).hexdigest()[:16]

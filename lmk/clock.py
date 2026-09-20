@@ -9,6 +9,9 @@ class SystemClock:
     def mono_ms(self) -> int:
         return int(time.monotonic() * 1000)
 
+    def sleep_s(self, seconds: float) -> None:
+        time.sleep(seconds)
+
 
 _current = SystemClock()
 

@@ -12,7 +12,8 @@ from lmk.chatformat import ChatFormat
 class LoadedModel:
     id: str
     path: Path
-    context_length: int
+    context_length: int  # the value in use — the engine may fit it to the memory it finds
+    requested_context_length: Optional[int] = None
 
 
 @dataclass
@@ -40,6 +41,7 @@ class Engine(Protocol):
     def loaded_model(self) -> LoadedModel: ...
     def input_modalities(self) -> list[str]: ...
     def chat_format(self) -> ChatFormat: ...
+    def cache_stats(self) -> Optional[dict]: ...
     def generate(self, prompt_text: str, *, max_tokens: Optional[int], request_id: str,
                  on_prefill: PrefillCallback, images_b64: Optional[list[str]] = None) -> Generation: ...
 
@@ -48,17 +50,27 @@ class MlxEngine:
     """Loads the resident model at construction: there is no lazy / just-in-time
     loading in lmk (design §6.7)."""
 
-    def __init__(self, model_id: str, model_path: Path, context_length: int, cache_dir: Optional[Path] = None):
-        from mlx_engine.generate import load_model  # heavy import, kept out of module scope
+    def __init__(self, model_id: str, model_path: Path, context_length: Optional[int] = None, *,
+                 cache_dir: Optional[Path] = None, cache_max_bytes: int = 0,
+                 repo: Optional[str] = None, revision: Optional[str] = None):
+        from mlx_engine.generate import get_runtime_load_info, load_model  # heavy import, kept out of module scope
 
         if not model_path.exists():
             raise FileNotFoundError(f"model path does not exist: {model_path}")
         from lmk.chatformat import TemplateChatFormat
+        from lmk.models import native_context_length
 
+        requested = context_length or native_context_length(model_path)
+        if requested is None:
+            raise ValueError(f"{model_path}/config.json does not say how long the model's context is — "
+                             "set model.context_length")
+        self._cache_stores: list = []
         if cache_dir is not None:
-            _install_persistent_cache(cache_dir, model_path)
-        self._kit = load_model(model_path, max_kv_size=context_length, max_seq_nums=4)
-        self._model = LoadedModel(id=model_id, path=model_path, context_length=context_length)
+            _install_persistent_cache(cache_dir, cache_max_bytes, model_path, repo, revision, self._cache_stores)
+        self._kit = load_model(model_path, max_kv_size=requested, max_seq_nums=4)
+        in_use = get_runtime_load_info(self._kit).get("context_length") or requested
+        self._model = LoadedModel(id=model_id, path=model_path, context_length=in_use,
+                                  requested_context_length=requested)
         self._format = TemplateChatFormat(self._kit.tokenizer)
 
     def loaded_model(self) -> LoadedModel:
@@ -70,6 +82,9 @@ class MlxEngine:
     def input_modalities(self) -> list[str]:
         # the engine picks its vision kit for models whose config has vision_config
         return ["text", "image"] if "Vision" in type(self._kit).__name__ else ["text"]
+
+    def cache_stats(self) -> Optional[dict]:
+        return self._cache_stores[-1].stats() if self._cache_stores else None
 
     def close(self) -> None:
         """Drains the engine's cache I/O thread: records still queued for disk
@@ -118,14 +133,18 @@ def engine_commit() -> str:
     return (Path(__file__).resolve().parent.parent / "ENGINE_COMMIT").read_text().strip()
 
 
-def _install_persistent_cache(cache_dir: Path, model_path: Path) -> None:
+def _install_persistent_cache(cache_dir: Path, max_bytes: int, model_path: Path, repo: Optional[str],
+                              revision: Optional[str], created: list) -> None:
     """The engine constructs its cache store itself (model_kit.py), with the
     directory hard-coded; the one way in is to swap the class it names."""
     import mlx_engine.model_kit.batched_vision.model_kit as vision_kit
 
-    from lmk.persistcache import make_persistent_store_class
+    from lmk.persistcache import make_persistent_store_class, model_identity, prepare_cache_root
 
-    vision_kit.VlmPromptCacheStore = make_persistent_store_class(cache_dir, model_path, engine_commit())
+    identity = model_identity(model_path, repo=repo, revision=revision)
+    live_budget = prepare_cache_root(cache_dir, identity, max_bytes)
+    vision_kit.VlmPromptCacheStore = make_persistent_store_class(cache_dir / identity, live_budget,
+                                                                 engine_commit(), created)
 
 
 class FakeEngine:
@@ -133,14 +152,19 @@ class FakeEngine:
 
     def __init__(self, model: LoadedModel, chat_format: Optional[ChatFormat] = None,
                  script: Optional[list[str]] = None, stats: Optional[GenerationStats] = None,
-                 prefill_steps: Optional[list[int]] = None, modalities: Optional[list[str]] = None):
+                 prefill_steps: Optional[list[int]] = None, modalities: Optional[list[str]] = None,
+                 cache: Optional[dict] = None):
         self._model = model
         self._format = chat_format
         self._script = script or []
         self._stats = stats or GenerationStats()
         self._prefill_steps = prefill_steps or []
         self._modalities = modalities or ["text"]
+        self._cache = cache
         self.requests: list[dict] = []
+
+    def cache_stats(self) -> Optional[dict]:
+        return self._cache
 
     def loaded_model(self) -> LoadedModel:
         return self._model

@@ -12,8 +12,10 @@ from lmk.engine import Engine
 
 
 class LmkServer:
-    def __init__(self, engine: Engine, host: str, port: int):
+    def __init__(self, engine: Engine, host: str, port: int, build: str = "dev", config_fingerprint: str = ""):
         self._engine = engine
+        self._build = build
+        self._config_fingerprint = config_fingerprint
         self._started_ms = get_current_clock().mono_ms()
         self._in_flight: dict[str, dict] = {}
         self._in_flight_lock = threading.Lock()
@@ -145,8 +147,12 @@ class LmkServer:
                           "phase": e["phase"], "prefill": e["prefill"], "running_ms": now - e["started_mono_ms"]}
                          for e in self._in_flight.values()]
         return {
+            "build": self._build,
+            "config_fingerprint": self._config_fingerprint,
             "model": {"id": m.id, "path": str(m.path), "context_length": m.context_length,
+                      "requested_context_length": m.requested_context_length,
                       "input_modalities": self._engine.input_modalities()},
+            "cache": self._engine.cache_stats(),
             "in_flight": in_flight,
             "uptime_ms": get_current_clock().mono_ms() - self._started_ms,
         }

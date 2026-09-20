@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from lmk.persistcache import PersistentBlobStore, _file_name, _key_of, model_identity
+from lmk.persistcache import PersistentBlobStore, _file_name, _key_of, model_identity, prepare_cache_root
 
 
 def make_model(tmp_path, weights=b"w1", config=b"{}"):
@@ -12,15 +12,66 @@ def make_model(tmp_path, weights=b"w1", config=b"{}"):
     return d
 
 
-def test_identity_is_stable_and_changes_with_weights_config_and_engine(tmp_path):
+def test_a_local_model_is_identified_by_its_weight_and_config_files(tmp_path):
     model = make_model(tmp_path)
-    base = model_identity(model, "engine-a")
-    assert model_identity(model, "engine-a") == base
-    assert model_identity(model, "engine-b") != base
+    base = model_identity(model)
+    assert model_identity(model) == base
     (model / "README.md").write_text("still ignored")
-    assert model_identity(model, "engine-a") == base
+    assert model_identity(model) == base
     (model / "model-00001.safetensors").write_bytes(b"different weights")
-    assert model_identity(model, "engine-a") != base
+    assert model_identity(model) != base
+
+
+def test_a_huggingface_model_is_identified_by_repo_and_commit_not_by_its_files(tmp_path):
+    model = make_model(tmp_path)
+    base = model_identity(model, repo="org/m", revision="abc123")
+    (model / "model-00001.safetensors").write_bytes(b"touched, same commit")
+    assert model_identity(model, repo="org/m", revision="abc123") == base
+    assert model_identity(model, repo="org/m", revision="def456") != base
+    assert model_identity(model, repo="other/m", revision="abc123") != base
+
+
+def fill(directory, size, used_at_s):
+    import os
+    directory.mkdir(parents=True)
+    f = directory / "record@k@kv_delta.safetensors"
+    f.write_bytes(b"x" * size)
+    os.utime(f, ns=(used_at_s * 10**9, used_at_s * 10**9))
+
+
+def test_cache_root_is_tagged_and_excluded_from_backup_once(tmp_path):
+    excluded = []
+    root = tmp_path / "cache"
+    assert prepare_cache_root(root, "live", 1000, exclude_from_backup=excluded.append) == 1000
+    assert (root / "CACHEDIR.TAG").read_text().startswith("Signature: 8a477f597d28d172789f06886806bc55")
+    prepare_cache_root(root, "live", 1000, exclude_from_backup=excluded.append)
+    assert excluded == [root]
+
+
+def test_other_models_caches_are_kept_while_everything_fits(tmp_path):
+    root = tmp_path / "cache"
+    fill(root / "live", 300, used_at_s=30)
+    fill(root / "old-a", 200, used_at_s=10)
+    fill(root / "old-b", 100, used_at_s=20)
+    assert prepare_cache_root(root, "live", 1000, exclude_from_backup=lambda d: None) == 700
+    assert (root / "old-a").is_dir() and (root / "old-b").is_dir()
+
+
+def test_over_the_limit_other_models_caches_go_first_longest_unused_first(tmp_path):
+    root = tmp_path / "cache"
+    fill(root / "live", 300, used_at_s=30)
+    fill(root / "old-a", 200, used_at_s=10)
+    fill(root / "old-b", 100, used_at_s=20)
+    assert prepare_cache_root(root, "live", 450, exclude_from_backup=lambda d: None) == 350
+    assert not (root / "old-a").exists() and (root / "old-b").is_dir() and (root / "live").is_dir()
+
+
+def test_the_live_cache_is_never_dropped_here_even_when_alone_over_the_limit(tmp_path):
+    root = tmp_path / "cache"
+    fill(root / "live", 300, used_at_s=30)
+    fill(root / "old-a", 200, used_at_s=10)
+    assert prepare_cache_root(root, "live", 100, exclude_from_backup=lambda d: None) == 100
+    assert not (root / "old-a").exists() and (root / "live").is_dir()  # the store trims itself, record by record
 
 
 def test_record_keys_round_trip_through_file_names():
