@@ -1,0 +1,5 @@
+{"step": "load", "kit": "BatchedVisionModelKit", "secs": 3.2}
+{"step": "A-cold", "prompt_tokens": 2680, "cached": 0, "updates": [2048, 2560], "ttft_s": 8.65, "total_s": 9.24, "text": "We need answer user's request: \"Say the single word: alpha.\" Need final only alp"}
+{"step": "B-fork", "prompt_tokens": 2680, "cached": 2560, "updates": [], "ttft_s": 0.57, "total_s": 1.17, "text": "We need answer user's request: \"Say the single word: bravo.\" Need final only \"br"}
+{"step": "A-again", "prompt_tokens": 2680, "cached": 2560, "updates": [], "ttft_s": 0.59, "total_s": 1.18, "text": "We need answer user's request: \"Say the single word: alpha.\" Need final only alp"}
+exit=0

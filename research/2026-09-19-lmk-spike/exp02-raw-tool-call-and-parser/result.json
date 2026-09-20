@@ -1,0 +1,25 @@
+{
+ "think_closed": true,
+ "n_blocks": 2,
+ "parsed": [
+  {
+   "name": "file_read",
+   "arguments": {
+    "path": "notes.md",
+    "max_lines": 20
+   }
+  },
+  {
+   "name": "grep_search",
+   "arguments": {
+    "pattern": "teapot",
+    "paths": [
+     "docs",
+     "src"
+    ],
+    "case_sensitive": false
+   }
+  }
+ ]
+}
+exit=0

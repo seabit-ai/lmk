@@ -5,8 +5,14 @@ A local LLM server for kitten, built on the open-source
 HTTP layer of LM Studio; the inference engine, the on-disk prefix cache and the
 tool-call parsers are all open source and used as they are.
 
-Design: `../docs/design/2026-09-19-lmk.md`. Why it exists:
-`../research/2026-09-19-local-llm-server-wishlist/notes.md`.
+Design: `docs/design/2026-09-19-lmk.md`; the out-of-box experience being built next:
+`docs/design/2026-09-20-lmk-oobe.md`. Why it exists:
+`research/2026-09-19-local-llm-server-wishlist/notes.md`. Measured against oMLX:
+`research/2026-09-20-local-server-survey/`.
+
+lmk was born inside the [kitten](https://github.com/seabit-ai/kitten) repo and moved here on
+2026-09-20 with its history. Design docs and research notes are in Chinese and may refer to
+kitten paths (`internal/...`, other `docs/design/...`); those live in the kitten repo.
 
 ## Run
 

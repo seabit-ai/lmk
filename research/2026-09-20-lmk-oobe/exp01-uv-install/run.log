@@ -1,0 +1,14 @@
+STEP1 uv download exit=0 2s  uv 0.12.17 (635500036 2026-09-18 aarch64-apple-darwin)
+Creating virtual environment at: venv
+Activate with: source venv/bin/activate
+STEP2 venv exit=0 2s  Python 3.11.16
+ + typing-inspection==0.4.3
+ + urllib3==2.7.0
+ + uvicorn==0.53.0
+ + xxhash==3.8.1
+STEP3 install exit=0 16s
+STEP4a import ok
+..........................sssss................                          [100%]
+42 passed, 5 skipped in 8.20s
+STEP4b pytest done
+1.0G	<scratch>/uvtest/venv  77M	<scratch>/uvtest/python 1.1G	<scratch>/uvtest/uvcache 

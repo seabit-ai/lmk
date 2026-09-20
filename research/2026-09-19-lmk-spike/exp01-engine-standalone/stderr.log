@@ -1,0 +1,12 @@
+[disk_budget][INFO]: VLM prompt cache disk budget: stage=provisional cap_gib=30.00
+[cache_store][INFO]: VLM prompt cache disk store: lifetime=model_load storage=temporary cleanup=model_unload_or_process_exit
+[context_fit][INFO]: Model context auto-fit: family=qwen3_5 max=262,144 fitted=262,144 working_set=77.76GiB reserve=3.89GiB safe_ceiling=73.87GiB baseline=14.95GiB full_kv=65536B/token prompt_inputs=10240B/token attention=98304B/token rotating_peak=0.00GiB fixed_ssm=0.14GiB estimated_peak=57.60GiB
+[cache_store][INFO]: VLM prompt cache context target: configured=32,768 fitted=262,144 effective=262,144
+[generate][WARNING]: Received a generation request without a request_id! Please send a request_id
+[coordinator][INFO]: Prompt cache restore: cached_tokens=0 uncached_tokens=2679 lifetime_efficiency=0.00%
+[cache_store][INFO]: VLM prompt cache disk usage: used_mib=16.0 cap_mib=30720.0 lifetime_evicted_mib=0.0 records=1 lifetime=model_load
+[disk_budget][INFO]: VLM prompt cache disk budget: stage=final target_tokens=262,144 desired_gib=162.81 cap_gib=162.81 limiter=max_kv_size
+[generate][WARNING]: Received a generation request without a request_id! Please send a request_id
+[coordinator][INFO]: Prompt cache restore: cached_tokens=2560 uncached_tokens=119 lifetime_efficiency=47.78%
+[generate][WARNING]: Received a generation request without a request_id! Please send a request_id
+[coordinator][INFO]: Prompt cache restore: cached_tokens=2560 uncached_tokens=119 lifetime_efficiency=63.71%

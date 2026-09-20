@@ -1,0 +1,30 @@
+The user is asking me to do two things:
+1. Read the first 20 lines of notes.md
+2. Search for the word "teapot" case-insensitively in the docs and src directories
+
+Since these are independent calls, I can execute both in the same block.
+</think>
+
+<tool_call>
+<function=file_read>
+<parameter=path>
+notes.md
+</parameter>
+<parameter=max_lines>
+20
+</parameter>
+</function>
+</tool_call>
+<tool_call>
+<function=grep_search>
+<parameter=pattern>
+teapot
+</parameter>
+<parameter=paths>
+["docs", "src"]
+</parameter>
+<parameter=case_sensitive>
+false
+</parameter>
+</function>
+</tool_call>
