@@ -17,25 +17,47 @@ prompt, a 27k-token conversation):
 
 It speaks the OpenAI chat-completions API, so any agent that can talk to OpenAI can talk to lmk.
 
+### Why not the server you already have?
+
+Same Mac, same model, same requests (September 2026; method and raw numbers in
+[`research/2026-09-20-local-server-survey`](research/2026-09-20-local-server-survey/notes.md), in Chinese):
+
+| | next step of a conversation | after the server restarts |
+|---|---|---|
+| **lmk** | **0.8 – 1.5 s** | 2.4 s |
+| oMLX 0.7.0.dev4 | 9.8 – 10.0 s | 12.9 s |
+| LM Studio | fast while the model stays loaded | starts over: its cache does not survive a model reload |
+
+oMLX also keeps its cache on disk across restarts, and it does far more than lmk (many models,
+an Anthropic API, a menu-bar app). The gap above is specific to models like Qwen3.5/3.8, which mix
+attention with a recurrent state: for those oMLX caches in 4,096-token blocks, so every step
+re-reads up to 4,095 tokens. lmk saves a resume point at the end of every request, so a conversation
+continues from where it stopped. On a plain-attention model we expect the gap to disappear; we
+have not measured that.
+
 ## Install
 
-You need an Apple Silicon Mac, `git`, about 16 GB of free memory for the model and 20 GB of disk.
-No Python required — the installer brings its own.
+You need an Apple Silicon Mac and `git`. No Python required — the installer brings its own.
+The default model takes about 16 GB of memory for its weights, more as conversations grow, and
+16 GB of disk. We have run lmk on one machine so far — an M3 Ultra with 96 GB — so how it behaves
+on a smaller Mac is not something we can promise yet.
 
 ```sh
-git clone https://github.com/seabit-ai/lmk && cd lmk && ./install.sh    # ~20 seconds
-lmk pull                                                                 # downloads the model, 16 GB — once
-lmk up                                                                   # starts it, now and at every login
+git clone https://github.com/seabit-ai/lmk && cd lmk && ./install.sh
+lmk pull
+lmk up
 ```
 
-`lmk up` returns when the model is loaded and has answered a test request, and prints what to
-paste into your agent:
+`./install.sh` takes about 20 seconds and puts everything under `~/.lmk`. `lmk pull` downloads
+the model (16 GB, once; it resumes if interrupted). `lmk up` starts lmk now and at every login; it
+returns when the model is loaded and has answered a test request, and prints what to paste into
+your agent:
 
 ```
 ✓ lmk is up    http://127.0.0.1:1235/v1   (OpenAI-compatible)
   model      qwen3.8-27b   (text, image in)
   context    262,144 tokens
-  cache      0 B of 162.8 GB   ~/.lmk/cache
+  cache      0 B of 200.0 GB   ~/.lmk/cache
   running    1s   (build 908b57c)
   busy       no — idle
 
@@ -43,6 +65,13 @@ paste into your agent:
     base URL   http://127.0.0.1:1235/v1
     model      qwen3.8-27b
     API key    anything (lmk does not check it)
+```
+
+See it answer:
+
+```sh
+curl http://127.0.0.1:1235/v1/chat/completions \
+  -d '{"model":"qwen3.8-27b","messages":[{"role":"user","content":"Reply with one word: ready"}]}'
 ```
 
 Everything lmk installs lives in `~/.lmk`. The model goes to the shared HuggingFace cache
@@ -72,6 +101,14 @@ second model loaded on the side, no per-model settings panel, no menu-bar app, n
 it never updates itself. If you want to try many models, use a tool made for that. If you have
 picked a model and want your agent to be fast on it every day, that is what lmk is for.
 
+## What does not work yet
+
+- **Sampling parameters are ignored** — `temperature`, `top_p`, `seed`, `stop`. The model's own defaults apply.
+- One tested model (Qwen3.8-27B, 4-bit). Others load through `model.repo`, untested by us.
+- No memory guard: lmk does not stop you from configuring a model that does not fit this Mac.
+- Requests running at the same time are untested; an agent making one call at a time is what we run.
+- No PDF input.
+
 ## Configuration
 
 There is nothing you have to configure. `~/.lmk/config.yaml` starts out as comments only;
@@ -89,6 +126,9 @@ listen: {host: 127.0.0.1, port: 1235}
 cache:  {dir: ~/.lmk/cache, max_size: 200G}     # when full, what was used longest ago goes first
 log:    {dir: ~/.lmk/logs}
 ```
+
+`max_size` is the limit. One guard on top of it: when the disk has less than 10 GB free, lmk stops
+adding to the cache and gives space back, oldest first.
 
 To switch models: change `model:`, then `lmk pull` and `lmk up`.
 
@@ -110,7 +150,6 @@ keep working and yours can do better:
   prompt into the cache and generates nothing.
 - Closing the connection cancels the request (at the next progress step — within a few seconds). `GET /lmk/v1/status` is what `lmk status` prints.
 
-Not there yet: sampling parameters (`temperature`, `top_p`, …) are currently ignored; PDF input.
 
 ## Why it is fast
 

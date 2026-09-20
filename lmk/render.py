@@ -67,6 +67,8 @@ def status_block(status: dict, url: str) -> str:
     if cache:
         lines.append(f"  cache      {human_bytes(cache['used_bytes'])} of {human_bytes(cache['max_bytes'])}"
                      f"   {short_path(str(Path(cache['dir']).parent))}")
+        if cache.get("disk_low"):
+            lines.append("             the disk has less than 10 GB free — lmk has stopped adding to the cache")
     lines.append(f"  running    {human_duration(status.get('uptime_ms', 0))}   (build {status.get('build', '?')})")
     in_flight = status.get("in_flight") or []
     if in_flight:
