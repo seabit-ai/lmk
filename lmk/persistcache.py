@@ -67,6 +67,21 @@ def _dir_bytes_and_last_use(directory: Path) -> tuple[int, int]:
     return total, newest
 
 
+MIN_FREE_DISK_BYTES = 10 * 1024**3
+
+
+def cache_budget(max_bytes: int, used_bytes: int, free_disk_bytes: int) -> int:
+    """cache.max_size IS the limit (design OOBE §C2, revised). One guard on top of it:
+    the disk keeps MIN_FREE_DISK_BYTES free — below that the cache stops growing and
+    gives space back, least recently used first.
+
+    Deliberately NOT the engine's own budget (one full context's worth, at most a quarter
+    of the free disk): that sizes a temporary cache for one conversation. Ours is
+    persistent and shared by weeks of conversations, and a limit the user wrote down
+    must not be silently undercut by a formula."""
+    return max(0, min(max_bytes, used_bytes + free_disk_bytes - MIN_FREE_DISK_BYTES))
+
+
 def prepare_cache_root(cache_root: Path, live_identity: str, max_bytes: int,
                        exclude_from_backup: Callable[[Path], None] = _exclude_from_time_machine) -> int:
     """One size limit for the whole cache directory (design OOBE §C2). Directories
@@ -174,13 +189,8 @@ def _layout_to_json(layout, engine_commit: str) -> dict:
 def make_persistent_store_class(directory: Path, max_bytes: int, engine_commit: str, created: list):
     """Build the store class the engine will instantiate in place of its own.
     A class (not an instance) because the engine constructs it itself; the
-    instance is appended to `created` so lmk can report its size.
-
-    max_bytes is an upper bound. The engine has its own budget (one full
-    context's worth of cache, at most a quarter of the free disk); the smaller
-    of the two is in force."""
+    instance is appended to `created` so lmk can report its size."""
     from mlx_engine.model_kit.batched_vision.prompt_cache.cache_store import VlmPromptCacheStore
-    from mlx_engine.model_kit.batched_vision.prompt_cache.disk_budget import provisional_cache_store_budget_bytes
     from mlx_engine.model_kit.batched_vision.prompt_cache.types import PromptCacheLayout, PromptCacheRecordMetadata
 
     class PersistentPromptCacheStore(VlmPromptCacheStore):
@@ -189,16 +199,25 @@ def make_persistent_store_class(directory: Path, max_bytes: int, engine_commit: 
             self._base_dir = directory
             self._blob_store = PersistentBlobStore(directory)
             self._empirical_budget_set = False
-            self._max_cache_store_bytes = min(provisional_cache_store_budget_bytes(directory), max_bytes)
+            self._max_cache_store_bytes = max_bytes  # _restore_index evicts against the real budget below
             self._restore_index()
             created.append(self)
 
+        def _free_disk_bytes(self) -> int:
+            return shutil.disk_usage(directory).free
+
         def commit_budget_update(self, max_cache_store_bytes: int) -> None:
-            super().commit_budget_update(min(max_cache_store_bytes, max_bytes))
+            # the engine's estimate is ignored on purpose: see cache_budget
+            super().commit_budget_update(cache_budget(max_bytes, self._total_bytes, self._free_disk_bytes()))
+
+        def _evict_if_needed(self) -> None:
+            self._max_cache_store_bytes = cache_budget(max_bytes, self._total_bytes, self._free_disk_bytes())
+            super()._evict_if_needed()
 
         def stats(self) -> dict:
-            return {"dir": str(directory), "used_bytes": self._total_bytes,
-                    "max_bytes": self._max_cache_store_bytes, "records": len(self._record_metadata_by_key)}
+            return {"dir": str(directory), "used_bytes": self._total_bytes, "max_bytes": max_bytes,
+                    "records": len(self._record_metadata_by_key),
+                    "disk_low": self._free_disk_bytes() < MIN_FREE_DISK_BYTES}
 
         def _restore_index(self) -> None:
             layout_path = directory / _LAYOUT_FILE

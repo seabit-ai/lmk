@@ -1,6 +1,7 @@
 from pathlib import Path
 
-from lmk.persistcache import PersistentBlobStore, _file_name, _key_of, model_identity, prepare_cache_root
+from lmk.persistcache import (MIN_FREE_DISK_BYTES, PersistentBlobStore, _file_name, _key_of, cache_budget,
+                              model_identity, prepare_cache_root)
 
 
 def make_model(tmp_path, weights=b"w1", config=b"{}"):
@@ -105,3 +106,25 @@ def test_a_crash_mid_write_leaves_no_half_record(tmp_path):
     store = PersistentBlobStore(d)
     assert store.keys_oldest_first() == []
     assert not list(d.glob("*.tmp"))
+
+
+GB = 1024**3
+
+
+def test_the_configured_size_is_the_limit_whatever_the_disk_could_hold():
+    assert cache_budget(200 * GB, used_bytes=10 * GB, free_disk_bytes=300 * GB) == 200 * GB
+    assert cache_budget(200 * GB, used_bytes=0, free_disk_bytes=4000 * GB) == 200 * GB
+
+
+def test_the_disk_keeps_its_last_ten_gigabytes():
+    assert MIN_FREE_DISK_BYTES == 10 * GB
+    # 50 used, 30 free: the cache may grow by 20 more, then the disk is at its floor
+    assert cache_budget(200 * GB, used_bytes=50 * GB, free_disk_bytes=30 * GB) == 70 * GB
+    # at the floor exactly: no growth
+    assert cache_budget(200 * GB, used_bytes=50 * GB, free_disk_bytes=10 * GB) == 50 * GB
+
+
+def test_below_the_floor_the_cache_gives_space_back():
+    # 4 GB free: the cache must shrink by 6 to restore the floor
+    assert cache_budget(200 * GB, used_bytes=50 * GB, free_disk_bytes=4 * GB) == 44 * GB
+    assert cache_budget(200 * GB, used_bytes=2 * GB, free_disk_bytes=1 * GB) == 0

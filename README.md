@@ -57,7 +57,7 @@ your agent:
 ✓ lmk is up    http://127.0.0.1:1235/v1   (OpenAI-compatible)
   model      qwen3.8-27b   (text, image in)
   context    262,144 tokens
-  cache      0 B of 162.8 GB   ~/.lmk/cache
+  cache      0 B of 200.0 GB   ~/.lmk/cache
   running    1s   (build 908b57c)
   busy       no — idle
 
@@ -127,9 +127,8 @@ cache:  {dir: ~/.lmk/cache, max_size: 200G}     # when full, what was used longe
 log:    {dir: ~/.lmk/logs}
 ```
 
-`lmk status` shows the cache limit actually in force: the smaller of `max_size` and what fits this
-disk — never more than a quarter of the free space, and no more than one full-length conversation
-needs (162.8 GB for the default model, which is why the example above shows that number).
+`max_size` is the limit. One guard on top of it: when the disk has less than 10 GB free, lmk stops
+adding to the cache and gives space back, oldest first.
 
 To switch models: change `model:`, then `lmk pull` and `lmk up`.
 

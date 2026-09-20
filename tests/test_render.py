@@ -72,3 +72,10 @@ def test_sizes_and_durations():
         ["512 B", "2 KB", "5.0 MB", "3.0 GB", "2.0 TB"]
     assert [render.human_duration(ms) for ms in (5_000, 65_000, 3_700_000, 90_000_000)] == \
         ["5s", "1m 5s", "1h 1m", "1d 1h"]
+
+
+def test_a_nearly_full_disk_is_said_next_to_the_cache_line():
+    status = json.loads(json.dumps(STATUS))
+    status["cache"]["disk_low"] = True
+    assert "less than 10 GB free — lmk has stopped adding to the cache" in render.status_block(status, "http://x")
+    assert "stopped adding" not in render.status_block(STATUS, "http://x")
