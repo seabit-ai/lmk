@@ -25,7 +25,7 @@ def build_plist(app_dir: Path, log_dir: Path, env: dict) -> dict:
             environment[key] = env[key]
     return {
         "Label": LABEL,
-        "ProgramArguments": [f"{app_dir}/.venv/bin/python", "-m", "lmk", "serve"],
+        "ProgramArguments": [f"{app_dir}/.venv/bin/python", "-P", "-m", "lmk", "serve"],
         "WorkingDirectory": str(app_dir),
         "EnvironmentVariables": environment,
         "RunAtLoad": True,

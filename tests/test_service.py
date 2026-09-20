@@ -6,7 +6,7 @@ from lmk import service
 def test_plist_runs_serve_from_the_app_dir_and_restarts_only_after_a_crash():
     plist = service.build_plist(Path("/h/.lmk/app"), Path("/h/.lmk/logs"), {"LMK_HOME": "/h/.lmk", "PATH": "/bin"})
     assert plist["Label"] == "ai.kitten.lmk"
-    assert plist["ProgramArguments"] == ["/h/.lmk/app/.venv/bin/python", "-m", "lmk", "serve"]
+    assert plist["ProgramArguments"] == ["/h/.lmk/app/.venv/bin/python", "-P", "-m", "lmk", "serve"]
     assert plist["EnvironmentVariables"] == {"PYTHONPATH": "/h/.lmk/app/.engine/mlx-engine:/h/.lmk/app",
                                              "LMK_HOME": "/h/.lmk"}
     assert plist["RunAtLoad"] is True and plist["KeepAlive"] == {"SuccessfulExit": False}
