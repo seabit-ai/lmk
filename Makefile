@@ -1,5 +1,4 @@
-# lmk (lm-kitten): local LLM server on the open-source mlx-engine.
-# Design: ../docs/design/2026-09-19-lmk.md
+# lmk: developer targets. People who just want to use lmk run install.sh (see README.md).
 
 PYTHON311 ?= $(HOME)/.local/bin/python3.11
 VENV      := .venv
@@ -37,39 +36,31 @@ test: venv ## unit tests (no GPU, no model)
 itest: venv ## integration tests — need the configured model on disk and a free GPU
 	LMK_ITEST=1 $(PY) -m pytest -q tests -m itest
 
+cache-fixture: venv ## before an engine upgrade: write a cache with the CURRENT engine
+	rm -rf .compat-cache
+	LMK_ITEST=1 LMK_COMPAT_DIR=$(CURDIR)/.compat-cache $(PY) -m pytest -q tests/test_itest_cache_compat.py
+
+cache-compat: venv ## after an engine upgrade: the new engine must restore that cache
+	@[ -f .compat-cache/expected.json ] || { echo "no fixture — run 'make cache-fixture' with the old engine first"; exit 1; }
+	LMK_ITEST=1 LMK_COMPAT_DIR=$(CURDIR)/.compat-cache $(PY) -m pytest -q tests/test_itest_cache_compat.py
+
 lint: venv ## byte-compile everything
 	$(PY) -m compileall -q lmk tests
 
-run: venv ## start the server with ~/.kitten/lmk.yaml
-	$(PY) -m lmk
+run: venv ## run the server in the foreground from this tree, with ~/.lmk/config.yaml
+	$(PY) -m lmk serve
 
 clean: ## remove the env and the engine clone
 	rm -rf $(VENV) .engine .pytest_cache
 
 # ---- the resident service ----
-# Runs from PREFIX, never from this working tree: switching branches in the repo
-# must not take the server down.
-PREFIX ?= $(HOME)/.kitten/lmk/app
-LABEL  := ai.kitten.lmk
-PLIST  := $(HOME)/Library/LaunchAgents/$(LABEL).plist
-LOGDIR := $(HOME)/Library/Logs/kitten
+# The same installer users run, fed from this working tree. The service runs from
+# ~/.lmk/app, never from here: switching branches must not take the server down.
+install: ## install this tree into ~/.lmk and (re)start the service
+	./install.sh
+	$${LMK_HOME:-$(HOME)/.lmk}/bin/lmk up
 
-install: ## install to PREFIX and (re)start the launchd service
-	@[ -f $(HOME)/.kitten/lmk.yaml ] || { echo "no ~/.kitten/lmk.yaml — see README.md"; exit 1; }
-	mkdir -p $(PREFIX) $(LOGDIR)
-	rsync -a --delete --exclude __pycache__ lmk $(PREFIX)/
-	cp Makefile requirements.txt ENGINE_COMMIT $(PREFIX)/
-	$(MAKE) -C $(PREFIX) venv
-	sed -e 's|@PREFIX@|$(PREFIX)|g' -e 's|@LOGDIR@|$(LOGDIR)|g' launchd.plist.in > $(PLIST)
-	-launchctl bootout gui/$$(id -u)/$(LABEL) 2>/dev/null
-	@# lmk flushes its cache to disk on the way out; bootstrapping before the old
-	@# instance is gone fails with "Input/output error"
-	@i=0; while launchctl print gui/$$(id -u)/$(LABEL) >/dev/null 2>&1 && [ $$i -lt 120 ]; do sleep 1; i=$$((i+1)); done
-	launchctl bootstrap gui/$$(id -u) $(PLIST)
-	@echo "installed; status: curl -s http://127.0.0.1:<port>/lmk/v1/status   logs: $(LOGDIR)/lmk.jsonl"
+uninstall: ## stop the service (keeps ~/.lmk: app, config, cache)
+	$${LMK_HOME:-$(HOME)/.lmk}/bin/lmk down
 
-uninstall: ## stop the service and remove the LaunchAgent (keeps PREFIX, config and cache)
-	-launchctl bootout gui/$$(id -u)/$(LABEL)
-	rm -f $(PLIST)
-
-.PHONY: help all venv test itest lint run clean install uninstall
+.PHONY: help all venv test itest cache-fixture cache-compat lint run clean install uninstall

@@ -10,8 +10,7 @@ import pytest
 
 pytestmark = pytest.mark.itest
 
-MODEL_DIR = Path(os.environ.get("LMK_ITEST_MODEL") or
-                 Path.home() / ".lmstudio/models/lmstudio-community/Qwen3.8-27B-MLX-4bit")
+from itest_model import model_dir
 TOOLS = [{"type": "function", "function": {
     "name": "file_read", "description": "Read a text file and return its contents.",
     "parameters": {"type": "object", "properties": {"path": {"type": "string"}, "max_lines": {"type": "integer"}},
@@ -23,9 +22,7 @@ def server():
     from lmk.engine import MlxEngine
     from lmk.server import LmkServer
 
-    if not MODEL_DIR.exists():
-        pytest.skip(f"model not on disk: {MODEL_DIR}")
-    srv = LmkServer(MlxEngine("itest-model", MODEL_DIR, 32768), "127.0.0.1", 0)
+    srv = LmkServer(MlxEngine("itest-model", model_dir(), 32768), "127.0.0.1", 0)
     threading.Thread(target=srv.serve_forever, daemon=True).start()
     yield srv
     srv.shutdown()

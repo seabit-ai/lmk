@@ -9,12 +9,11 @@ import pytest
 
 pytestmark = pytest.mark.itest
 
-MODEL_DIR = Path(os.environ.get("LMK_ITEST_MODEL") or
-                 Path.home() / ".lmstudio/models/lmstudio-community/Qwen3.8-27B-MLX-4bit")
+from itest_model import model_dir
 
 
 def probe(cache_dir):
-    out = subprocess.run([sys.executable, str(Path(__file__).parent / "persist_probe.py"), str(MODEL_DIR), str(cache_dir)],
+    out = subprocess.run([sys.executable, str(Path(__file__).parent / "persist_probe.py"), str(model_dir()), str(cache_dir)],
                          capture_output=True, text=True, timeout=900, env=os.environ.copy())
     line = next((l for l in out.stdout.splitlines() if l.startswith("PROBE ")), None)
     assert line, f"probe produced no result\nstdout: {out.stdout[-800:]}\nstderr: {out.stderr[-1500:]}"
@@ -22,8 +21,6 @@ def probe(cache_dir):
 
 
 def test_prefix_cache_survives_a_process_restart(tmp_path):
-    if not MODEL_DIR.exists():
-        pytest.skip(f"model not on disk: {MODEL_DIR}")
     first = probe(tmp_path / "cache")
     assert first["cached_tokens"] == 0, "a fresh cache directory starts cold"
 

@@ -1,77 +1,148 @@
-# lmk (lm-kitten)
+# lmk
 
-A local LLM server for kitten, built on the open-source
-[mlx-engine](https://github.com/lmstudio-ai/mlx-engine). It replaces the closed
-HTTP layer of LM Studio; the inference engine, the on-disk prefix cache and the
-tool-call parsers are all open source and used as they are.
+**One local model, always on, for your agent — on an Apple Silicon Mac.**
 
-Design: `docs/design/2026-09-19-lmk.md`; the out-of-box experience being built next:
-`docs/design/2026-09-20-lmk-oobe.md`. Why it exists:
-`research/2026-09-19-local-llm-server-wishlist/notes.md`. Measured against oMLX:
-`research/2026-09-20-local-server-survey/`.
+Agents don't send one prompt; they send the same growing conversation dozens of times, once per
+tool call. lmk keeps every prompt it has processed on disk, so each step of a conversation starts
+answering in **about a second** — also after lmk, or the Mac, has been restarted.
 
-lmk was born inside the [kitten](https://github.com/seabit-ai/kitten) repo and moved here on
-2026-09-20 with its history. Design docs and research notes are in Chinese and may refer to
-kitten paths (`internal/...`, other `docs/design/...`); those live in the kitten repo.
+Measured on an M3 Ultra with Qwen3.8-27B and a real agent's requests (56 tools, 11k-token system
+prompt, a 27k-token conversation):
 
-## Run
+| | time to first token |
+|---|---|
+| next step of a running conversation | **0.8 – 1.5 s** |
+| first request after lmk restarts | 2.4 s |
+| a prompt lmk has never seen | ~3 s per 1,000 tokens (37 s for that 11k prompt) — once |
 
-    make venv        # python 3.11 env + mlx-engine at the commit in ENGINE_COMMIT
-    make test        # unit tests — no GPU, no model
-    make run         # start the server with ~/.kitten/lmk.yaml
+It speaks the OpenAI chat-completions API, so any agent that can talk to OpenAI can talk to lmk.
 
-`~/.kitten/lmk.yaml` (machine-level; `LMK_CONFIG=<path>` overrides the location):
+## Install
 
-    model:
-      path: ~/.lmstudio/models/lmstudio-community/Qwen3.8-27B-MLX-4bit
-      context_length: 200000
-      # id: the name clients send as "model"; defaults to the directory name, lowercased
-    listen:
-      port: 1235        # required — no default port
-      # host: 127.0.0.1
-    # cache: {dir: ~/.kitten/lmk/cache}
-    # log:   {dir: ~/Library/Logs/kitten}
+You need an Apple Silicon Mac, `git`, about 16 GB of free memory for the model and 20 GB of disk.
+No Python required — the installer brings its own.
 
-The model named there is loaded at startup and stays resident. There is no
-just-in-time loading and no idle eviction.
+```sh
+git clone https://github.com/seabit-ai/lmk && cd lmk && ./install.sh    # ~20 seconds
+lmk pull                                                                 # downloads the model, 16 GB — once
+lmk up                                                                   # starts it, now and at every login
+```
 
-The prefix cache is persistent: records live as files under `cache.dir`, in a
-subdirectory keyed by the model's identity (weights + config + engine commit),
-and the index is rebuilt from them at startup. A reboot no longer means a cold
-first turn. Stop the server with SIGTERM/ctrl-c so queued records are flushed.
+`lmk up` returns when the model is loaded and has answered a test request, and prints what to
+paste into your agent:
 
-## Install as a resident service
+```
+✓ lmk is up    http://127.0.0.1:1235/v1   (OpenAI-compatible)
+  model      qwen3.8-27b   (text, image in)
+  context    262,144 tokens
+  cache      0 B of 162.8 GB   ~/.lmk/cache
+  running    1s   (build 908b57c)
+  busy       no — idle
 
-    make install     # copies to ~/.kitten/lmk/app, builds its env, (re)starts LaunchAgent ai.kitten.lmk
-    make uninstall   # stops it and removes the LaunchAgent; keeps the app dir, config and cache
+  Point your agent at it — any OpenAI-compatible client:
+    base URL   http://127.0.0.1:1235/v1
+    model      qwen3.8-27b
+    API key    anything (lmk does not check it)
+```
 
-The service runs from `~/.kitten/lmk/app`, never from this working tree — switching
-branches in the repo must not take the server down. Rerun `make install` to deploy changes.
-Logs: `~/Library/Logs/kitten/lmk.jsonl` (structured), `lmk.stderr.log` (the engine's own output).
+Everything lmk installs lives in `~/.lmk`. The model goes to the shared HuggingFace cache
+(`~/.cache/huggingface/hub`), where your other tools can use it too.
 
-## Endpoints
+## The whole command line
 
-- `GET /lmk/v1/status` — the resident model, its context length, what is in flight
-- `GET /v1/models` — OpenAI-shaped list containing exactly the resident model
-- `POST /v1/chat/completions` — OpenAI-shaped chat, streaming or not, with tools. lmk's
-  additions sit where the shape allows them, so stock OpenAI clients keep working:
-  cache hits in `usage.prompt_tokens_details.cached_tokens`, reasoning in
-  `delta.reasoning_content`, prefill progress as chunks with `choices: []` and an
-  `lmk.prefill` object. Closing the connection cancels the call. Images: OpenAI
-  `image_url` parts with inline `data:image/...;base64,...` URLs only — lmk never
-  fetches a URL. Whether the resident model takes images is in the status reply
-  (`model.input_modalities`).
-- `POST /lmk/v1/warmup` — same body as a chat request; prefills the prefix into the
-  cache and generates nothing. Send system + tools; a later chat that starts the
-  same way restores it.
+| | |
+|---|---|
+| `lmk pull` | Download the configured model. Nothing else ever downloads anything. |
+| `lmk up` | Start lmk, now and at every login. Run it again after changing the config or upgrading. |
+| `lmk status` | Is it up, what is it doing right now, how full is the cache. |
+| `lmk logs` | Recent events. `-f` to follow, `--raw` for the model runtime's own output. |
+| `lmk down` | Stop it, and don't start it at login. Model, cache and config are kept. |
 
-Optional request headers, logged per call and shown in `/lmk/v1/status`:
-`X-Lmk-Purpose` (turn / compaction / groom / warmup …), `X-Lmk-Ref-Id` (the caller's
-own reference for this call), `traceparent`.
+When a request seems stuck, `lmk status` shows what it is doing:
 
-## Upgrading the engine
+```
+  busy       1 request
+               reading prompt 10,240 / 26,938 (38%) · turn · my-session/step-4 · 37s
+```
 
-`requirements.txt` is mlx-engine's own pinned file at the commit in
-`ENGINE_COMMIT`. To upgrade: change the commit, copy that commit's
-`requirements.txt` over this one, `make clean venv`, and rerun the integration
-tests. It is a deliberate act, never a side effect.
+## What lmk is not
+
+lmk runs **one model per machine**, and that is the point. There is no model library to browse, no
+second model loaded on the side, no per-model settings panel, no menu-bar app, no web console, and
+it never updates itself. If you want to try many models, use a tool made for that. If you have
+picked a model and want your agent to be fast on it every day, that is what lmk is for.
+
+## Configuration
+
+There is nothing you have to configure. `~/.lmk/config.yaml` starts out as comments only;
+`~/.lmk/config.yaml.example` next to it is the full, always-current reference — including the
+list of models we have tested. The settings, with their defaults:
+
+```yaml
+model:
+  name: qwen3.8-27b          # a tested model; or  repo: <any MLX model on HuggingFace>
+                             #                 or  path: <a directory on this disk>
+  # id: what clients send as "model"            (default: the name)
+  # context_length:                             (default: the model's maximum; lmk lowers it if
+                             #                   memory is short, and `lmk status` shows the value in use)
+listen: {host: 127.0.0.1, port: 1235}
+cache:  {dir: ~/.lmk/cache, max_size: 200G}     # when full, what was used longest ago goes first
+log:    {dir: ~/.lmk/logs}
+```
+
+To switch models: change `model:`, then `lmk pull` and `lmk up`.
+
+## For agent authors
+
+lmk follows the OpenAI shape and puts its additions where that shape has room, so stock clients
+keep working and yours can do better:
+
+- **Cache hits** are reported per request in `usage.prompt_tokens_details.cached_tokens`.
+- **Thinking** arrives separately, in `delta.reasoning_content`.
+- **Tool calls** come back as structured `tool_calls` with JSON arguments, whatever format the model writes natively.
+- **Prompt-reading progress**: while a long prompt is being read, the stream carries chunks with
+  `choices: []` and `lmk.prefill: {processed, total, cached}`. Draw a progress bar — or ignore them;
+  they also keep the connection from timing out. Use `stream: true` for long prompts.
+- **Images**: OpenAI `image_url` parts with inline `data:image/...;base64,` URLs. lmk never fetches a URL.
+- **Say who is calling**: optional headers `X-Lmk-Purpose` and `X-Lmk-Ref-Id` show up in
+  `lmk status` and in the logs, next to the request they belong to.
+- **Warm a prompt ahead of time**: `POST /lmk/v1/warmup` takes a chat request body, reads the
+  prompt into the cache and generates nothing.
+- Closing the connection cancels the request (at the next progress step — within a few seconds). `GET /lmk/v1/status` is what `lmk status` prints.
+
+Not there yet: sampling parameters (`temperature`, `top_p`, …) are currently ignored; PDF input.
+
+## Why it is fast
+
+Reading a prompt is the slow part of running a large model locally, and an agent re-sends almost
+the same prompt at every step. lmk stores what the model computed for each prompt on disk, in
+small blocks addressed by their content, so anything that starts the same way as something seen
+before — the next step of a conversation, a new conversation with the same system prompt and
+tools — skips straight to the new part. The store survives restarts and is shared across
+conversations.
+
+The model runtime is [mlx-engine](https://github.com/lmstudio-ai/mlx-engine), the open-source
+engine behind LM Studio, used as it is. How lmk compares with other servers on the same machine,
+with the raw numbers: [`research/2026-09-20-local-server-survey`](research/2026-09-20-local-server-survey/notes.md)
+(notes are in Chinese).
+
+## Upgrading and removing
+
+Upgrade: `git pull && ./install.sh && lmk up`. Your cache is kept across upgrades.
+
+Remove: `lmk down`, then delete `~/.lmk`. The model stays in the HuggingFace cache until you
+delete it there (`hf cache rm`, or remove its folder under `~/.cache/huggingface/hub`).
+
+## Working on lmk
+
+```sh
+make venv      # python 3.11 env + mlx-engine at the commit in ENGINE_COMMIT
+make test      # unit tests — no GPU, no model
+make itest     # integration tests — load the configured model
+make install   # install this working tree into ~/.lmk and restart the service
+```
+
+Design notes are in [`docs/design`](docs/design) (Chinese). Upgrading mlx-engine is a deliberate
+act: run `make cache-fixture` first, change `ENGINE_COMMIT` and copy that commit's
+`requirements.txt` over ours, `make clean venv`, then `make cache-compat` and `make itest`. If
+`cache-compat` fails, the new engine cannot read the old cache: bump `CACHE_FORMAT_VERSION`.

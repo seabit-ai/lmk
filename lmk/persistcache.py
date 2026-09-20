@@ -10,29 +10,90 @@ engine's own interfaces:
   PersistentPromptCacheStore — the engine's store, plus: restore the index from
                           what is on disk at startup; keep the files on close.
 
-The cache directory is keyed by model identity AND engine commit: KV tensors
-from different weights (or a different storage layout) must never be restored.
+The cache directory is keyed by the model's weights and by OUR record format
+version — not by the engine commit (design OOBE §E′): an engine upgrade that
+leaves the records readable must not cost the user a 100 GB cache. Whether it
+does is settled by an integration test at upgrade time; if it fails, bump
+CACHE_FORMAT_VERSION.
 """
 import hashlib
 import json
 import os
+import shutil
+import subprocess
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any, Callable, Optional
+
+from lmk import log
 
 CACHE_FORMAT_VERSION = 1
 _LAYOUT_FILE = "layout.json"
 _SUFFIX = ".safetensors"
 
 
-def model_identity(model_path: Path, engine_commit: str) -> str:
-    """Changes whenever the weights, the model config or the engine change."""
+def model_identity(model_path: Path, repo: Optional[str] = None, revision: Optional[str] = None) -> str:
+    """Changes whenever the weights or the model config change. A HuggingFace
+    snapshot is named by its commit hash; a local directory has no such name,
+    so its files are fingerprinted."""
     h = hashlib.sha256()
-    h.update(f"lmk-cache-v{CACHE_FORMAT_VERSION}|{engine_commit}|".encode())
-    for f in sorted(model_path.iterdir()):
-        if f.suffix in (".safetensors", ".json") and f.is_file():
-            st = f.stat()
-            h.update(f"{f.name}:{st.st_size}:{st.st_mtime_ns}|".encode())
+    h.update(f"lmk-cache-v{CACHE_FORMAT_VERSION}|".encode())
+    if revision:
+        h.update(f"hf:{repo}@{revision}".encode())
+    else:
+        for f in sorted(model_path.iterdir()):
+            if f.suffix in (".safetensors", ".json") and f.is_file():
+                st = f.stat()
+                h.update(f"{f.name}:{st.st_size}:{st.st_mtime_ns}|".encode())
     return h.hexdigest()[:24]
+
+
+_CACHEDIR_TAG = "Signature: 8a477f597d28d172789f06886806bc55\n# This directory holds lmk's prompt cache. It can be deleted; lmk rebuilds it.\n"
+
+
+def _exclude_from_time_machine(directory: Path) -> None:
+    try:
+        subprocess.run(["tmutil", "addexclusion", str(directory)], check=False, capture_output=True, timeout=10)
+    except (OSError, subprocess.SubprocessError):
+        pass  # not macOS, or tmutil unavailable: the tag file still marks it for other backup tools
+
+
+def _dir_bytes_and_last_use(directory: Path) -> tuple[int, int]:
+    total, newest = 0, 0
+    for f in directory.rglob("*"):
+        if f.is_file():
+            st = f.stat()
+            total += st.st_size
+            newest = max(newest, st.st_mtime_ns)
+    return total, newest
+
+
+def prepare_cache_root(cache_root: Path, live_identity: str, max_bytes: int,
+                       exclude_from_backup: Callable[[Path], None] = _exclude_from_time_machine) -> int:
+    """One size limit for the whole cache directory (design OOBE §C2). Directories
+    of other identities — a model used before, a retired record format — are
+    never touched again, so they are the least recently used: they go first,
+    whole, until the directory fits. Returns what is left for the live model."""
+    cache_root.mkdir(parents=True, exist_ok=True)
+    tag = cache_root / "CACHEDIR.TAG"
+    if not tag.exists():
+        tag.write_text(_CACHEDIR_TAG)
+        exclude_from_backup(cache_root)
+
+    live_bytes = _dir_bytes_and_last_use(cache_root / live_identity)[0] if (cache_root / live_identity).is_dir() else 0
+    others = []
+    for d in cache_root.iterdir():
+        if d.is_dir() and d.name != live_identity:
+            size, last_use = _dir_bytes_and_last_use(d)
+            others.append((last_use, size, d))
+    others.sort()
+    others_bytes = sum(size for _, size, _ in others)
+    while others and live_bytes + others_bytes > max_bytes:
+        _, size, d = others.pop(0)
+        shutil.rmtree(d, ignore_errors=True)
+        others_bytes -= size
+        log.info("LmkCacheOrphanDropped", "dropped the cache of a model no longer in use to fit cache.max_size",
+                 dir=str(d), mib=round(size / 1048576, 1))
+    return max(0, max_bytes - others_bytes)
 
 
 # Keys look like "record:<sha256>:<kind>", and kinds contain underscores
@@ -103,22 +164,24 @@ class PersistentBlobStore:
         pass  # the whole point: the records stay
 
 
-def _layout_to_json(layout) -> dict:
-    return {"layer_kinds": list(layout.layer_kinds),
+def _layout_to_json(layout, engine_commit: str) -> dict:
+    return {"written_by_engine_commit": engine_commit,  # for the record only; not part of the identity
+            "layer_kinds": list(layout.layer_kinds),
             "layer_indices_by_kind": {k: list(v) for k, v in layout.layer_indices_by_kind.items()},
             "rotating_window_size": layout.rotating_window_size}
 
 
-def make_persistent_store_class(cache_root: Path, model_path: Path, engine_commit: str):
+def make_persistent_store_class(directory: Path, max_bytes: int, engine_commit: str, created: list):
     """Build the store class the engine will instantiate in place of its own.
-    A class (not an instance) because the engine constructs it itself."""
+    A class (not an instance) because the engine constructs it itself; the
+    instance is appended to `created` so lmk can report its size.
+
+    max_bytes is an upper bound. The engine has its own budget (one full
+    context's worth of cache, at most a quarter of the free disk); the smaller
+    of the two is in force."""
     from mlx_engine.model_kit.batched_vision.prompt_cache.cache_store import VlmPromptCacheStore
     from mlx_engine.model_kit.batched_vision.prompt_cache.disk_budget import provisional_cache_store_budget_bytes
     from mlx_engine.model_kit.batched_vision.prompt_cache.types import PromptCacheLayout, PromptCacheRecordMetadata
-
-    from lmk import log
-
-    directory = cache_root / model_identity(model_path, engine_commit)
 
     class PersistentPromptCacheStore(VlmPromptCacheStore):
         def __init__(self, max_kv_size: Optional[int] = None, enable_disk_cache: bool = True):
@@ -126,8 +189,16 @@ def make_persistent_store_class(cache_root: Path, model_path: Path, engine_commi
             self._base_dir = directory
             self._blob_store = PersistentBlobStore(directory)
             self._empirical_budget_set = False
-            self._max_cache_store_bytes = provisional_cache_store_budget_bytes(directory)
+            self._max_cache_store_bytes = min(provisional_cache_store_budget_bytes(directory), max_bytes)
             self._restore_index()
+            created.append(self)
+
+        def commit_budget_update(self, max_cache_store_bytes: int) -> None:
+            super().commit_budget_update(min(max_cache_store_bytes, max_bytes))
+
+        def stats(self) -> dict:
+            return {"dir": str(directory), "used_bytes": self._total_bytes,
+                    "max_bytes": self._max_cache_store_bytes, "records": len(self._record_metadata_by_key)}
 
         def _restore_index(self) -> None:
             layout_path = directory / _LAYOUT_FILE
@@ -157,7 +228,7 @@ def make_persistent_store_class(cache_root: Path, model_path: Path, engine_commi
             super().commit_pending_save(pending_save)
             if not had_layout and self._layout is not None:
                 tmp = directory / (_LAYOUT_FILE + ".tmp")
-                tmp.write_text(json.dumps(_layout_to_json(self._layout)))
+                tmp.write_text(json.dumps(_layout_to_json(self._layout, engine_commit)))
                 os.replace(tmp, directory / _LAYOUT_FILE)
 
         def _touch_cache_entry(self, key: str) -> None:

@@ -12,8 +12,10 @@ from lmk.server import LmkServer
 
 @pytest.fixture
 def server():
-    engine = FakeEngine(LoadedModel(id="kitten-27b", path=Path("/m/x"), context_length=200000))
-    srv = LmkServer(engine, "127.0.0.1", 0)
+    engine = FakeEngine(LoadedModel(id="kitten-27b", path=Path("/m/x"), context_length=200000,
+                                    requested_context_length=262144),
+                        cache={"dir": "/c/abc", "used_bytes": 10, "max_bytes": 100, "records": 2})
+    srv = LmkServer(engine, "127.0.0.1", 0, build="abc1234")
     t = threading.Thread(target=srv.serve_forever, daemon=True)
     t.start()
     yield srv
@@ -28,8 +30,11 @@ def get(srv, path):
 def test_status_reports_the_resident_model(server):
     status, body = get(server, "/lmk/v1/status")
     assert status == 200
+    assert body["build"] == "abc1234"
+    # context_length is the value in use; the request is reported next to it so a lowered window is visible
     assert body["model"] == {"id": "kitten-27b", "path": "/m/x", "context_length": 200000,
-                             "input_modalities": ["text"]}
+                             "requested_context_length": 262144, "input_modalities": ["text"]}
+    assert body["cache"] == {"dir": "/c/abc", "used_bytes": 10, "max_bytes": 100, "records": 2}
     assert body["in_flight"] == []
     assert body["uptime_ms"] >= 0
 
