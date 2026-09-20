@@ -34,6 +34,15 @@ subdirectory keyed by the model's identity (weights + config + engine commit),
 and the index is rebuilt from them at startup. A reboot no longer means a cold
 first turn. Stop the server with SIGTERM/ctrl-c so queued records are flushed.
 
+## Install as a resident service
+
+    make install     # copies to ~/.kitten/lmk/app, builds its env, (re)starts LaunchAgent ai.kitten.lmk
+    make uninstall   # stops it and removes the LaunchAgent; keeps the app dir, config and cache
+
+The service runs from `~/.kitten/lmk/app`, never from this working tree — switching
+branches in the repo must not take the server down. Rerun `make install` to deploy changes.
+Logs: `~/Library/Logs/kitten/lmk.jsonl` (structured), `lmk.stderr.log` (the engine's own output).
+
 ## Endpoints
 
 - `GET /lmk/v1/status` — the resident model, its context length, what is in flight
