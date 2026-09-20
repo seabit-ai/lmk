@@ -51,7 +51,10 @@ Logs: `~/Library/Logs/kitten/lmk.jsonl` (structured), `lmk.stderr.log` (the engi
   additions sit where the shape allows them, so stock OpenAI clients keep working:
   cache hits in `usage.prompt_tokens_details.cached_tokens`, reasoning in
   `delta.reasoning_content`, prefill progress as chunks with `choices: []` and an
-  `lmk.prefill` object. Closing the connection cancels the call.
+  `lmk.prefill` object. Closing the connection cancels the call. Images: OpenAI
+  `image_url` parts with inline `data:image/...;base64,...` URLs only — lmk never
+  fetches a URL. Whether the resident model takes images is in the status reply
+  (`model.input_modalities`).
 - `POST /lmk/v1/warmup` — same body as a chat request; prefills the prefix into the
   cache and generates nothing. Send system + tools; a later chat that starts the
   same way restores it.

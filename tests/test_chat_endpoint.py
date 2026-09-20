@@ -198,3 +198,38 @@ def test_warmup_keeps_a_closing_user_message_as_sent():
     finally:
         srv.shutdown()
     assert fmt.rendered[0][0] == [{"role": "user", "content": "hello"}]
+
+
+IMAGE_MSG = [{"role": "user", "content": [{"type": "text", "text": "what is this?"},
+                                          {"type": "image_url", "image_url": {"url": "data:image/png;base64,AAAA"}}]}]
+
+
+def test_images_reach_the_engine_and_the_template_sees_placeholders():
+    fmt = FakeChatFormat()
+    engine = FakeEngine(MODEL, chat_format=fmt, script=["x</think>", "a cat"], modalities=["text", "image"])
+    srv = LmkServer(engine, "127.0.0.1", 0)
+    threading.Thread(target=srv.serve_forever, daemon=True).start()
+    try:
+        body = json.loads(post(srv, {"model": "kitten-27b", "messages": IMAGE_MSG}).read())
+    finally:
+        srv.shutdown()
+    assert body["choices"][0]["message"]["content"] == "a cat"
+    assert engine.requests[0]["images_b64"] == ["AAAA"]
+    assert fmt.rendered[0][0][0]["content"] == [{"type": "text", "text": "what is this?"}, {"type": "image"}]
+
+
+@pytest.mark.parametrize("modalities,messages,needle", [
+    (["text"], IMAGE_MSG, "does not take images"),
+    (["text", "image"], [{"role": "user", "content": [{"type": "image_url", "image_url": {"url": "https://x/y.png"}}]}], "inline data:"),
+])
+def test_bad_image_requests_are_a_400_before_any_stream_starts(modalities, messages, needle):
+    engine = FakeEngine(MODEL, chat_format=FakeChatFormat(), script=["x"], modalities=modalities)
+    srv = LmkServer(engine, "127.0.0.1", 0)
+    threading.Thread(target=srv.serve_forever, daemon=True).start()
+    try:
+        with pytest.raises(urllib.error.HTTPError) as e:
+            post(srv, {"model": "kitten-27b", "stream": True, "messages": messages})
+    finally:
+        srv.shutdown()
+    assert e.value.code == 400 and needle in json.loads(e.value.read())["error"]["message"]
+    assert engine.requests == []

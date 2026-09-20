@@ -44,6 +44,37 @@ class TemplateChatFormat:
         return self._parser.parse_tool_call(block.strip(), tools)
 
 
+class ImageInputError(ValueError):
+    pass
+
+
+def split_images(messages: list[dict]) -> tuple[list[dict], list[str]]:
+    """OpenAI image parts → what the engine wants: `{"type": "image"}` placeholders
+    in the conversation (the template turns them into vision tokens) plus the
+    images as base64, in order of appearance. Only inline `data:` URLs — the
+    server never fetches a URL on a client's say-so."""
+    images: list[str] = []
+    out = []
+    for message in messages:
+        content = message.get("content")
+        if not isinstance(content, list):
+            out.append(message)
+            continue
+        parts = []
+        for part in content:
+            if part.get("type") != "image_url":
+                parts.append(part)
+                continue
+            url = (part.get("image_url") or {}).get("url") or ""
+            head, sep, payload = url.partition(";base64,")
+            if not (head.startswith("data:image/") and sep and payload):
+                raise ImageInputError("images must be inline data:image/...;base64,... URLs")
+            images.append(payload)
+            parts.append({"type": "image"})
+        out.append({**message, "content": parts})
+    return out, images
+
+
 def _for_template(message: dict) -> dict:
     """OpenAI wire → what chat templates iterate over: tool-call arguments are a
     JSON string on the wire but templates expect a mapping."""

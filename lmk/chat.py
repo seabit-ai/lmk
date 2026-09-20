@@ -12,6 +12,7 @@ from typing import Callable, Optional
 
 from lmk import log
 from lmk.clock import get_current_clock
+from lmk.chatformat import ImageInputError, split_images
 from lmk.engine import Engine
 from lmk.splitter import OutputSplitter
 
@@ -28,6 +29,15 @@ class ClientGone(Exception):
     """Raised by the chunk sink when the client disconnected: that IS the cancel signal."""
 
 
+def prepare_messages(engine: Engine, body: dict) -> tuple[list[dict], list[str]]:
+    """Everything that can reject a request, done BEFORE any response byte is
+    sent (a streamed reply cannot turn into a 400 halfway)."""
+    messages, images = split_images(body.get("messages") or [])
+    if images and "image" not in engine.input_modalities():
+        raise ImageInputError("the resident model does not take images")
+    return messages, images
+
+
 def run_chat(engine: Engine, body: dict, identity: CallerIdentity,
              emit: Callable[[dict], None], on_progress: Callable[[dict], None] = lambda _: None) -> dict:
     clock = get_current_clock()
@@ -35,7 +45,8 @@ def run_chat(engine: Engine, body: dict, identity: CallerIdentity,
     fmt = engine.chat_format()
     tools = body.get("tools") or None
     max_tokens = body.get("max_tokens") or body.get("max_completion_tokens")
-    prompt = fmt.render(body.get("messages") or [], tools)
+    messages, images = prepare_messages(engine, body)
+    prompt = fmt.render(messages, tools)
 
     completion_id = "chatcmpl-" + uuid.uuid4().hex[:24]
     base = {"id": completion_id, "created": clock.wall_ms() // 1000, "model": engine.loaded_model().id}
@@ -78,7 +89,8 @@ def run_chat(engine: Engine, body: dict, identity: CallerIdentity,
             on_text(f"{fmt.tool_call_start}{block}{fmt.tool_call_end}")
 
     request_id = identity.ref_id or completion_id
-    generation = engine.generate(prompt, max_tokens=max_tokens, request_id=request_id, on_prefill=on_prefill)
+    generation = engine.generate(prompt, max_tokens=max_tokens, request_id=request_id, on_prefill=on_prefill,
+                                 images_b64=images)
     delta({"role": "assistant"})
     splitter = OutputSplitter(fmt.tool_call_start, fmt.tool_call_end, fmt.starts_in_reasoning(prompt),
                               on_reasoning, on_text, on_tool_block)
@@ -127,14 +139,16 @@ def run_warmup(engine: Engine, body: dict, identity: CallerIdentity) -> dict:
     clock = get_current_clock()
     started = clock.mono_ms()
     fmt = engine.chat_format()
-    messages = list(body.get("messages") or [])
+    messages, images = prepare_messages(engine, body)
+    messages = list(messages)
     if not messages or messages[-1].get("role") != "user":
         # chat templates want a user turn to close on; keep it tiny so the fork
         # point stays inside the last cache block
         messages.append({"role": "user", "content": "."})
     prompt = fmt.render(messages, body.get("tools") or None)
     request_id = identity.ref_id or "warmup-" + uuid.uuid4().hex[:16]
-    generation = engine.generate(prompt, max_tokens=1, request_id=request_id, on_prefill=lambda *_: True)
+    generation = engine.generate(prompt, max_tokens=1, request_id=request_id, on_prefill=lambda *_: True,
+                                 images_b64=images)
     for _ in generation:
         pass
     stats = generation.stats

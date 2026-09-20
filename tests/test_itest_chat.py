@@ -90,3 +90,28 @@ def test_warmup_makes_the_first_real_request_hit(server):
     hits = real["usage"]["prompt_tokens_details"]["cached_tokens"]
     print(f"warm prompt={warm['prompt_tokens']} real prompt={real['usage']['prompt_tokens']} hits={hits}")
     assert hits >= warm["prompt_tokens"] - (2048 + 256)
+
+
+# Image input end to end: a generated PNG with a number only the pixels carry.
+def test_the_model_reads_an_image(server):
+    import base64
+    import io
+
+    from PIL import Image, ImageDraw, ImageFont
+
+    img = Image.new("RGB", (640, 240), "white")
+    draw = ImageDraw.Draw(img)
+    try:
+        font = ImageFont.truetype("/System/Library/Fonts/Helvetica.ttc", 120)
+    except OSError:
+        font = ImageFont.load_default()
+    draw.text((60, 50), "4217", fill="black", font=font)
+    buf = io.BytesIO()
+    img.save(buf, format="PNG")
+    url = "data:image/png;base64," + base64.b64encode(buf.getvalue()).decode()
+
+    out = chat(server, [{"role": "user", "content": [
+        {"type": "text", "text": "What number is written in this image? Answer with the number only."},
+        {"type": "image_url", "image_url": {"url": url}}]}])
+    print("image answer:", repr(out["content"]), "prompt_tokens:", out["usage"]["prompt_tokens"])
+    assert "4217" in out["content"]

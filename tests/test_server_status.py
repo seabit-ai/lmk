@@ -28,7 +28,8 @@ def get(srv, path):
 def test_status_reports_the_resident_model(server):
     status, body = get(server, "/lmk/v1/status")
     assert status == 200
-    assert body["model"] == {"id": "kitten-27b", "path": "/m/x", "context_length": 200000}
+    assert body["model"] == {"id": "kitten-27b", "path": "/m/x", "context_length": 200000,
+                             "input_modalities": ["text"]}
     assert body["in_flight"] == []
     assert body["uptime_ms"] >= 0
 

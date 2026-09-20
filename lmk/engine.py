@@ -38,9 +38,10 @@ class Generation:
 
 class Engine(Protocol):
     def loaded_model(self) -> LoadedModel: ...
+    def input_modalities(self) -> list[str]: ...
     def chat_format(self) -> ChatFormat: ...
     def generate(self, prompt_text: str, *, max_tokens: Optional[int], request_id: str,
-                 on_prefill: PrefillCallback) -> Generation: ...
+                 on_prefill: PrefillCallback, images_b64: Optional[list[str]] = None) -> Generation: ...
 
 
 class MlxEngine:
@@ -66,6 +67,10 @@ class MlxEngine:
     def chat_format(self) -> ChatFormat:
         return self._format
 
+    def input_modalities(self) -> list[str]:
+        # the engine picks its vision kit for models whose config has vision_config
+        return ["text", "image"] if "Vision" in type(self._kit).__name__ else ["text"]
+
     def close(self) -> None:
         """Drains the engine's cache I/O thread: records still queued for disk
         are written before the process goes away."""
@@ -73,7 +78,7 @@ class MlxEngine:
 
         unload(self._kit)
 
-    def generate(self, prompt_text, *, max_tokens, request_id, on_prefill) -> Generation:
+    def generate(self, prompt_text, *, max_tokens, request_id, on_prefill, images_b64=None) -> Generation:
         from mlx_engine.generate import create_generator, tokenize
         from mlx_engine.utils.prompt_progress_reporter import PromptProgressReporter
 
@@ -83,6 +88,9 @@ class MlxEngine:
         class Reporter(PromptProgressReporter):
             def begin(self, is_draft, cached_tokens, total_prompt_tokens, prefill_tokens_processed):
                 stats.cached_tokens = cached_tokens
+                # with images the text-only count misses the expanded vision tokens;
+                # the engine's own total is the one that was actually prefilled
+                stats.prompt_tokens = max(stats.prompt_tokens, total_prompt_tokens)
                 return on_prefill(prefill_tokens_processed, total_prompt_tokens, cached_tokens)
 
             def update(self, is_draft, prefill_tokens_processed):
@@ -94,6 +102,8 @@ class MlxEngine:
         kwargs = {"prompt_progress_reporter": Reporter(), "request_id": request_id}
         if max_tokens:
             kwargs["max_tokens"] = max_tokens
+        if images_b64:
+            kwargs["images_b64"] = images_b64
 
         def pieces():
             for result in create_generator(self._kit, tokens, **kwargs):
@@ -123,12 +133,13 @@ class FakeEngine:
 
     def __init__(self, model: LoadedModel, chat_format: Optional[ChatFormat] = None,
                  script: Optional[list[str]] = None, stats: Optional[GenerationStats] = None,
-                 prefill_steps: Optional[list[int]] = None):
+                 prefill_steps: Optional[list[int]] = None, modalities: Optional[list[str]] = None):
         self._model = model
         self._format = chat_format
         self._script = script or []
         self._stats = stats or GenerationStats()
         self._prefill_steps = prefill_steps or []
+        self._modalities = modalities or ["text"]
         self.requests: list[dict] = []
 
     def loaded_model(self) -> LoadedModel:
@@ -137,8 +148,12 @@ class FakeEngine:
     def chat_format(self) -> ChatFormat:
         return self._format
 
-    def generate(self, prompt_text, *, max_tokens, request_id, on_prefill) -> Generation:
-        self.requests.append({"prompt": prompt_text, "max_tokens": max_tokens, "request_id": request_id})
+    def input_modalities(self) -> list[str]:
+        return self._modalities
+
+    def generate(self, prompt_text, *, max_tokens, request_id, on_prefill, images_b64=None) -> Generation:
+        self.requests.append({"prompt": prompt_text, "max_tokens": max_tokens, "request_id": request_id,
+                              "images_b64": images_b64})
         stats = GenerationStats(**vars(self._stats))
 
         def pieces():

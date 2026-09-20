@@ -5,7 +5,8 @@ import threading
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 from lmk import log
-from lmk.chat import CallerIdentity, ClientGone, run_chat, run_warmup
+from lmk.chat import CallerIdentity, ClientGone, prepare_messages, run_chat, run_warmup
+from lmk.chatformat import ImageInputError
 from lmk.clock import get_current_clock
 from lmk.engine import Engine
 
@@ -69,6 +70,11 @@ class LmkServer:
             # lmk serves exactly one resident model and never loads another on demand (design §6.7)
             _send_json(h, 404, {"error": {"type": "model_not_found", "param": "model",
                        "message": f"model {body.get('model')!r} is not served here; the resident model is {resident!r}"}})
+            return
+        try:
+            prepare_messages(self._engine, body)
+        except ImageInputError as e:
+            _send_json(h, 400, {"error": {"type": "invalid_request", "param": "messages", "message": str(e)}})
             return
         identity = CallerIdentity(purpose=h.headers.get("X-Lmk-Purpose"), ref_id=h.headers.get("X-Lmk-Ref-Id"),
                                   traceparent=h.headers.get("traceparent"))
@@ -139,7 +145,8 @@ class LmkServer:
                           "phase": e["phase"], "prefill": e["prefill"], "running_ms": now - e["started_mono_ms"]}
                          for e in self._in_flight.values()]
         return {
-            "model": {"id": m.id, "path": str(m.path), "context_length": m.context_length},
+            "model": {"id": m.id, "path": str(m.path), "context_length": m.context_length,
+                      "input_modalities": self._engine.input_modalities()},
             "in_flight": in_flight,
             "uptime_ms": get_current_clock().mono_ms() - self._started_ms,
         }

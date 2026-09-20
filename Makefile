@@ -62,6 +62,9 @@ install: ## install to PREFIX and (re)start the launchd service
 	$(MAKE) -C $(PREFIX) venv
 	sed -e 's|@PREFIX@|$(PREFIX)|g' -e 's|@LOGDIR@|$(LOGDIR)|g' launchd.plist.in > $(PLIST)
 	-launchctl bootout gui/$$(id -u)/$(LABEL) 2>/dev/null
+	@# lmk flushes its cache to disk on the way out; bootstrapping before the old
+	@# instance is gone fails with "Input/output error"
+	@i=0; while launchctl print gui/$$(id -u)/$(LABEL) >/dev/null 2>&1 && [ $$i -lt 120 ]; do sleep 1; i=$$((i+1)); done
 	launchctl bootstrap gui/$$(id -u) $(PLIST)
 	@echo "installed; status: curl -s http://127.0.0.1:<port>/lmk/v1/status   logs: $(LOGDIR)/lmk.jsonl"
 
