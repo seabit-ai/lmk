@@ -48,7 +48,7 @@
 1. 旧文档里的真名：`docs/design/2026-09-19-lmk.md`、`2026-09-20-lmk-oobe.md` 及早期 research 共约 40 行，还有 `/Users/<name>/…` 路径。
    两条路：逐处换成 "owner"；或公开版不带 `docs/design` 与 `research`。**已 push 的历史里也有**——要干净就得重建历史后强推
    （repo 刚建、只有 owner 在用，代价小）。owner 拍板。
-2. owner 的 GitHub 用户名还出现在指向 kitten repo 的链接里（`git grep owner`）；kitten 若也迁到组织名下，一并改。
+2. owner 的 GitHub 用户名也算真名：现存一处，在 `research/2026-09-20-mlx-engine-upstream/notes.md`（grep 他的用户名即可找到）。
 3. README 链到 `research/2026-09-20-local-server-survey/`（中文笔记）；若 research 不随公开版走，链接要改。
 4. 公开后实测 `curl | sh`。
 
