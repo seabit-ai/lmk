@@ -57,7 +57,9 @@ def test_every_request_shows_its_state_and_the_numbers_that_go_with_it():
     assert "  decode   thinking   turn · s/step-14  27,190 prompt (27,136 cached) · 212 tokens at 33/s · 7s" in lines
     assert "  prefill  58%        groom · p/groom   8,192 / 14,061 · 0 cached · 18s" in lines
     assert "  starting            (unnamed)         900 prompt · 0s" in lines
-    assert "X-Lmk-Purpose" in lines[-2] and "X-Lmk-Ref-Id" in lines[-1]   # and how to get a name
+    note = " ".join(lines[-2:])                                          # and how to get a name
+    assert note.startswith("  (unnamed): the client did not say who it is.")
+    assert "X-Lmk-Purpose" in note and "X-Lmk-Ref-Id" in note
     assert "  queued              turn · o/step-2   2s · 2 requests are being answered (requests.max_parallel)" in lines
 
 
