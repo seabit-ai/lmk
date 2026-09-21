@@ -138,13 +138,20 @@ To switch models: change `model:`, then `lmk pull` and `lmk up`.
 
 ## Several requests at once, and memory
 
-Running requests side by side buys no speed where it matters. Measured on an M3 Ultra: with
-27k-token conversations — an agent's normal case — one request writes at 33 tokens/s, and two at
-once write at 16 each: the same total. (Only tiny prompts gain: two of them together reach 1.7x.)
-`max_parallel: 2` is therefore about waiting, not throughput: a second request starts answering at
-once, at half speed, instead of waiting for the first to finish. Set it to 1 if you would rather
-have each request at full speed, one after the other. Reading a long new prompt is a different
-matter: it stalls every request that is writing.
+What answering several requests at once gains depends on how long the conversations are.
+Measured on an M3 Ultra with the default model:
+
+| requests at once | prompts of a few dozen tokens | 27k-token conversations |
+|---|---|---|
+| 1 | 40 tokens/s | 33 tokens/s |
+| 2 | 34 each — 1.7x in total | 16 each — 1.0x in total |
+| 4 | 22 each — 2.2x in total | not measured |
+
+With long conversations — an agent's usual case — a single request already keeps the GPU busy, so
+`max_parallel: 2` changes the shape of the wait rather than the total: a second request starts
+answering at once, at half speed, instead of waiting for the first to finish. Set it to 1 to have
+each request at full speed, one after the other. Reading a long new prompt is a different matter:
+it stalls every request that is writing.
 So lmk keeps one first-come-first-served queue, and the request at its head starts when:
 
 - fewer than `max_parallel` requests are being answered;

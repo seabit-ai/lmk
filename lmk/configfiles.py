@@ -35,11 +35,11 @@ _TEMPLATE = f"""\
 #   max_size: {DEFAULT_CACHE_MAX_SIZE}             # when full, what was used longest ago is dropped first
 #
 # requests:
-#   max_parallel: {DEFAULT_MAX_PARALLEL}            # answered at the same time. This is about waiting, not speed: measured on an
-#                              # M3 Ultra with 27k-token conversations, two at once run at half speed each —
-#                              # the total is the same as one after the other. (Only short prompts gain: two
-#                              # tiny requests together reach 1.7x.) With 1, a request waits for the one before
-#                              # it to finish and then runs at full speed.
+#   max_parallel: {DEFAULT_MAX_PARALLEL}            # answered at the same time. What that gains depends on how long the
+#                              # conversations are. Measured on an M3 Ultra with the default model:
+#                              #   prompts of a few dozen tokens:  2 at once = 1.7x the speed of one, 4 = 2.2x
+#                              #   27k-token conversations:        2 at once = 1.0x (each runs at half speed)
+#                              # With 1, a request waits for the one before it and then runs at full speed.
 #   max_queue: {DEFAULT_MAX_QUEUE}              # waiting for their turn; one more is refused at once
 #   max_wait_seconds: {DEFAULT_MAX_WAIT_SECONDS}      # a request that could not start by then is refused, and told why
 #                              # (`lmk status` shows who is waiting, and for what)
