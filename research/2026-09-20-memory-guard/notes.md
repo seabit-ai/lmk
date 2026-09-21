@@ -29,6 +29,10 @@ m3u 上对本模型的日志：`working_set=77.76GiB reserve=3.00GiB baseline=14
 三次都与引擎实测逐个相等（78/78、14061/14061、54/54）；该对照已常驻 `LmkChatDone` 日志（`uncachedEstimate` / `uncachedActual`）。
 m3u 上 token 总量 = 979,877（手算约 98 万）。
 
+### MG-008 长上下文下并行 decode 没有吞吐收益：27k 上下文，1 个 33 tok/s，2 个各 16（合计 1.0×）（exp03）
+MG-006 的"2 个 1.7×"只对短上下文成立（exp01 用的是几十 token 的 prompt）。agent 的常态是长上下文：单个请求已吃满 GPU，
+并行只是平分。并行在此不产生吞吐，只改变等待的形状（同时半速 vs 一个全速一个排队）。是在验看状态看板时偶然看到、随后正式量的。
+
 ### MG-003 加载前没有任何检查
 引擎里搜不到"权重体积 vs 可用内存"的判断。权重超过工作集的模型会被照常加载——LM Studio 的 guardrail 防的就是这个，
 而 lmk 没有对应物。缺省模型 15GB 无此问题；`model.repo` / `model.path` 指向任意模型时才有。

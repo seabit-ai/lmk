@@ -18,7 +18,8 @@ DEFAULT_HOST = "127.0.0.1"
 DEFAULT_PORT = 1235
 DEFAULT_CACHE_MAX_SIZE = "200G"
 # Why these numbers: docs/design/2026-09-20-memory-guard.md §F.
-DEFAULT_MAX_PARALLEL = 2         # measured: 2 at once give 1.7x the total speed and each stays fast; 4 halve each
+DEFAULT_MAX_PARALLEL = 2         # not for speed: with long contexts 2 at once run at half speed each (research MG-008);
+                                 # a second request starts answering at once instead of waiting for the first
 DEFAULT_MAX_QUEUE = 16           # six sessions, each with a turn and a background call, and room to spare
 DEFAULT_MAX_WAIT_SECONDS = 600   # behind one 100k-token cold prompt (~5 min) plus one 8k-token answer (~4 min)
 

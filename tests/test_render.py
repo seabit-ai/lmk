@@ -15,7 +15,7 @@ STATUS = {
 def test_the_header_says_where_it_is_what_runs_memory_cache_and_limits():
     status = json.loads(json.dumps(STATUS))
     status["memory"] = {"pressure": "normal", "free_percent": 64, "total_bytes": 96 * 1024**3,
-                        "lmk_gpu_bytes": int(15.1 * 1024**3), "lmk_gpu_peak_bytes": 22 * 1024**3}
+                        "lmk_gpu_bytes": int(15.1 * 1024**3), "lmk_gpu_peak_in_use_bytes": 22 * 1024**3}
     status["requests"] = {"answering": 0, "max_parallel": 2, "waiting": 0, "max_queue": 16,
                           "tokens_in_memory": 0, "token_budget": 979_877}
     status["totals"] = {"answered": 412, "refused": 0, "failed": 1, "cancelled": 2,
@@ -23,7 +23,7 @@ def test_the_header_says_where_it_is_what_runs_memory_cache_and_limits():
     text = render.status_block(status, "http://127.0.0.1:1235")
     assert text.splitlines()[0] == "✓ lmk is up    http://127.0.0.1:1235/v1   (OpenAI-compatible)"
     assert "  model      qwen3.8-27b · text, image in · 262,144 tokens" in text and "lowered" not in text
-    assert "  memory     pressure: normal · 64% of 96.0 GB free · lmk holds 15.1 GB (peak 22.0 GB)" in text
+    assert "  memory     pressure: normal · 64% of 96.0 GB free · lmk holds 15.1 GB" in text
     assert ("  cache      10.0 GB of 162.0 GB in /Users/someone/.lmk/cache · since start 96% of prompt tokens "
             "came from it (1,204,113 of 1,251,870)") in text
     assert "  requests   answering 0 of 2 · waiting 0 of 16 · tokens in memory 0 of 979,877" in text

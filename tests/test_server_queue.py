@@ -78,7 +78,7 @@ def test_a_request_waits_its_turn_is_visible_while_it_waits_and_then_answers(mem
     assert [(w["ref_id"], w["reason"]) for w in status["waiting"]] == \
         [("s/second", "1 requests are being answered (requests.max_parallel)")]
     assert status["memory"] == {"pressure": "normal", "free_percent": 90, "total_bytes": 96 * 1024**3,
-                                "lmk_gpu_bytes": 5, "lmk_gpu_peak_bytes": 5}
+                                "lmk_gpu_bytes": 5, "lmk_gpu_peak_in_use_bytes": 5}
     assert status["requests"] == {"answering": 1, "max_parallel": 1, "waiting": 1, "max_queue": 16,
                                   "tokens_in_memory": 200000, "token_budget": None}
 

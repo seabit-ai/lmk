@@ -95,10 +95,8 @@ def status_block(status: dict, url: str) -> str:
              f"  model      {model['id']} · {', '.join(model.get('input_modalities') or ['text'])} in · {context}"]
     memory = status.get("memory")
     if memory:
-        peak = memory.get("lmk_gpu_peak_bytes")
         lines.append(f"  memory     pressure: {memory['pressure']} · {memory['free_percent']}% of "
-                     f"{human_bytes(memory['total_bytes'])} free · lmk holds {human_bytes(memory['lmk_gpu_bytes'])}"
-                     + (f" (peak {human_bytes(peak)})" if peak else ""))
+                     f"{human_bytes(memory['total_bytes'])} free · lmk holds {human_bytes(memory['lmk_gpu_bytes'])}")
     cache, totals = status.get("cache"), status.get("totals") or {}
     if cache:
         line = (f"  cache      {human_bytes(cache['used_bytes'])} of {human_bytes(cache['max_bytes'])} in "

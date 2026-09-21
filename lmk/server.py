@@ -199,7 +199,9 @@ class LmkServer:
         reading = get_current_memory().read()
         return {"pressure": reading.pressure, "free_percent": reading.free_percent,
                 "total_bytes": reading.total_bytes, "lmk_gpu_bytes": self._engine.gpu_memory_bytes(),
-                "lmk_gpu_peak_bytes": self._engine.gpu_memory_peak_bytes()}
+                # MLX's peak counts memory in use only, while lmk_gpu_bytes also counts its buffers: the two are
+                # not comparable (seen live: "holds 23.3 GB (peak 20.9 GB)"), so the name says which it is
+                "lmk_gpu_peak_in_use_bytes": self._engine.gpu_memory_peak_bytes()}
 
 
 def _send_json(h: BaseHTTPRequestHandler, status: int, body: dict) -> None:
