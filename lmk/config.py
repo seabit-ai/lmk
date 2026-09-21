@@ -17,6 +17,12 @@ from lmk.models import DEFAULT_MODEL_NAME, TESTED_MODELS
 DEFAULT_HOST = "127.0.0.1"
 DEFAULT_PORT = 1235
 DEFAULT_CACHE_MAX_SIZE = "200G"
+# Why these numbers: docs/design/2026-09-20-memory-guard.md §F.
+# What running side by side gains depends on how long the conversations are (research MG-006, MG-008):
+# two tiny prompts together reach 1.7x the speed of one; two 27k-token conversations reach 1.0x.
+DEFAULT_MAX_PARALLEL = 2
+DEFAULT_MAX_QUEUE = 16           # six sessions, each with a turn and a background call, and room to spare
+DEFAULT_MAX_WAIT_SECONDS = 600   # behind one 100k-token cold prompt (~5 min) plus one 8k-token answer (~4 min)
 
 
 def lmk_home() -> Path:
@@ -56,6 +62,13 @@ class ModelConfig:
 
 
 @dataclass(frozen=True)
+class RequestsConfig:
+    max_parallel: int       # answered at the same time
+    max_queue: int          # waiting for their turn; one more is refused at once
+    max_wait_seconds: int   # a request that could not start by then is refused
+
+
+@dataclass(frozen=True)
 class LmkConfig:
     model: ModelConfig
     host: str
@@ -63,6 +76,7 @@ class LmkConfig:
     cache_dir: Path
     cache_max_bytes: int
     log_dir: Path
+    requests: RequestsConfig = RequestsConfig(DEFAULT_MAX_PARALLEL, DEFAULT_MAX_QUEUE, DEFAULT_MAX_WAIT_SECONDS)
 
 
 _SIZE = re.compile(r"^\s*(\d+(?:\.\d+)?)\s*([KMGT])?I?B?\s*$", re.IGNORECASE)
@@ -82,6 +96,15 @@ def _section(raw: dict, key: str) -> dict:
         return {}
     if not isinstance(value, dict):
         raise ConfigError(f"{key} must be a section with keys under it, not {value!r}")
+    return value
+
+
+def _positive_int(section: dict, where: str, key: str, default: int) -> int:
+    value = section.get(key)
+    if value is None:
+        return default
+    if isinstance(value, bool) or not isinstance(value, int) or value < 1:
+        raise ConfigError(f"{where}.{key} must be a whole number, 1 or more (found {value!r})")
     return value
 
 
@@ -111,7 +134,7 @@ def load_config(path: Optional[Path] = None) -> LmkConfig:
         raw = yaml.safe_load(path.read_text()) or {}
         if not isinstance(raw, dict):
             raise ConfigError(f"{path} must be a YAML mapping")
-    model, listen, cache, log = (_section(raw, k) for k in ("model", "listen", "cache", "log"))
+    model, listen, cache, log, requests = (_section(raw, k) for k in ("model", "listen", "cache", "log", "requests"))
     source = _model_source(model)
     context_length = model.get("context_length")
     if context_length is not None:
@@ -126,6 +149,10 @@ def load_config(path: Optional[Path] = None) -> LmkConfig:
         cache_dir=Path(str(cache.get("dir") or lmk_home() / "cache")).expanduser(),
         cache_max_bytes=parse_size(cache.get("max_size") or DEFAULT_CACHE_MAX_SIZE),
         log_dir=Path(str(log.get("dir") or lmk_home() / "logs")).expanduser(),
+        requests=RequestsConfig(
+            max_parallel=_positive_int(requests, "requests", "max_parallel", DEFAULT_MAX_PARALLEL),
+            max_queue=_positive_int(requests, "requests", "max_queue", DEFAULT_MAX_QUEUE),
+            max_wait_seconds=_positive_int(requests, "requests", "max_wait_seconds", DEFAULT_MAX_WAIT_SECONDS)),
     )
 
 

@@ -1,0 +1,4 @@
+{"label": "L1", "request": "long-0", "ttft_s": 1.06, "cached": 27136, "completion_tokens": 200, "tok_per_s": 33.0}
+{"label": "L2", "request": "long-0", "ttft_s": 0.87, "cached": 27136, "completion_tokens": 200, "tok_per_s": 16.0}
+{"label": "L2", "request": "long-1", "ttft_s": 2.14, "cached": 27136, "completion_tokens": 200, "tok_per_s": 16.8}
+{"label": "L1-again", "request": "long-0", "ttft_s": 0.86, "cached": 27136, "completion_tokens": 200, "tok_per_s": 33.6}

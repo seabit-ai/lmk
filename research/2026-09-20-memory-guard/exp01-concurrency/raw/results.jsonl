@@ -1,0 +1,9 @@
+{"label": "M4", "request": "cold-late", "ttft_s": 43.03, "total_s": 43.73, "prompt_tokens": 13441, "completion_tokens": 16, "tok_per_s": 23.0}
+{"label": "M4", "request": "gen-0", "ttft_s": 0.63, "total_s": 51.32, "prompt_tokens": 78, "completion_tokens": 300, "tok_per_s": 5.9, "chunks_while_other_read_its_prompt": 11, "that_window_s": 43.0}
+{"label": "M1", "request": "gen-0", "ttft_s": 0.65, "total_s": 8.21, "prompt_tokens": 79, "completion_tokens": 300, "tok_per_s": 39.7}
+{"label": "M2", "request": "gen-0", "ttft_s": 0.78, "total_s": 9.6, "prompt_tokens": 79, "completion_tokens": 300, "tok_per_s": 34.0}
+{"label": "M2", "request": "gen-1", "ttft_s": 0.82, "total_s": 9.62, "prompt_tokens": 81, "completion_tokens": 300, "tok_per_s": 34.1}
+{"label": "M3", "request": "gen-0", "ttft_s": 1.19, "total_s": 14.81, "prompt_tokens": 77, "completion_tokens": 300, "tok_per_s": 22.0}
+{"label": "M3", "request": "gen-1", "ttft_s": 0.79, "total_s": 14.75, "prompt_tokens": 79, "completion_tokens": 300, "tok_per_s": 21.5}
+{"label": "M3", "request": "gen-2", "ttft_s": 1.63, "total_s": 14.85, "prompt_tokens": 82, "completion_tokens": 300, "tok_per_s": 22.7}
+{"label": "M3", "request": "gen-3", "ttft_s": 1.7, "total_s": 14.88, "prompt_tokens": 81, "completion_tokens": 300, "tok_per_s": 22.8}

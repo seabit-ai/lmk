@@ -23,6 +23,14 @@ class GenerationStats:
     completion_tokens: int = 0
 
 
+@dataclass
+class Preflight:
+    """What can be known about a request before it is admitted (design memory-guard §B2, §C)."""
+    prompt_tokens: int
+    uncached_tokens: Optional[int]   # None: could not be told (images, or no index yet)
+    tokens: Optional[list] = None    # handed back to generate() so the prompt is tokenized once
+
+
 # on_prefill(processed, total, cached) -> keep going?  False cancels during prefill.
 PrefillCallback = Callable[[int, int, int], bool]
 
@@ -42,9 +50,13 @@ class Engine(Protocol):
     def input_modalities(self) -> list[str]: ...
     def chat_format(self) -> ChatFormat: ...
     def cache_stats(self) -> Optional[dict]: ...
+    def preflight(self, prompt_text: str, images_b64: Optional[list[str]] = None) -> Preflight: ...
+    def token_budget(self) -> Optional[int]: ...
+    def gpu_memory_bytes(self) -> int: ...
+    def gpu_memory_peak_bytes(self) -> int: ...
     def generate(self, prompt_text: str, *, max_tokens: Optional[int], request_id: str,
                  on_prefill: PrefillCallback, images_b64: Optional[list[str]] = None,
-                 sampling: Optional[dict] = None) -> Generation: ...
+                 sampling: Optional[dict] = None, tokens: Optional[list] = None) -> Generation: ...
 
 
 class MlxEngine:
@@ -53,7 +65,7 @@ class MlxEngine:
 
     def __init__(self, model_id: str, model_path: Path, context_length: Optional[int] = None, *,
                  cache_dir: Optional[Path] = None, cache_max_bytes: Optional[int] = None,
-                 repo: Optional[str] = None, revision: Optional[str] = None):
+                 repo: Optional[str] = None, revision: Optional[str] = None, max_parallel: int = 2):
         from mlx_engine.generate import get_runtime_load_info, load_model  # heavy import, kept out of module scope
 
         if not model_path.exists():
@@ -68,7 +80,9 @@ class MlxEngine:
         self._cache_stores: list = []
         if cache_dir is not None:
             _install_persistent_cache(cache_dir, cache_max_bytes, model_path, repo, revision, self._cache_stores)
-        self._kit = load_model(model_path, max_kv_size=requested, max_seq_nums=4)
+        # lmk's own queue enforces max_parallel where people can see who waits and why;
+        # the engine gets the same number as a backstop
+        self._kit = load_model(model_path, max_kv_size=requested, max_seq_nums=max_parallel)
         in_use = get_runtime_load_info(self._kit).get("context_length") or requested
         self._model = LoadedModel(id=model_id, path=model_path, context_length=in_use,
                                   requested_context_length=requested)
@@ -87,6 +101,44 @@ class MlxEngine:
     def cache_stats(self) -> Optional[dict]:
         return self._cache_stores[-1].stats() if self._cache_stores else None
 
+    def preflight(self, prompt_text, images_b64=None) -> Preflight:
+        from mlx_engine.generate import tokenize
+
+        tokens = tokenize(self._kit, prompt_text)
+        uncached = None
+        store = getattr(self._kit, "_prompt_cache_store", None)
+        if not images_b64 and store is not None:  # image spans are part of the cache key; not reproduced here
+            try:
+                # reads the store's in-memory index only. The index belongs to the engine's cache
+                # I/O thread; a read that collides with a write is answered "unknown", which the
+                # queue treats as a long prompt — the cautious side.
+                plan = store.plan_longest_prefix_restore(tokens, [])
+                uncached = len(tokens) - (plan.cached_prefix_len if plan is not None else 0)
+            except Exception as e:  # noqa: BLE001
+                from lmk import log
+
+                log.warn("LmkPreflightLookupFailed", "could not tell how much of the prompt is cached", error=repr(e))
+        return Preflight(prompt_tokens=len(tokens), uncached_tokens=uncached, tokens=tokens)
+
+    def token_budget(self) -> Optional[int]:
+        """How many tokens of KV cache fit this Mac next to the weights, from the coefficients
+        the engine measured at load (context_fit.py). None when it made no fit."""
+        fit = getattr(self._kit, "_context_fit_result", None)
+        per_token = getattr(getattr(fit, "profile", None), "full_kv_bytes_per_token", 0)
+        if not per_token:
+            return None
+        return max(0, (fit.safe_ceiling_bytes - fit.baseline_bytes) // per_token)
+
+    def gpu_memory_bytes(self) -> int:
+        import mlx.core as mx
+
+        return int(mx.get_active_memory() + mx.get_cache_memory())
+
+    def gpu_memory_peak_bytes(self) -> int:
+        import mlx.core as mx
+
+        return int(mx.get_peak_memory())
+
     def close(self) -> None:
         """Drains the engine's cache I/O thread: records still queued for disk
         are written before the process goes away."""
@@ -94,11 +146,13 @@ class MlxEngine:
 
         unload(self._kit)
 
-    def generate(self, prompt_text, *, max_tokens, request_id, on_prefill, images_b64=None, sampling=None) -> Generation:
+    def generate(self, prompt_text, *, max_tokens, request_id, on_prefill, images_b64=None, sampling=None,
+                 tokens=None) -> Generation:
         from mlx_engine.generate import create_generator, tokenize
         from mlx_engine.utils.prompt_progress_reporter import PromptProgressReporter
 
-        tokens = tokenize(self._kit, prompt_text)
+        if tokens is None:
+            tokens = tokenize(self._kit, prompt_text)
         stats = GenerationStats(prompt_tokens=len(tokens))
 
         class Reporter(PromptProgressReporter):
@@ -157,7 +211,7 @@ class FakeEngine:
     def __init__(self, model: LoadedModel, chat_format: Optional[ChatFormat] = None,
                  script: Optional[list[str]] = None, stats: Optional[GenerationStats] = None,
                  prefill_steps: Optional[list[int]] = None, modalities: Optional[list[str]] = None,
-                 cache: Optional[dict] = None):
+                 cache: Optional[dict] = None, token_budget: Optional[int] = None, gpu_bytes: int = 0):
         self._model = model
         self._format = chat_format
         self._script = script or []
@@ -165,7 +219,22 @@ class FakeEngine:
         self._prefill_steps = prefill_steps or []
         self._modalities = modalities or ["text"]
         self._cache = cache
+        self._token_budget = token_budget
+        self._gpu_bytes = gpu_bytes
         self.requests: list[dict] = []
+
+    def preflight(self, prompt_text, images_b64=None) -> Preflight:
+        uncached = None if images_b64 else self._stats.prompt_tokens - self._stats.cached_tokens
+        return Preflight(prompt_tokens=self._stats.prompt_tokens, uncached_tokens=uncached)
+
+    def token_budget(self) -> Optional[int]:
+        return self._token_budget
+
+    def gpu_memory_bytes(self) -> int:
+        return self._gpu_bytes
+
+    def gpu_memory_peak_bytes(self) -> int:
+        return self._gpu_bytes
 
     def cache_stats(self) -> Optional[dict]:
         return self._cache
@@ -179,7 +248,8 @@ class FakeEngine:
     def input_modalities(self) -> list[str]:
         return self._modalities
 
-    def generate(self, prompt_text, *, max_tokens, request_id, on_prefill, images_b64=None, sampling=None) -> Generation:
+    def generate(self, prompt_text, *, max_tokens, request_id, on_prefill, images_b64=None, sampling=None,
+                 tokens=None) -> Generation:
         self.requests.append({"prompt": prompt_text, "max_tokens": max_tokens, "request_id": request_id,
                               "images_b64": images_b64})
         stats = GenerationStats(**vars(self._stats))

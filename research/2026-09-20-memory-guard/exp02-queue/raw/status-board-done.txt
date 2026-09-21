@@ -1,0 +1,14 @@
+✓ lmk is up    http://127.0.0.1:1235/v1   (OpenAI-compatible)
+  model      qwen3.8-27b-mlx@4bit · text, image in · 262,144 tokens
+  memory     pressure: normal · 81% of 96.0 GB free · lmk holds 16.0 GB (peak 20.9 GB)
+  cache      21.4 GB of 200.0 GB in ~/.lmk/cache · since start 71% of prompt tokens came from it (27,136 of 38,033)
+  requests   answering 0 of 2 · waiting 0 of 16 · tokens in memory 0 of 979,877
+  since start  4 answered · 0 refused · 0 failed · 0 cancelled · up 1m 6s · build 371aec2
+
+  idle — no requests
+
+  just finished
+  groom · my-project/groom     10,721 prompt (0 cached) · first token 33.8s · 30 tokens at 37/s · length · 2s ago
+  turn · other-session/step-2  67 prompt (0 cached) · first token 0.6s · 175 tokens at 20/s · stop · 37s ago
+  turn · my-session/step-14    27,190 prompt (27,136 cached) · first token 1.7s · 120 tokens at 18/s · length · 38s ago
+  smoke                        55 prompt (0 cached) · first token 0.3s · 8 tokens at 46/s · length · 1m 5s ago
