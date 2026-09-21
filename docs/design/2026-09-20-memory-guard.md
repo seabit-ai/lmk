@@ -96,11 +96,22 @@
 - 每次进入/离开"危急"记日志（带持续时长）：将来回头校数值的依据。
 
 ## 状态
-A–F 全部已裁（2026-09-20）。未开工——开工只认显式指令。落地清单：
-1. 配置：`requests.max_parallel / max_queue / max_wait_seconds`（模板、example、校验）。
-2. 内存数字：压力等级、全机空闲百分比、本进程 GPU 内存（一个小模块，读法可注入以便单测）。
-3. 加载前检查（D）：`lmk up` 与 `lmk serve` 两处；报文。
-4. 准入队列（F）+ 四条规则；token 总量取自引擎加载后的实测系数（C）；未命中 token 数取自 store 的 restore 计划（B2，线程安全待核实）。
-5. `lmk status` / `render.py`：memory 一行、等待者及原因；503 报文。
-6. README：去掉 "No memory guard" 与 "并发未测" 两条，写上队列与三个配置项。
-7. 验证：单测（假引擎注入小总量、假压力读数、可控时钟）；m3u 上实测 exp01 的 M4 场景——A 在答时 B 的冷长 prompt 应排队，A 不再停顿。
+A–F 全部已裁（2026-09-20）；同日 "start"，落地于分支 `memory-guard`，已部署 m3u（build `d5efb1c`）。
+
+| # | 项 | 状态 |
+|---|---|---|
+| 1 | `requests.max_parallel / max_queue / max_wait_seconds` | ✅ `config.py`、模板与 example |
+| 2 | 内存数字（压力等级、全机空闲百分比、本进程 GPU 内存） | ✅ `memory.py`（ctypes 读 sysctl，读法可注入） |
+| 3 | 加载前检查 | ✅ `modelfit.py`；`lmk up` 与 `lmk serve` 两处 |
+| 4 | 准入队列 + 四条规则 | ✅ `admission.py`；token 总量取自引擎的 `_context_fit_result`（m3u：979,877）；未命中数取自 store 的 restore 计划 |
+| 5 | status 的 memory / waiting；503 报文 | ✅ `server.py`、`render.py` |
+| 6 | README | ✅ |
+| 7 | 验证 | ✅ 单测 117；真实模型集成测试 5；exp02（MG-007）：A 51.3s → 8.2s，agent 的下一步不被排队，估计值 = 实测值 |
+
+落地时定的细节：
+- 线程安全：preflight 从 HTTP 线程只读 store 的索引；读失败按"未知 = 长"处理（偏向让后来者多等）。实测三次估计值与引擎实测逐个相等，
+  且该对照常驻 `LmkChatDone` 日志（`uncachedEstimate` / `uncachedActual`）——规则二判错了，日志里看得出来。
+- 等待中的客户端断开：线程阻塞在队列里，感知不到；它会占着队位直到被放行后第一次写失败（随即取消）或等满 `max_wait_seconds`。没有为此加探测。
+- 顺带修的两处：引擎异常时回 500 并说明（原先直接断连）；短 prompt 的请求在 status 里一直显示 "reading prompt"（改为以第一个 chunk 为凭据）。
+
+未验证：小内存 Mac 上规则 ③ 的真实行为（只有单测）；规则 ④（内存危急）在真机上从未触发过——要触发就得把 m3u 压到危急，没做。
