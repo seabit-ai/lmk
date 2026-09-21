@@ -46,12 +46,15 @@
 - PDF 输入不支持。
 
 ## 公开之前要做的
-1. 旧文档里的真名：`docs/design/2026-09-19-lmk.md`、`2026-09-20-lmk-oobe.md` 及早期 research 共约 40 行，还有 `/Users/<name>/…` 路径。
-   两条路：逐处换成 "owner"；或公开版不带 `docs/design` 与 `research`。**已 push 的历史里也有**——要干净就得重建历史后强推
-   （repo 刚建、只有 owner 在用，代价小）。owner 拍板。
-2. owner 的 GitHub 用户名也算真名：现存一处，在 `research/2026-09-20-mlx-engine-upstream/notes.md`（grep 他的用户名即可找到）。
-3. README 链到 `research/2026-09-20-local-server-survey/`（中文笔记）；若 research 不随公开版走，链接要改。
-4. 公开后实测 `curl | sh`。
+已裁（owner，2026-09-21）：`docs/design` 与 `research` **随公开版走**；机器名 m3u（= M3 Ultra）可以出现；kitten 的名字可以出现
+（它迟早也公开）；文档与注释里的中文保留，全英文化不是目标。
+1. ~~真名~~ **已清（2026-09-21）**：owner 的名字与 GitHub 用户名已从**全部历史**里替换为 "owner"（文件内容 + 提交信息），旧地址
+   `github.com/<用户名>/lmk` 改为 `seabit-ai/lmk`。全历史 grep 为 0。提交哈希全变；两个"改仓库地址"的提交因此变空、被剪掉（53 → 51）。
+   **远端还是旧历史，owner 下次 push 必须是强推**（`git push --force-with-lease origin main`）。改前的镜像备份在
+   `~/src/lmk-backup-before-name-scrub-2026-09-21.git`——里面有真名，强推确认无误后删掉。
+2. `lmk up` 的 agent 片段：分支 `agent-snippets` 上加了 OpenClaw 片段（kitten 片段保留），待 owner 合并。
+   没在真 OpenClaw 里跑过（`research/2026-09-21-agent-config-snippets` ACS-003）。
+3. 公开后实测 `curl | sh`。
 
 ## 想法（没裁过，别当计划）
 - 给上游 mlx-engine 提"持久化前缀 cache"：评论稿在 `research/2026-09-20-mlx-engine-upstream/`（针对其 issue #354），是否已由 owner 发出未确认。
