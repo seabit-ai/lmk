@@ -1,6 +1,6 @@
 # exp02 — 有了准入队列之后，重做 exp01 的 M4
 
-日期 2026-09-20。对象：m3u 上的 lmk build `e9b562c`（准入队列已接入，`max_parallel=2`，tokenBudget=979,877）。
+日期 2026-09-20。对象：m3u 上的 lmk build `753d40a`（准入队列已接入，`max_parallel=2`，tokenBudget=979,877）。
 exp01 的 M4：A 在生成，2 秒后 B 带 13k 的全新 prompt 进来 → B 读 prompt 的 43 秒里 A 只出了 11 个 chunk。
 
 ## 方法
