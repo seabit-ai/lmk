@@ -7,7 +7,8 @@
 import os
 from pathlib import Path
 
-from lmk.config import DEFAULT_CACHE_MAX_SIZE, DEFAULT_HOST, DEFAULT_PORT
+from lmk.config import (DEFAULT_CACHE_MAX_SIZE, DEFAULT_HOST, DEFAULT_MAX_PARALLEL, DEFAULT_MAX_QUEUE,
+                        DEFAULT_MAX_WAIT_SECONDS, DEFAULT_PORT)
 from lmk.models import DEFAULT_MODEL_NAME, TESTED_MODELS
 
 _TEMPLATE = f"""\
@@ -32,6 +33,14 @@ _TEMPLATE = f"""\
 # cache:                       # lmk keeps the prompts it has already processed on disk, so a
 #   dir: ~/.lmk/cache          # conversation continues in about a second — also after a reboot
 #   max_size: {DEFAULT_CACHE_MAX_SIZE}             # when full, what was used longest ago is dropped first
+#
+# requests:
+#   max_parallel: {DEFAULT_MAX_PARALLEL}            # answered at the same time. Measured on an M3 Ultra with the default
+#                              # model: 2 give 1.7x the total speed of 1 and each stays fast; 4 give
+#                              # 2.2x, but each drops to about half. Measure your own before raising it.
+#   max_queue: {DEFAULT_MAX_QUEUE}              # waiting for their turn; one more is refused at once
+#   max_wait_seconds: {DEFAULT_MAX_WAIT_SECONDS}      # a request that could not start by then is refused, and told why
+#                              # (`lmk status` shows who is waiting, and for what)
 #
 # log:
 #   dir: ~/.lmk/logs

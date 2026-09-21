@@ -14,7 +14,8 @@ def test_seed_writes_only_comments_and_never_overwrites(tmp_path):
 
 def test_example_lists_every_section_and_the_tested_models(tmp_path):
     text = example_text()
-    for needle in ("model:", "listen:", "cache:", "log:", "max_size: 200G", "port: 1235",
+    for needle in ("model:", "listen:", "cache:", "log:", "requests:", "max_parallel: 2", "max_queue: 16",
+                   "max_wait_seconds: 600", "max_size: 200G", "port: 1235",
                    "qwen3.8-27b", "lmstudio-community/Qwen3.8-27B-MLX-4bit", "16.1 GB"):
         assert needle in text
     assert yaml.safe_load(text) is None
@@ -40,6 +41,7 @@ def test_every_uncommented_template_line_is_a_valid_config(tmp_path, monkeypatch
     body = "\n".join(l for l in body.splitlines() if not l.strip().startswith(("repo:", "path:")))
     cfg = load_config(_write(tmp_path / "c.yaml", body))
     assert cfg.model.id == "my-model" and cfg.model.context_length == 131072 and cfg.port == 1235
+    assert cfg.requests.max_queue == 16
 
 
 def _write(path, text):

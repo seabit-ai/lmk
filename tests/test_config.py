@@ -22,6 +22,7 @@ def test_no_file_at_all_gives_a_config_that_can_run(tmp_path, monkeypatch):
     assert cfg.cache_dir == tmp_path / "home" / "cache"
     assert cfg.cache_max_bytes == 200 * 1024**3
     assert cfg.log_dir == tmp_path / "home" / "logs"
+    assert (cfg.requests.max_parallel, cfg.requests.max_queue, cfg.requests.max_wait_seconds) == (2, 16, 600)
 
 
 def test_the_seeded_all_comment_file_behaves_like_no_file(tmp_path, monkeypatch):
@@ -92,3 +93,14 @@ def test_sizes(text, want):
 def test_an_unreadable_size_says_how_to_write_one():
     with pytest.raises(ConfigError, match="like 200G"):
         parse_size("lots")
+
+
+def test_requests_section(tmp_path):
+    cfg = load_config(write(tmp_path, "requests: {max_parallel: 4, max_queue: 3, max_wait_seconds: 30}"))
+    assert (cfg.requests.max_parallel, cfg.requests.max_queue, cfg.requests.max_wait_seconds) == (4, 3, 30)
+
+
+@pytest.mark.parametrize("bad", ["0", "-1", "1.5", "two", "true"])
+def test_request_limits_must_be_whole_numbers_of_one_or_more(tmp_path, bad):
+    with pytest.raises(ConfigError, match=r"requests.max_parallel must be a whole number, 1 or more"):
+        load_config(write(tmp_path, f"requests: {{max_parallel: {bad}}}"))
