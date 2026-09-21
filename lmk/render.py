@@ -41,8 +41,13 @@ def base_url(host: str, port: int) -> str:
     return f"http://{'127.0.0.1' if host in ('0.0.0.0', '::') else host}:{port}"
 
 
+UNNAMED = "(unnamed)"
+UNNAMED_NOTE = ("  (unnamed): the client did not say who it is. It can, with two optional request headers —\n"
+                "  X-Lmk-Purpose (turn, groom, …) and X-Lmk-Ref-Id (its own reference for the call).")
+
+
 def _who(r: dict) -> str:
-    return " · ".join(x for x in (r.get("purpose"), r.get("ref_id")) if x) or "a request"
+    return " · ".join(x for x in (r.get("purpose"), r.get("ref_id")) if x) or UNNAMED
 
 
 def _prompt(r: dict) -> str:
@@ -129,6 +134,9 @@ def status_block(status: dict, url: str) -> str:
     if recent:
         who_width = min(40, max(len(_who(f)) for f in recent))
         lines += ["", "  just finished"] + [_finished_line(f, who_width) for f in recent]
+    everyone = (status.get("in_flight") or []) + (status.get("waiting") or []) + recent
+    if any(_who(r) == UNNAMED for r in everyone):
+        lines += ["", UNNAMED_NOTE]
     return "\n".join(lines)
 
 

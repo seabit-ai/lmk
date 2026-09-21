@@ -89,4 +89,7 @@
 - 思考 / 回答 / 工具调用的区分**引擎不知道**（对模型都是 token），是 lmk 从文本标记读出来的；换模型家族时靠模板自动选解析器。
 - 读长 prompt 会把所有正在生成的请求拖到近乎停顿（引擎每圈：大家各出 1 token + 一块 2048 的 prefill）。这是准入队列规则二存在的原因。
 - 模型模板把 `enable_thinking` / `reasoning_effort` 渲染在 prompt 最前面：**中途换档 = 整段对话冷算**。力度是 server 级常量（未实现，见 backlog）。
+- **部署前两件事**（2026-09-20 踩的）：① 测试命令别接管道再 `&&`——`make test | tail -1 && make install` 里 `tail` 的成功会盖住测试的失败，
+  一个没过的测试就这样被部署了。用 `set -o pipefail`，或让测试单独成一步。② `make install` 会重启服务：先看 `lmk status` 确认
+  `answering 0 · waiting 0`，owner 可能正在用；重启还会清空看板上的 "just finished" 与累计数（它们只在内存里）。
 - 测试用的临时 `LMK_HOME` 安装不得碰 `~/.local/bin/lmk`（已在 install.sh 里挡住）；launchd label 固定 `ai.kitten.lmk`，换 label 会让新旧服务抢端口。
