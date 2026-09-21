@@ -87,8 +87,9 @@
   | 键 | 缺省 | 缺省值的依据 |
   |---|---|---|
   | `max_parallel` | 2 | exp01：2 个同时 1.7×、各自几乎不慢；4 个各掉到约一半 |
-  | `max_waiting` | 16 | 多会话形态：6 个会话 × 一个 turn + 一个 groom = 12，留余量。满了的下一个立刻 503 |
+  | `max_queue` | 16 | 多会话形态：6 个会话 × 一个 turn + 一个 groom = 12，留余量。满了的下一个立刻 503 |
   | `max_wait_seconds` | 600 | 一次合理的最长等待：前一个读完 10 万 token 的冷 prompt（约 5 分钟）+ 写 8k token（约 4 分钟） |
+- 命名：`max_queue`（owner 改定；我原先写的是 `max_waiting`——队列就叫队列）。
 - 一个最长等待管所有原因。被否：我上一轮的"内存危急单独等 60 秒"——等待者什么都不占，等 10 分钟无害，且用户看到原因后可以去关掉
   吃内存的程序让它继续；60 这个数本来也没有实测依据。
 - 503 的报文写清：等了多久、卡在哪条、当时的数字；队列满则 `16 requests are already waiting`。
@@ -96,7 +97,7 @@
 
 ## 状态
 A–F 全部已裁（2026-09-20）。未开工——开工只认显式指令。落地清单：
-1. 配置：`requests.max_parallel / max_waiting / max_wait_seconds`（模板、example、校验）。
+1. 配置：`requests.max_parallel / max_queue / max_wait_seconds`（模板、example、校验）。
 2. 内存数字：压力等级、全机空闲百分比、本进程 GPU 内存（一个小模块，读法可注入以便单测）。
 3. 加载前检查（D）：`lmk up` 与 `lmk serve` 两处；报文。
 4. 准入队列（F）+ 四条规则；token 总量取自引擎加载后的实测系数（C）；未命中 token 数取自 store 的 restore 计划（B2，线程安全待核实）。
