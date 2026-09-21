@@ -56,7 +56,8 @@ def test_every_request_shows_its_state_and_the_numbers_that_go_with_it():
     lines = render.status_block(status, "http://x").splitlines()
     assert "  decode   thinking   turn · s/step-14  27,190 prompt (27,136 cached) · 212 tokens at 33/s · 7s" in lines
     assert "  prefill  58%        groom · p/groom   8,192 / 14,061 · 0 cached · 18s" in lines
-    assert "  starting            a request         900 prompt · 0s" in lines
+    assert "  starting            (unnamed)         900 prompt · 0s" in lines
+    assert "X-Lmk-Purpose" in lines[-2] and "X-Lmk-Ref-Id" in lines[-1]   # and how to get a name
     assert "  queued              turn · o/step-2   2s · 2 requests are being answered (requests.max_parallel)" in lines
 
 
@@ -75,6 +76,7 @@ def test_the_last_answers_stay_on_screen_with_how_they_went():
     assert ("  turn · s/step-13  27,012 prompt (26,880 cached) · first token 1.1s · 349 tokens at 33/s · "
             "tool call · 12s ago") in lines
     assert "  warmup            11,174 prompt (11,008 cached) · warmed · 1h 0m ago" in lines
+    assert not any("unnamed" in l for l in lines)   # everyone here said who they are: no note
 
 
 def test_a_status_from_an_older_lmk_still_renders():
