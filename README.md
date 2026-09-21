@@ -225,7 +225,9 @@ make itest     # integration tests — load the configured model
 make install   # install this working tree into ~/.lmk and restart the service
 ```
 
-Design notes are in [`docs/design`](docs/design) (Chinese). Upgrading mlx-engine is a deliberate
+How we work here, the map of the code and the traps already hit are in [`CLAUDE.md`](CLAUDE.md); what is open,
+unverified or decided-but-not-built is in [`docs/backlog.md`](docs/backlog.md). Design notes are in
+[`docs/design`](docs/design) (all three in Chinese). Upgrading mlx-engine is a deliberate
 act: run `make cache-fixture` first, change `ENGINE_COMMIT` and copy that commit's
 `requirements.txt` over ours, `make clean venv`, then `make cache-compat` and `make itest`. If
 `cache-compat` fails, the new engine cannot read the old cache: bump `CACHE_FORMAT_VERSION`.
