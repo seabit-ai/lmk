@@ -26,7 +26,7 @@
 - **思考力度是 server 级常量**（裁于 kitten repo 的 `docs/design/2026-09-19-llm-call-flow-control.md` §6.2）：配置里加
   `model.reasoning_effort` / `model.enable_thinking`，启动时读一次、对所有请求一致。依据：模型模板把它渲染在 prompt 第 0 块，
   中途换档 = 整段对话冷算（`research/2026-09-19-lmk-spike` LMK-008）。原裁决写的配置位置是 `~/.kitten/lmk.yaml`，现应落在 `~/.lmk/config.yaml`。
-- **kitten 发 `X-Lmk-Purpose` / `X-Lmk-Ref-Id`**：lmk 这边早就接着（status 与日志都显示），kitten 的 lmk provider 还没发。
+- **kitten 发 `X-Lmk-Purpose` / `X-Lmk-Ref-Id`**（owner 盯 `lmk status -w` 时第一眼就问了：kitten 的请求全显示成匿名）：lmk 这边早就接着（status 与日志都显示），kitten 的 lmk provider 还没发。
   形状在 kitten 那份设计的 §3 / 待议 C（用途取值 `turn` / `compaction` / `groom`；refId = `<sessionId>/<actionRef>`）——kitten 的活，不是本 repo 的。
 
 ## 等 owner 定的
@@ -48,8 +48,9 @@
 1. 旧文档里的真名：`docs/design/2026-09-19-lmk.md`、`2026-09-20-lmk-oobe.md` 及早期 research 共约 40 行，还有 `/Users/<name>/…` 路径。
    两条路：逐处换成 "owner"；或公开版不带 `docs/design` 与 `research`。**已 push 的历史里也有**——要干净就得重建历史后强推
    （repo 刚建、只有 owner 在用，代价小）。owner 拍板。
-2. README 链到 `research/2026-09-20-local-server-survey/`（中文笔记）；若 research 不随公开版走，链接要改。
-3. 公开后实测 `curl | sh`。
+2. owner 的 GitHub 用户名还出现在指向 kitten repo 的链接里（`git grep owner`）；kitten 若也迁到组织名下，一并改。
+3. README 链到 `research/2026-09-20-local-server-survey/`（中文笔记）；若 research 不随公开版走，链接要改。
+4. 公开后实测 `curl | sh`。
 
 ## 想法（没裁过，别当计划）
 - 给上游 mlx-engine 提"持久化前缀 cache"：评论稿在 `research/2026-09-20-mlx-engine-upstream/`（针对其 issue #354），是否已由 owner 发出未确认。
