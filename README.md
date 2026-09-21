@@ -67,6 +67,9 @@ your agent:
     API key    anything (lmk does not check it)
 ```
 
+Below that it prints the same thing as a ready-to-paste config block for [OpenClaw](https://github.com/openclaw/openclaw)
+and for kitten, with this machine's address, model id and context size filled in.
+
 See it answer:
 
 ```sh

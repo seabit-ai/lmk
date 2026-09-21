@@ -87,8 +87,12 @@ def test_a_status_from_an_older_lmk_still_renders():
 
 
 def test_connect_block_is_ready_to_paste():
-    text = render.connect_block("http://127.0.0.1:1235", "qwen3.8-27b")
+    text = render.connect_block("http://127.0.0.1:1235", {"id": "qwen3.8-27b", "context_length": 262144,
+                                                          "input_modalities": ["text", "image"]})
     assert "base URL   http://127.0.0.1:1235/v1" in text
+    assert 'baseUrl: "http://127.0.0.1:1235/v1",' in text              # OpenClaw wants it with /v1
+    assert 'id: "qwen3.8-27b",' in text and "pick the model lmk/qwen3.8-27b:" in text
+    assert 'input: ["text", "image"],' in text and "contextWindow: 262144," in text
     assert "        base_url: http://127.0.0.1:1235" in text          # kitten wants it without /v1
     assert '      local: "lmk:qwen3.8-27b"' in text
     assert "about 3s per 1,000 tokens" in text

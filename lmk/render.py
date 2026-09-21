@@ -140,12 +140,42 @@ def status_block(status: dict, url: str) -> str:
     return "\n".join(lines)
 
 
-def connect_block(url: str, model_id: str) -> str:
+# One observed agent step wrote 15,698 tokens, thinking included (research/2026-09-20-thinking-length, THK-004);
+# the 8192 in OpenClaw's own local-model template would have cut it off.
+OPENCLAW_MAX_TOKENS = 32768
+
+
+def connect_block(url: str, model: dict) -> str:
+    """`model` is the `model` object of /lmk/v1/status."""
+    model_id = model["id"]
+    modalities = ", ".join(f'"{m}"' for m in (model.get("input_modalities") or ["text"]))
     return "\n".join([
         "  Point your agent at it — any OpenAI-compatible client:",
         f"    base URL   {url}/v1",
         f"    model      {model_id}",
         "    API key    anything (lmk does not check it)",
+        "",
+        "  OpenClaw — merge this into ~/.openclaw/openclaw.json, then pick the model "
+        f"lmk/{model_id}:",
+        "    models: {",
+        '      mode: "merge",',
+        "      providers: {",
+        "        lmk: {",
+        f'          baseUrl: "{url}/v1",',
+        '          apiKey: "lmk",',
+        '          api: "openai-completions",',
+        "          models: [{",
+        f'            id: "{model_id}",',
+        f'            name: "{model_id} (lmk)",',
+        "            reasoning: false,",
+        f"            input: [{modalities}],",
+        "            cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },",
+        f"            contextWindow: {model['context_length']},",
+        f"            maxTokens: {OPENCLAW_MAX_TOKENS},",
+        "          }],",
+        "        },",
+        "      },",
+        "    },",
         "",
         "  kitten — put this in .kitten/config.yaml:",
         "    providers:",
