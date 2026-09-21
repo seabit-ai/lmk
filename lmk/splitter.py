@@ -20,6 +20,11 @@ class OutputSplitter:
         self._phase = "reasoning" if starts_in_reasoning else "leading"
         self._pending = ""
 
+    @property
+    def part(self) -> str:
+        """What the model is writing right now, for `lmk status`."""
+        return {"reasoning": "thinking", "tool": "tool call"}.get(self._phase, "answering")
+
     def write(self, fragment: str) -> None:
         self._pending += fragment
         while self._step():

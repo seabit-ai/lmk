@@ -126,6 +126,12 @@ class Admission:
                 self._admitted.remove(ticket)
             self._cond.notify_all()
 
+    def counts(self) -> dict:
+        with self._cond:
+            return {"answering": len(self._admitted), "max_parallel": self._max_parallel,
+                    "waiting": len(self._queue), "max_queue": self._max_queue,
+                    "tokens_in_memory": sum(a.tokens for a in self._admitted), "token_budget": self._token_budget}
+
     def waiting(self) -> list[dict]:
         now = get_current_clock().mono_ms()
         with self._cond:

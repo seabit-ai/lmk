@@ -6,6 +6,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 from lmk import log
 from lmk.admission import Admission, QueueFull, Ticket, WaitedTooLong
+from lmk.board import Board, Running
 from lmk.chat import CallerIdentity, ClientGone, prepare_chat, run_chat, run_warmup
 from lmk.chatformat import ImageInputError
 from lmk.clock import get_current_clock
@@ -23,8 +24,7 @@ class LmkServer:
         self._build = build
         self._config_fingerprint = config_fingerprint
         self._started_ms = get_current_clock().mono_ms()
-        self._in_flight: dict[str, dict] = {}
-        self._in_flight_lock = threading.Lock()
+        self._board = Board()
         outer = self
 
         class Handler(BaseHTTPRequestHandler):
@@ -95,23 +95,35 @@ class LmkServer:
         try:
             self._admission.enter(ticket)
         except QueueFull as e:
+            self._board.refused()
             log.warn("LmkQueueFull", "request refused: the queue is full", purpose=identity.purpose,
                      refId=identity.ref_id, waiting=e.waiting)
             _send_json(h, 503, {"error": {"type": "queue_full", "message": f"lmk is busy: {e}. Try again shortly."}})
             return
         except WaitedTooLong as e:
+            self._board.refused()
             log.warn("LmkWaitedTooLong", "request refused: it could not start in time", purpose=identity.purpose,
                      refId=identity.ref_id, waitedS=e.waited_s, reason=e.reason)
             _send_json(h, 503, {"error": {"type": "waited_too_long", "message": f"lmk {e}"}})
             return
+        running = self._board.begin(identity.purpose, identity.ref_id, identity.traceparent,
+                                    prepared.preflight.prompt_tokens)
+        outcome, stats = "failed", {}
         try:
             if warmup:
-                self._track(h, identity, "warmup",
-                            lambda _progress: _send_json(h, 200, run_warmup(self._engine, body, identity, prepared)))
+                running.state = "prefill"
+                result = run_warmup(self._engine, body, identity, prepared)
+                outcome, stats = "warmed", {"prompt_tokens": result["prompt_tokens"],
+                                            "cached_tokens": result["cached_tokens"]}
+                _send_json(h, 200, result)
             else:
-                self._track(h, identity, "prefill", lambda entry: self._chat_tracked(h, body, identity, entry, prepared))
+                result = self._chat_tracked(h, body, identity, running, prepared)
+                usage = result["usage"]
+                outcome = "cancelled" if result["cancelled"] else result["finish_reason"].replace("tool_calls", "tool call")
+                stats = {"prompt_tokens": usage["prompt_tokens"], "completion_tokens": usage["completion_tokens"],
+                         "cached_tokens": usage["prompt_tokens_details"]["cached_tokens"]}
         except ClientGone:
-            pass
+            outcome = "cancelled"
         except Exception as e:  # noqa: BLE001 - the engine fell over; say so instead of dropping the connection
             log.error("LmkRequestFailed", "request failed inside lmk", purpose=identity.purpose,
                       refId=identity.ref_id, error=repr(e))
@@ -119,26 +131,16 @@ class LmkServer:
                 _send_json(h, 500, {"error": {"type": "internal_error", "message": f"lmk failed on this request: {e}"}})
             h.close_connection = True
         finally:
-            self._admission.leave(ticket)  # the one way out: whatever happened above, the place is given back
+            # the one way out: whatever happened above, the place is given back and the request leaves the board
+            self._admission.leave(ticket)
+            self._board.finish(running, outcome, **stats)
 
-    def _track(self, h, identity: CallerIdentity, phase: str, work) -> None:
-        """Run work while the call is visible in /lmk/v1/status."""
-        key = str(id(h))
-        entry = {"purpose": identity.purpose, "ref_id": identity.ref_id, "traceparent": identity.traceparent,
-                 "started_mono_ms": get_current_clock().mono_ms(), "phase": phase, "prefill": None}
-        with self._in_flight_lock:
-            self._in_flight[key] = entry
-        try:
-            work(entry)
-        finally:
-            with self._in_flight_lock:
-                self._in_flight.pop(key, None)
-
-    def _chat_tracked(self, h, body: dict, identity: CallerIdentity, entry: dict, prepared) -> None:
-        def on_progress(progress: dict) -> None:
-            entry["prefill"] = progress
-            if progress["total"] and progress["processed"] >= progress["total"] - 1:
-                entry["phase"] = "generating"
+    def _chat_tracked(self, h, body: dict, identity: CallerIdentity, running: Running, prepared) -> dict:
+        def on_progress(event: dict) -> None:
+            if "prefill" in event:
+                running.on_prefill(event["prefill"])
+            else:
+                running.on_decode(event["decode"]["part"], event["decode"]["completion_tokens"])
 
         if body.get("stream"):
             h.send_response(200)
@@ -149,8 +151,6 @@ class LmkServer:
             h.lmk_response_started = True
 
             def emit(chunk: dict) -> None:
-                if chunk.get("choices"):
-                    entry["phase"] = "generating"  # the first piece of the answer is the proof
                 try:
                     h.wfile.write(b"data: " + json.dumps(chunk, ensure_ascii=False).encode() + b"\n\n")
                     h.wfile.flush()
@@ -165,12 +165,8 @@ class LmkServer:
                 except (BrokenPipeError, ConnectionResetError):
                     pass
             h.close_connection = True
-            return
-        def note(chunk: dict) -> None:
-            if chunk.get("choices"):
-                entry["phase"] = "generating"
-
-        result = run_chat(self._engine, body, identity, note, on_progress, prepared)
+            return result
+        result = run_chat(self._engine, body, identity, lambda _chunk: None, on_progress, prepared)
         message = {"role": "assistant", "content": result["content"] or None}
         if result["reasoning_content"]:
             message["reasoning_content"] = result["reasoning_content"]
@@ -178,14 +174,11 @@ class LmkServer:
             message["tool_calls"] = [{k: v for k, v in c.items() if k != "index"} for c in result["tool_calls"]]
         _send_json(h, 200, {**result["base"], "object": "chat.completion", "usage": result["usage"],
                             "choices": [{"index": 0, "message": message, "finish_reason": result["finish_reason"]}]})
+        return result
 
     def status(self) -> dict:
         m = self._engine.loaded_model()
-        now = get_current_clock().mono_ms()
-        with self._in_flight_lock:
-            in_flight = [{"purpose": e["purpose"], "ref_id": e["ref_id"], "traceparent": e["traceparent"],
-                          "phase": e["phase"], "prefill": e["prefill"], "running_ms": now - e["started_mono_ms"]}
-                         for e in self._in_flight.values()]
+        board = self._board.snapshot()
         return {
             "build": self._build,
             "config_fingerprint": self._config_fingerprint,
@@ -194,16 +187,19 @@ class LmkServer:
                       "input_modalities": self._engine.input_modalities()},
             "cache": self._engine.cache_stats(),
             "memory": self._memory(),
-            "in_flight": in_flight,
+            "requests": self._admission.counts(),
+            "totals": board["totals"],
+            "in_flight": board["in_flight"],
             "waiting": self._admission.waiting(),
+            "recent": board["recent"],
             "uptime_ms": get_current_clock().mono_ms() - self._started_ms,
         }
-
 
     def _memory(self) -> dict:
         reading = get_current_memory().read()
         return {"pressure": reading.pressure, "free_percent": reading.free_percent,
-                "total_bytes": reading.total_bytes, "lmk_gpu_bytes": self._engine.gpu_memory_bytes()}
+                "total_bytes": reading.total_bytes, "lmk_gpu_bytes": self._engine.gpu_memory_bytes(),
+                "lmk_gpu_peak_bytes": self._engine.gpu_memory_peak_bytes()}
 
 
 def _send_json(h: BaseHTTPRequestHandler, status: int, body: dict) -> None:

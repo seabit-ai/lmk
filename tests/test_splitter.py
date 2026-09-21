@@ -62,3 +62,15 @@ def test_stream_ends_inside_reasoning():
 # max_tokens hit inside a tool block: an unfinished call is never handed to the parser.
 def test_stream_ends_inside_a_tool_block():
     assert run(["x</think>", "<tool_call>\n<function=a>"], True) == [("r", "x")]
+
+
+def test_what_the_model_is_writing_right_now_is_read_off_the_markers():
+    """`lmk status` shows this next to `decode`. The engine cannot tell: to it, it is all tokens."""
+    s = OutputSplitter("<tool_call>", "</tool_call>", True, lambda t: None, lambda t: None, lambda b: None)
+    assert s.part == "thinking"
+    s.write("let me see</think>\n\nThe answer")
+    assert s.part == "answering"
+    s.write(" is 4.\n<tool_call>\n<function=file_read>")
+    assert s.part == "tool call"
+    s.write("</function>\n</tool_call>")
+    assert s.part == "answering"

@@ -203,21 +203,35 @@ def cmd_up(_args) -> int:
 
 # ---- status / logs / down ----
 
+def _status_text(cfg: LmkConfig) -> tuple[str, bool]:
+    status = _get_status(cfg)
+    if status is not None:
+        return render.status_block(status, render.base_url(cfg.host, cfg.port)), True
+    if service.is_registered():
+        return ("… lmk is starting (or failing to) — it is registered but not answering yet.\n"
+                "  watch it:  lmk logs -f"), False
+    return "✗ lmk is not running.\n  start it:  lmk up", False
+
+
 def cmd_status(args) -> int:
     cfg = _config()
-    status = _get_status(cfg)
     if args.json:
+        status = _get_status(cfg)
         _say(json.dumps(status, indent=2, ensure_ascii=False))
         return 0 if status else 1
-    if status is not None:
-        _say(render.status_block(status, render.base_url(cfg.host, cfg.port)))
+    if not args.watch:
+        text, up = _status_text(cfg)
+        _say(text)
+        return 0 if up else 1
+    clock = get_current_clock()
+    try:
+        while True:
+            text, _ = _status_text(cfg)
+            # home + clear-to-end, then the text: no flicker, and a shorter screen leaves nothing behind
+            print("\033[H\033[J" + text + "\n\n  refreshing every second — ctrl-c to leave", flush=True)
+            clock.sleep_s(1)
+    except KeyboardInterrupt:
         return 0
-    if service.is_registered():
-        _say("… lmk is starting (or failing to) — it is registered but not answering yet.\n"
-             "  watch it:  lmk logs -f")
-    else:
-        _say("✗ lmk is not running.\n  start it:  lmk up")
-    return 1
 
 
 def cmd_logs(args) -> int:
@@ -261,8 +275,9 @@ def main(argv: Optional[list[str]] = None) -> int:
     sub = parser.add_subparsers(dest="command", required=True, metavar="command")
     sub.add_parser("pull", help="download the configured model (explicit; nothing else ever downloads)")
     sub.add_parser("up", help="start lmk now and at every login; returns when it answers")
-    p = sub.add_parser("status", help="is it up, what is it doing, how full is the cache")
+    p = sub.add_parser("status", help="is it up, what each request is doing, memory, cache, the last few answers")
     p.add_argument("--json", action="store_true", help="the raw status document")
+    p.add_argument("-w", "--watch", action="store_true", help="keep the screen up to date (macOS has no `watch`)")
     p = sub.add_parser("logs", help="recent events")
     p.add_argument("-f", "--follow", action="store_true")
     p.add_argument("-n", "--lines", type=int, default=40)

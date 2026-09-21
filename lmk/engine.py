@@ -53,6 +53,7 @@ class Engine(Protocol):
     def preflight(self, prompt_text: str, images_b64: Optional[list[str]] = None) -> Preflight: ...
     def token_budget(self) -> Optional[int]: ...
     def gpu_memory_bytes(self) -> int: ...
+    def gpu_memory_peak_bytes(self) -> int: ...
     def generate(self, prompt_text: str, *, max_tokens: Optional[int], request_id: str,
                  on_prefill: PrefillCallback, images_b64: Optional[list[str]] = None,
                  sampling: Optional[dict] = None, tokens: Optional[list] = None) -> Generation: ...
@@ -132,6 +133,11 @@ class MlxEngine:
         import mlx.core as mx
 
         return int(mx.get_active_memory() + mx.get_cache_memory())
+
+    def gpu_memory_peak_bytes(self) -> int:
+        import mlx.core as mx
+
+        return int(mx.get_peak_memory())
 
     def close(self) -> None:
         """Drains the engine's cache I/O thread: records still queued for disk
@@ -225,6 +231,9 @@ class FakeEngine:
         return self._token_budget
 
     def gpu_memory_bytes(self) -> int:
+        return self._gpu_bytes
+
+    def gpu_memory_peak_bytes(self) -> int:
         return self._gpu_bytes
 
     def cache_stats(self) -> Optional[dict]:

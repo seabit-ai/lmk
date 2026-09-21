@@ -78,13 +78,20 @@ def test_a_request_waits_its_turn_is_visible_while_it_waits_and_then_answers(mem
     assert [(w["ref_id"], w["reason"]) for w in status["waiting"]] == \
         [("s/second", "1 requests are being answered (requests.max_parallel)")]
     assert status["memory"] == {"pressure": "normal", "free_percent": 90, "total_bytes": 96 * 1024**3,
-                                "lmk_gpu_bytes": 5}
+                                "lmk_gpu_bytes": 5, "lmk_gpu_peak_bytes": 5}
+    assert status["requests"] == {"answering": 1, "max_parallel": 1, "waiting": 1, "max_queue": 16,
+                                  "tokens_in_memory": 200000, "token_budget": None}
 
     engine.release.set()
     first.join(5), second.join(5)
     assert first_box["body"]["choices"][0]["message"]["content"] == "ok"
     assert second_box["body"]["choices"][0]["message"]["content"] == "ok"
-    assert srv.status()["waiting"] == [] and srv.status()["in_flight"] == []
+    done = srv.status()
+    assert done["waiting"] == [] and done["in_flight"] == []
+    assert done["totals"] == {"answered": 2, "refused": 0, "failed": 0, "cancelled": 0,
+                              "prompt_tokens": 200, "cached_tokens": 180}
+    assert [(f["ref_id"], f["outcome"], f["prompt_tokens"], f["cached_tokens"]) for f in done["recent"]] == \
+        [("s/second", "stop", 100, 90), ("s/first", "stop", 100, 90)]      # newest first
 
 
 def test_one_that_could_not_start_in_time_gets_a_503_that_says_why(memory):
@@ -96,6 +103,7 @@ def test_one_that_could_not_start_in_time_gets_a_503_that_says_why(memory):
     assert late_box["status"] == 503 and late_box["error"]["type"] == "waited_too_long"
     assert late_box["error"]["message"] == ("lmk waited 1s and could not start: 1 requests are being answered "
                                             "(requests.max_parallel)")
+    assert srv.status()["totals"]["refused"] == 1
     engine.release.set()
     first.join(5)
 
@@ -123,4 +131,6 @@ def test_the_place_is_given_back_even_when_the_request_blows_up(memory):
         t.join(5)
         assert box["status"] == 500 and box["error"]["type"] == "internal_error"
         assert "engine fell over" in box["error"]["message"]  # told, not just disconnected
-    assert srv.status()["in_flight"] == [] and srv.status()["waiting"] == []
+    after = srv.status()
+    assert after["in_flight"] == [] and after["waiting"] == []
+    assert after["totals"]["failed"] == 2 and [f["outcome"] for f in after["recent"]] == ["failed", "failed"]

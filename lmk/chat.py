@@ -97,7 +97,7 @@ def run_chat(engine: Engine, body: dict, identity: CallerIdentity,
 
     def on_prefill(processed: int, total: int, cached: int) -> bool:
         progress = {"processed": processed, "total": total, "cached": cached}
-        on_progress(progress)
+        on_progress({"prefill": progress})
         send({"object": "lmk.prefill", "choices": [], "lmk": {"prefill": progress}})
         return not state["cancelled"]
 
@@ -125,6 +125,7 @@ def run_chat(engine: Engine, body: dict, identity: CallerIdentity,
                               on_reasoning, on_text, on_tool_block)
     for piece in generation:
         splitter.write(piece)
+        on_progress({"decode": {"part": splitter.part, "completion_tokens": generation.stats.completion_tokens}})
         if state["cancelled"]:
             generation.pieces.close()  # stops the engine's generator
             break
