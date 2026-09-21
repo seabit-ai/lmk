@@ -142,6 +142,12 @@ def cmd_up(_args) -> int:
     except FileNotFoundError as e:
         return _fail(f"✗ {e}", 3)
 
+    from lmk.modelfit import why_it_does_not_fit
+
+    too_big = why_it_does_not_fit(resolved.path)
+    if too_big:
+        return _fail(f"✗ {too_big}", 3)
+
     url = render.base_url(cfg.host, cfg.port)
     running = _get_status(cfg)
     if running is not None and running.get("config_fingerprint") == fingerprint(cfg, resolved.revision):

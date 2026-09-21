@@ -13,7 +13,7 @@ from typing import Callable, Optional
 from lmk import log
 from lmk.clock import get_current_clock
 from lmk.chatformat import ImageInputError, split_images
-from lmk.engine import Engine
+from lmk.engine import Engine, Preflight
 from lmk.splitter import OutputSplitter
 
 
@@ -38,15 +38,44 @@ def prepare_messages(engine: Engine, body: dict) -> tuple[list[dict], list[str]]
     return messages, images
 
 
+@dataclass
+class PreparedChat:
+    """The request rendered and measured — everything the admission queue needs to know,
+    done once and handed on to run_chat / run_warmup."""
+    prompt: str
+    images: list
+    tools: Optional[list]
+    max_tokens: Optional[int]
+    preflight: Preflight
+
+    def tokens_needed(self, context_length: int) -> int:
+        """Its share of the KV memory: the prompt plus what it may write, capped by the window."""
+        return min(self.preflight.prompt_tokens + (self.max_tokens or context_length), context_length)
+
+
+def prepare_chat(engine: Engine, body: dict, warmup: bool = False) -> PreparedChat:
+    messages, images = prepare_messages(engine, body)
+    tools = body.get("tools") or None
+    if warmup:
+        messages = list(messages)
+        if not messages or messages[-1].get("role") != "user":
+            # chat templates want a user turn to close on; keep it tiny so the fork
+            # point stays inside the last cache block
+            messages.append({"role": "user", "content": "."})
+    prompt = engine.chat_format().render(messages, tools)
+    max_tokens = 1 if warmup else (body.get("max_tokens") or body.get("max_completion_tokens"))
+    return PreparedChat(prompt=prompt, images=images, tools=tools, max_tokens=max_tokens,
+                        preflight=engine.preflight(prompt, images))
+
+
 def run_chat(engine: Engine, body: dict, identity: CallerIdentity,
-             emit: Callable[[dict], None], on_progress: Callable[[dict], None] = lambda _: None) -> dict:
+             emit: Callable[[dict], None], on_progress: Callable[[dict], None] = lambda _: None,
+             prepared: Optional[PreparedChat] = None) -> dict:
     clock = get_current_clock()
     started = clock.mono_ms()
     fmt = engine.chat_format()
-    tools = body.get("tools") or None
-    max_tokens = body.get("max_tokens") or body.get("max_completion_tokens")
-    messages, images = prepare_messages(engine, body)
-    prompt = fmt.render(messages, tools)
+    prepared = prepared or prepare_chat(engine, body)
+    tools, max_tokens, images, prompt = prepared.tools, prepared.max_tokens, prepared.images, prepared.prompt
 
     completion_id = "chatcmpl-" + uuid.uuid4().hex[:24]
     base = {"id": completion_id, "created": clock.wall_ms() // 1000, "model": engine.loaded_model().id}
@@ -90,7 +119,7 @@ def run_chat(engine: Engine, body: dict, identity: CallerIdentity,
 
     request_id = identity.ref_id or completion_id
     generation = engine.generate(prompt, max_tokens=max_tokens, request_id=request_id, on_prefill=on_prefill,
-                                 images_b64=images)
+                                 images_b64=images, tokens=prepared.preflight.tokens)
     delta({"role": "assistant"})
     splitter = OutputSplitter(fmt.tool_call_start, fmt.tool_call_end, fmt.starts_in_reasoning(prompt),
                               on_reasoning, on_text, on_tool_block)
@@ -123,6 +152,10 @@ def run_chat(engine: Engine, body: dict, identity: CallerIdentity,
     log.info("LmkChatDone", "chat completion finished",
              purpose=identity.purpose, refId=identity.ref_id, traceparent=identity.traceparent,
              promptTokens=stats.prompt_tokens, cachedTokens=stats.cached_tokens,
+             # what the queue believed before admission, next to what the engine then found: if these
+             # drift apart, rule 2 of the queue is judging "long" and "short" wrongly
+             uncachedEstimate=prepared.preflight.uncached_tokens,
+             uncachedActual=stats.prompt_tokens - stats.cached_tokens,
              completionTokens=stats.completion_tokens, toolCalls=len(tool_calls),
              ttftMs=state["first_ms"], totalMs=total_ms, finishReason=finish, cancelled=state["cancelled"])
     return {"id": completion_id, "finish_reason": finish, "usage": usage, "tool_calls": tool_calls,
@@ -130,7 +163,8 @@ def run_chat(engine: Engine, body: dict, identity: CallerIdentity,
             "base": base, "cancelled": state["cancelled"]}
 
 
-def run_warmup(engine: Engine, body: dict, identity: CallerIdentity) -> dict:
+def run_warmup(engine: Engine, body: dict, identity: CallerIdentity,
+               prepared: Optional[PreparedChat] = None) -> dict:
     """Prefill a prefix into the cache without generating an answer (wish list
     WISH-019). The caller sends the part it wants warm — typically system +
     tools. A later request that starts the same way restores from the largest
@@ -138,17 +172,10 @@ def run_warmup(engine: Engine, body: dict, identity: CallerIdentity) -> dict:
     """
     clock = get_current_clock()
     started = clock.mono_ms()
-    fmt = engine.chat_format()
-    messages, images = prepare_messages(engine, body)
-    messages = list(messages)
-    if not messages or messages[-1].get("role") != "user":
-        # chat templates want a user turn to close on; keep it tiny so the fork
-        # point stays inside the last cache block
-        messages.append({"role": "user", "content": "."})
-    prompt = fmt.render(messages, body.get("tools") or None)
+    prepared = prepared or prepare_chat(engine, body, warmup=True)
     request_id = identity.ref_id or "warmup-" + uuid.uuid4().hex[:16]
-    generation = engine.generate(prompt, max_tokens=1, request_id=request_id, on_prefill=lambda *_: True,
-                                 images_b64=images)
+    generation = engine.generate(prepared.prompt, max_tokens=1, request_id=request_id, on_prefill=lambda *_: True,
+                                 images_b64=prepared.images, tokens=prepared.preflight.tokens)
     for _ in generation:
         pass
     stats = generation.stats

@@ -69,6 +69,10 @@ def status_block(status: dict, url: str) -> str:
                      f"   {short_path(str(Path(cache['dir']).parent))}")
         if cache.get("disk_low"):
             lines.append("             the disk has less than 10 GB free — lmk has stopped adding to the cache")
+    memory = status.get("memory")
+    if memory:
+        lines.append(f"  memory     pressure: {memory['pressure']} · {memory['free_percent']}% of "
+                     f"{human_bytes(memory['total_bytes'])} free · lmk holds {human_bytes(memory['lmk_gpu_bytes'])}")
     lines.append(f"  running    {human_duration(status.get('uptime_ms', 0))}   (build {status.get('build', '?')})")
     in_flight = status.get("in_flight") or []
     if in_flight:
@@ -76,6 +80,12 @@ def status_block(status: dict, url: str) -> str:
         lines.extend(f"               {_request_line(r)}" for r in in_flight)
     else:
         lines.append("  busy       no — idle")
+    waiting = status.get("waiting") or []
+    if waiting:
+        lines.append(f"  waiting    {len(waiting)} request{'s' if len(waiting) > 1 else ''}")
+        for w in waiting:
+            who = " · ".join(x for x in (w.get("purpose"), w.get("ref_id")) if x) or "a request"
+            lines.append(f"               {who} · {human_duration(w.get('waited_ms', 0))} · {w.get('reason')}")
     return "\n".join(lines)
 
 

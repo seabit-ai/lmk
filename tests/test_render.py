@@ -79,3 +79,17 @@ def test_a_nearly_full_disk_is_said_next_to_the_cache_line():
     status["cache"]["disk_low"] = True
     assert "less than 10 GB free — lmk has stopped adding to the cache" in render.status_block(status, "http://x")
     assert "stopped adding" not in render.status_block(STATUS, "http://x")
+
+
+def test_memory_is_reported_as_numbers_and_waiting_requests_say_what_they_wait_for():
+    status = json.loads(json.dumps(STATUS))
+    status["memory"] = {"pressure": "warning", "free_percent": 12, "total_bytes": 96 * 1024**3,
+                        "lmk_gpu_bytes": int(19.2 * 1024**3)}
+    status["waiting"] = [{"purpose": "groom", "ref_id": "groom/kitten/1", "waited_ms": 12_000,
+                          "reason": "another request is being answered, and this one has 13,441 tokens of new "
+                                    "prompt to read first"}]
+    text = render.status_block(status, "http://x")
+    assert "memory     pressure: warning · 12% of 96.0 GB free · lmk holds 19.2 GB" in text
+    assert "waiting    1 request" in text
+    assert "groom · groom/kitten/1 · 12s · another request is being answered, and this one has 13,441" in text
+    assert "another program" not in text  # numbers only: lmk does not know who uses the memory
