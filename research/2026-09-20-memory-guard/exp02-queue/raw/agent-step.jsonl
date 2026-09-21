@@ -1,0 +1,2 @@
+{"request": "agent-step", "ttft_s": 2.17, "total_s": 4.42, "prompt_tokens": 27190, "cached_tokens": 27136, "completion_tokens": 40}
+{"request": "writing", "ttft_s": 0.66, "total_s": 12.61, "prompt_tokens": 67, "cached_tokens": 0, "completion_tokens": 400}

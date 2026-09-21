@@ -1,0 +1,2 @@
+{"label": "M4-queued", "request": "cold-late", "ttft_s": 51.07, "total_s": 51.49, "prompt_tokens": 14061, "completion_tokens": 16, "tok_per_s": 38.2}
+{"label": "M4-queued", "request": "gen-0", "ttft_s": 0.59, "total_s": 8.21, "prompt_tokens": 78, "completion_tokens": 300, "tok_per_s": 39.4, "chunks_while_other_read_its_prompt": 238, "that_window_s": 51.1}

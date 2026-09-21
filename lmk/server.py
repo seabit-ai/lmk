@@ -149,6 +149,8 @@ class LmkServer:
             h.lmk_response_started = True
 
             def emit(chunk: dict) -> None:
+                if chunk.get("choices"):
+                    entry["phase"] = "generating"  # the first piece of the answer is the proof
                 try:
                     h.wfile.write(b"data: " + json.dumps(chunk, ensure_ascii=False).encode() + b"\n\n")
                     h.wfile.flush()
@@ -164,7 +166,11 @@ class LmkServer:
                     pass
             h.close_connection = True
             return
-        result = run_chat(self._engine, body, identity, lambda _chunk: None, on_progress, prepared)
+        def note(chunk: dict) -> None:
+            if chunk.get("choices"):
+                entry["phase"] = "generating"
+
+        result = run_chat(self._engine, body, identity, note, on_progress, prepared)
         message = {"role": "assistant", "content": result["content"] or None}
         if result["reasoning_content"]:
             message["reasoning_content"] = result["reasoning_content"]

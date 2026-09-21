@@ -105,8 +105,8 @@ picked a model and want your agent to be fast on it every day, that is what lmk 
 
 - **Sampling parameters are ignored** — `temperature`, `top_p`, `seed`, `stop`. The model's own defaults apply.
 - One tested model (Qwen3.8-27B, 4-bit). Others load through `model.repo`, untested by us.
-- No memory guard: lmk does not stop you from configuring a model that does not fit this Mac.
-- Requests running at the same time are untested; an agent making one call at a time is what we run.
+- The memory rules below are tested on one machine (96 GB), where most of them never trigger; on a smaller Mac
+  they are covered by unit tests only.
 - No PDF input.
 
 ## Configuration
@@ -124,6 +124,10 @@ model:
                              #                   memory is short, and `lmk status` shows the value in use)
 listen: {host: 127.0.0.1, port: 1235}
 cache:  {dir: ~/.lmk/cache, max_size: 200G}     # when full, what was used longest ago goes first
+requests:
+  max_parallel: 2            # answered at the same time
+  max_queue: 16              # waiting for their turn; one more is refused at once
+  max_wait_seconds: 600      # a request that could not start by then is refused, and told why
 log:    {dir: ~/.lmk/logs}
 ```
 
@@ -131,6 +135,35 @@ log:    {dir: ~/.lmk/logs}
 adding to the cache and gives space back, oldest first.
 
 To switch models: change `model:`, then `lmk pull` and `lmk up`.
+
+## Several requests at once, and memory
+
+Two requests being answered at the same time give 1.7x the total speed and each stays fast; four
+give 2.2x but each drops to about half (measured on an M3 Ultra with the default model) — hence
+`max_parallel: 2`. Reading a long new prompt is different: it stalls every request that is writing.
+So lmk keeps one first-come-first-served queue, and the request at its head starts when:
+
+- fewer than `max_parallel` requests are being answered;
+- nobody is being answered, **or** it has little new prompt to read — the next step of a cached
+  conversation always goes straight in, however long the conversation is;
+- its tokens fit in memory next to the requests already running;
+- macOS does not report memory pressure as critical.
+
+`lmk status` shows who waits and for what, and the memory numbers lmk goes by:
+
+```
+  memory     pressure: normal · 64% of 96.0 GB free · lmk holds 15.2 GB
+  busy       1 request
+               writing the answer · turn · my-session/step-4 · 4s
+  waiting    1 request
+               groom · my-project/groom · 2s · another request is being answered, and this one has 14,061 tokens of new prompt to read first
+```
+
+Nothing is sent to a waiting client, so one that cannot start within `max_wait_seconds`, or finds
+the queue full, gets a plain `503` whose message says what it was waiting for.
+
+A model whose weights do not fit this Mac is refused by `lmk up`, with the numbers. There is no
+switch to load it anyway.
 
 ## For agent authors
 
