@@ -7,6 +7,8 @@ import json
 from pathlib import Path
 from typing import Optional
 
+from lmk.sampling import describe as describe_sampling
+
 FIRST_REQUEST_NOTE = (
     "The first request of a new conversation reads its whole prompt (about 3s per 1,000 tokens).\n"
     "  After that every step starts in about a second — also after a reboot.")
@@ -98,6 +100,9 @@ def status_block(status: dict, url: str) -> str:
         context += f" (asked for {requested:,}; lowered to fit this Mac's memory)"
     lines = [f"✓ lmk is up    {url}/v1   (OpenAI-compatible)",
              f"  model      {model['id']} · {', '.join(model.get('input_modalities') or ['text'])} in · {context}"]
+    if "sampling_defaults" in status:
+        lines.append(f"  sampling   {describe_sampling(status['sampling_defaults'])}   "
+                     "(the model's generation_config; a request may override)")
     memory = status.get("memory")
     if memory:
         lines.append(f"  memory     pressure: {memory['pressure']} · {memory['free_percent']}% of "

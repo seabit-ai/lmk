@@ -112,7 +112,8 @@ picked a model and want your agent to be fast on it every day, that is what lmk 
 
 ## What does not work yet
 
-- **Sampling parameters are ignored** — `temperature`, `top_p`, `seed`, `stop`. The model's own defaults apply.
+- **`seed` is ignored** — the engine drops it on the batched code path lmk runs on. For a repeatable answer
+  send `temperature: 0`. `response_format` / JSON schema output is not wired up yet.
 - One tested model (Qwen3.8-27B, 4-bit). Others load through `model.repo`, untested by us.
 - The memory rules below are tested on one machine (96 GB), where most of them never trigger; on a smaller Mac
   they are covered by unit tests only.
@@ -201,6 +202,11 @@ keep working and yours can do better:
   `lmk status` and in the logs, next to the request they belong to.
 - **Warm a prompt ahead of time**: `POST /lmk/v1/warmup` takes a chat request body, reads the
   prompt into the cache and generates nothing.
+- **Sampling**: `temperature`, `top_p`, `top_k`, `min_p`, `repetition_penalty` and `stop` are honoured;
+  a value out of range is a 400 naming the field. A request that sets none of them runs with the
+  model's own `generation_config.json` (`lmk status` shows those values). `stop` strings match the
+  **answer only** — a stop string that shows up inside the model's thinking does not end the request.
+  `seed` is accepted and ignored (logged as `LmkParamIgnored`); see "What does not work yet".
 - Closing the connection cancels the request (at the next progress step — within a few seconds). `GET /lmk/v1/status` is what `lmk status` prints.
 
 

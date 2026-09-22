@@ -50,6 +50,9 @@ class Engine(Protocol):
     def input_modalities(self) -> list[str]: ...
     def chat_format(self) -> ChatFormat: ...
     def cache_stats(self) -> Optional[dict]: ...
+    def sampling_defaults(self) -> dict:
+        """Engine kwargs used when a request names no sampling parameter (see lmk.sampling)."""
+        ...
     def preflight(self, prompt_text: str, images_b64: Optional[list[str]] = None) -> Preflight: ...
     def token_budget(self) -> Optional[int]: ...
     def gpu_memory_bytes(self) -> int: ...
@@ -87,9 +90,14 @@ class MlxEngine:
         self._model = LoadedModel(id=model_id, path=model_path, context_length=in_use,
                                   requested_context_length=requested)
         self._format = TemplateChatFormat(self._kit.tokenizer)
+        from lmk.sampling import model_defaults
+        self._sampling_defaults = model_defaults(model_path)
 
     def loaded_model(self) -> LoadedModel:
         return self._model
+
+    def sampling_defaults(self) -> dict:
+        return dict(self._sampling_defaults)
 
     def chat_format(self) -> ChatFormat:
         return self._format
@@ -211,8 +219,10 @@ class FakeEngine:
     def __init__(self, model: LoadedModel, chat_format: Optional[ChatFormat] = None,
                  script: Optional[list[str]] = None, stats: Optional[GenerationStats] = None,
                  prefill_steps: Optional[list[int]] = None, modalities: Optional[list[str]] = None,
-                 cache: Optional[dict] = None, token_budget: Optional[int] = None, gpu_bytes: int = 0):
+                 cache: Optional[dict] = None, token_budget: Optional[int] = None, gpu_bytes: int = 0,
+                 sampling_defaults: Optional[dict] = None):
         self._model = model
+        self._sampling_defaults = sampling_defaults or {}
         self._format = chat_format
         self._script = script or []
         self._stats = stats or GenerationStats()
@@ -242,6 +252,9 @@ class FakeEngine:
     def loaded_model(self) -> LoadedModel:
         return self._model
 
+    def sampling_defaults(self) -> dict:
+        return dict(self._sampling_defaults)
+
     def chat_format(self) -> ChatFormat:
         return self._format
 
@@ -251,7 +264,7 @@ class FakeEngine:
     def generate(self, prompt_text, *, max_tokens, request_id, on_prefill, images_b64=None, sampling=None,
                  tokens=None) -> Generation:
         self.requests.append({"prompt": prompt_text, "max_tokens": max_tokens, "request_id": request_id,
-                              "images_b64": images_b64})
+                              "images_b64": images_b64, "sampling": sampling})
         stats = GenerationStats(**vars(self._stats))
 
         def pieces():

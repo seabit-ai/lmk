@@ -14,7 +14,9 @@ from lmk import log
 from lmk.clock import get_current_clock
 from lmk.chatformat import ImageInputError, split_images
 from lmk.engine import Engine, Preflight
+from lmk.sampling import parse_sampling
 from lmk.splitter import OutputSplitter
+from lmk.stopmatch import StopMatcher
 
 
 @dataclass(frozen=True)
@@ -47,6 +49,9 @@ class PreparedChat:
     tools: Optional[list]
     max_tokens: Optional[int]
     preflight: Preflight
+    sampling: dict            # engine kwargs (lmk.sampling); never stop_strings — see stop_strings below
+    stop_strings: list[str]   # OpenAI `stop`, matched by lmk on the answer part only (lmk.stopmatch)
+    ignored_params: list[str]  # request fields lmk understood but cannot honour (logged, not refused)
 
     def tokens_needed(self, context_length: int) -> int:
         """Its share of the KV memory: the prompt plus what it may write, capped by the window."""
@@ -64,8 +69,11 @@ def prepare_chat(engine: Engine, body: dict, warmup: bool = False) -> PreparedCh
             messages.append({"role": "user", "content": "."})
     prompt = engine.chat_format().render(messages, tools)
     max_tokens = 1 if warmup else (body.get("max_tokens") or body.get("max_completion_tokens"))
+    sampling, ignored = parse_sampling(body, engine.sampling_defaults())
+    stop_strings = sampling.pop("stop_strings", [])
     return PreparedChat(prompt=prompt, images=images, tools=tools, max_tokens=max_tokens,
-                        preflight=engine.preflight(prompt, images))
+                        preflight=engine.preflight(prompt, images), sampling=sampling, stop_strings=stop_strings,
+                        ignored_params=ignored)
 
 
 def run_chat(engine: Engine, body: dict, identity: CallerIdentity,
@@ -79,7 +87,7 @@ def run_chat(engine: Engine, body: dict, identity: CallerIdentity,
 
     completion_id = "chatcmpl-" + uuid.uuid4().hex[:24]
     base = {"id": completion_id, "created": clock.wall_ms() // 1000, "model": engine.loaded_model().id}
-    state = {"cancelled": False, "first_ms": None, "calls": [], "text": [], "reasoning": [],
+    state = {"cancelled": False, "stopped": False, "first_ms": None, "calls": [], "text": [], "reasoning": [],
              "generate_called_ms": None, "restore_ms": None}
 
     def send(chunk: dict) -> None:
@@ -106,9 +114,15 @@ def run_chat(engine: Engine, body: dict, identity: CallerIdentity,
         send({"object": "lmk.prefill", "choices": [], "lmk": {"prefill": progress}})
         return not state["cancelled"]
 
-    def on_text(t: str) -> None:
+    def emit_text(t: str) -> None:
         state["text"].append(t)
         delta({"content": t})
+
+    stop_matcher = StopMatcher(prepared.stop_strings, emit_text)
+
+    def on_text(t: str) -> None:
+        if not state["stopped"] and stop_matcher.write(t):
+            state["stopped"] = True
 
     def on_reasoning(t: str) -> None:
         state["reasoning"].append(t)
@@ -124,18 +138,23 @@ def run_chat(engine: Engine, body: dict, identity: CallerIdentity,
 
     request_id = identity.ref_id or completion_id
     state["generate_called_ms"] = clock.mono_ms()
+    if prepared.ignored_params:
+        log.warn("LmkParamIgnored", "request fields the engine cannot honour", purpose=identity.purpose,
+                 refId=identity.ref_id, params=prepared.ignored_params)
     generation = engine.generate(prompt, max_tokens=max_tokens, request_id=request_id, on_prefill=on_prefill,
-                                 images_b64=images, tokens=prepared.preflight.tokens)
+                                 images_b64=images, tokens=prepared.preflight.tokens, sampling=prepared.sampling)
     delta({"role": "assistant"})
     splitter = OutputSplitter(fmt.tool_call_start, fmt.tool_call_end, fmt.starts_in_reasoning(prompt),
                               on_reasoning, on_text, on_tool_block)
     for piece in generation:
         splitter.write(piece)
         on_progress({"decode": {"part": splitter.part, "completion_tokens": generation.stats.completion_tokens}})
-        if state["cancelled"]:
+        if state["cancelled"] or state["stopped"]:
             generation.pieces.close()  # stops the engine's generator
             break
     splitter.close()
+    if not state["stopped"]:
+        stop_matcher.close()
 
     tool_calls = [{"index": i, "id": "call_" + uuid.uuid4().hex[:16], "type": "function",
                    "function": {"name": c["name"], "arguments": json.dumps(c.get("arguments") or {}, ensure_ascii=False)}}
@@ -164,7 +183,8 @@ def run_chat(engine: Engine, body: dict, identity: CallerIdentity,
              uncachedEstimate=prepared.preflight.uncached_tokens,
              uncachedActual=stats.prompt_tokens - stats.cached_tokens,
              completionTokens=stats.completion_tokens, toolCalls=len(tool_calls),
-             restoreMs=state["restore_ms"], ttftMs=state["first_ms"], totalMs=total_ms, finishReason=finish, cancelled=state["cancelled"])
+             restoreMs=state["restore_ms"], ttftMs=state["first_ms"], totalMs=total_ms, finishReason=finish, cancelled=state["cancelled"],
+             sampling=prepared.sampling, stop=prepared.stop_strings or None)
     return {"id": completion_id, "finish_reason": finish, "usage": usage, "tool_calls": tool_calls,
             "content": "".join(state["text"]), "reasoning_content": "".join(state["reasoning"]),
             "base": base, "cancelled": state["cancelled"]}

@@ -23,6 +23,11 @@ def test_the_header_says_where_it_is_what_runs_memory_cache_and_limits():
     text = render.status_block(status, "http://127.0.0.1:1235")
     assert text.splitlines()[0] == "✓ lmk is up    http://127.0.0.1:1235/v1   (OpenAI-compatible)"
     assert "  model      qwen3.8-27b-4bit · text, image in · 262,144 tokens" in text and "lowered" not in text
+    assert "sampling" not in text                       # an older server without the field: no line
+    with_defaults = dict(STATUS, sampling_defaults={"temp": 1.0, "top_p": 0.95, "top_k": 20})
+    assert "  sampling   temp 1.0 · top_p 0.95 · top_k 20   (the model's generation_config" in render.status_block(with_defaults, "http://127.0.0.1:1235")
+    greedy = dict(STATUS, sampling_defaults={"temp": 0.0})
+    assert "  sampling   greedy (temp 0)" in render.status_block(greedy, "http://127.0.0.1:1235")
     assert "  memory     pressure: normal · 64% of 96.0 GB free · lmk holds 15.1 GB" in text
     assert ("  cache      10.0 GB of 162.0 GB in /Users/someone/.lmk/cache · since start 96% of prompt tokens "
             "came from it (1,204,113 of 1,251,870)") in text
