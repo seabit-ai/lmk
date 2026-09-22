@@ -33,6 +33,9 @@ class Dialect:
     think_open: Optional[str]
     think_close: Optional[str]
     thinking_default: bool                       # with no enable_thinking passed, does the template turn thinking on?
+    prompt_decides_thinking: bool                # Qwen: the prompt opens or closes the think block, so on = every turn
+                                                 # thinks and off = none does. Gemma: the prompt only hints; the model
+                                                 # decides per turn either way (exp05 F1, F3).
     starts_in_reasoning: Callable[[str], bool]   # does the rendered prompt end inside a think block?
     for_template: Callable[[list[dict]], list[dict]]   # OpenAI wire messages → what this template iterates over
 
@@ -72,20 +75,28 @@ def _gemma_for_template(messages: list[dict]) -> list[dict]:
     return out
 
 
-QWEN = Dialect(name="qwen", think_open="<think>", think_close="</think>", thinking_default=True,
+QWEN = Dialect(name="qwen", think_open="<think>", think_close="</think>", thinking_default=True, prompt_decides_thinking=True,
                starts_in_reasoning=_qwen_starts_in_reasoning,
                for_template=lambda messages: [_for_template(m) for m in messages])
 
 # Gemma 4: thinking is off unless enable_thinking is passed; when on, the model opens its own
 # thought channel (the generation prompt is just the model turn); when off, the template closes an
-# empty channel for it. Tool results are `tool_responses` on a `tool` turn, and the model's answer
-# follows in that same turn (the template adds no model turn after a tool response).
+# empty channel for it — and the model may still open one (exp05 F3). The model's answer follows a
+# tool result in that same turn (the template adds no model turn after one).
+# Tool results: the current mlx-community template (2026-07, commit 0d77464) takes OpenAI's
+# `role: tool` + `tool_call_id` and resolves the function name itself; the earlier template only
+# knew `tool_responses: [{name, response}]` ("legacy" in the new one's own words). Which one a
+# model ships is read off the template.
 GEMMA4 = Dialect(name="gemma4", think_open="<|channel>thought\n", think_close="<channel|>", thinking_default=False,
-                 starts_in_reasoning=lambda prompt: False, for_template=_gemma_for_template)
+                 prompt_decides_thinking=False, starts_in_reasoning=lambda prompt: False,
+                 for_template=lambda messages: [_for_template(m) for m in messages])
+GEMMA4_LEGACY_TOOLS = Dialect(name="gemma4-legacy-tools", think_open=GEMMA4.think_open, think_close=GEMMA4.think_close,
+                              thinking_default=False, prompt_decides_thinking=False,
+                              starts_in_reasoning=lambda prompt: False, for_template=_gemma_for_template)
 
 # A template we do not know: no thinking split (everything is answer text or a tool call),
 # messages passed as OpenAI shapes them.
-PLAIN = Dialect(name="plain", think_open=None, think_close=None, thinking_default=False,
+PLAIN = Dialect(name="plain", think_open=None, think_close=None, thinking_default=False, prompt_decides_thinking=False,
                 starts_in_reasoning=lambda prompt: False,
                 for_template=lambda messages: [_for_template(m) for m in messages])
 
@@ -93,7 +104,7 @@ PLAIN = Dialect(name="plain", think_open=None, think_close=None, thinking_defaul
 def dialect_for_template(chat_template: Optional[str]) -> Dialect:
     text = chat_template or ""
     if "<|channel>thought" in text:
-        return GEMMA4
+        return GEMMA4 if "tool_call_id" in text else GEMMA4_LEGACY_TOOLS
     if "<think>" in text:
         return QWEN
     return PLAIN

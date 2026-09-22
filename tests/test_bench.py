@@ -73,3 +73,10 @@ def test_human_block_is_three_numbers_and_flags_a_slow_warm_up_only_when_it_happ
                                        "  decode              22.9 tokens/s")
     slow = bench.BenchResult(seed=1, warmup=bench.Probe(20, 0, 8, 37_000, 37_500), cold=fast.cold, hit=fast.hit, decode=fast.decode)
     assert bench.human_block(slow).endswith("(the warm-up request took 37 s: the weights had to be paged back in; not counted)")
+
+
+def test_a_shared_turn_header_of_a_few_cached_tokens_is_still_a_cold_run():
+    stream = fake_stream([chunks(300, 500, 20, 0, 8), chunks(2_180, 2_600, 4037, 10, 32, 4),
+                          chunks(260, 900, 4037, 3840, 32, 60), chunks(200, 3_700, 30, 0, 400)])
+    r = bench.run_bench(stream, "m", seed=3)
+    assert r.cold_was_cold and round(r.cold_prefill_tok_s) == 1847     # 4,027 uncached in 2.18 s

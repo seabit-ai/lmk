@@ -1,0 +1,34 @@
+{
+ "id": "chatcmpl-5b7014336451493ba6f9756c",
+ "created": 1790091829,
+ "model": "gemma-4-26b-a4b-4bit",
+ "object": "chat.completion",
+ "usage": {
+  "prompt_tokens": 240,
+  "completion_tokens": 43,
+  "total_tokens": 283,
+  "prompt_tokens_details": {
+   "cached_tokens": 195
+  }
+ },
+ "choices": [
+  {
+   "index": 0,
+   "message": {
+    "role": "assistant",
+    "content": null,
+    "tool_calls": [
+     {
+      "id": "call_e2d3decab5c74e51",
+      "type": "function",
+      "function": {
+       "name": "file_edit",
+       "arguments": "{\"new_text\": \"- buy almond milk\", \"old_text\": \"- buy oat milk\", \"path\": \"notes.md\"}"
+      }
+     }
+    ]
+   },
+   "finish_reason": "tool_calls"
+  }
+ ]
+}

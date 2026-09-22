@@ -40,6 +40,11 @@ TESTED_MODELS: dict[str, TestedModel] = {
         note="The same 122B with its experts squeezed to 2–3 bits (attention stays at 5–8) to fit in less memory: "
              "about 44 GB for the weights, the full 262k context on a 96 GB Mac. A community quantization, not the "
              "model authors'. ~54 tokens/s on an M3 Ultra — slower than the 4-bit, not faster. Same thinking caveat."),
+    "gemma-4-26b-a4b-4bit": TestedModel(
+        repo="mlx-community/gemma-4-26b-a4b-it-4bit", size_gb=15.6,
+        note="Google's Gemma 4, a mixture of experts with 4B active: the fastest model here (~120 tokens/s, reads "
+             "prompts at ~1,800 tokens/s on an M3 Ultra) in 16 GB. Text and images in, tool calls. Thinking is off "
+             "unless you turn it on, and even off it sometimes thinks briefly."),
 }
 DEFAULT_MODEL_NAME = "qwen3.8-27b-4bit"
 

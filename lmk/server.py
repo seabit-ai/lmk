@@ -180,6 +180,10 @@ class LmkServer:
                             "choices": [{"index": 0, "message": message, "finish_reason": result["finish_reason"]}]})
         return result
 
+    @property
+    def engine(self) -> Engine:
+        return self._engine
+
     def status(self) -> dict:
         m = self._engine.loaded_model()
         board = self._board.snapshot()

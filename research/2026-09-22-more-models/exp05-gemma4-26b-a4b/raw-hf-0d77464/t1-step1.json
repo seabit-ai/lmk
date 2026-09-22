@@ -1,0 +1,35 @@
+{
+ "id": "chatcmpl-feebb8dbbbd64166b57d6177",
+ "created": 1790091826,
+ "model": "gemma-4-26b-a4b-4bit",
+ "object": "chat.completion",
+ "usage": {
+  "prompt_tokens": 195,
+  "completion_tokens": 122,
+  "total_tokens": 317,
+  "prompt_tokens_details": {
+   "cached_tokens": 6
+  }
+ },
+ "choices": [
+  {
+   "index": 0,
+   "message": {
+    "role": "assistant",
+    "content": null,
+    "reasoning_content": "The user wants to change a specific item in `notes.md`.\nFirst, I need to read the file `notes.md` to see its content and find the \"milk\" item.\nThen, I will use `file_edit` to replace the old text with the new text.\n\nPlan:\n1. Read `notes.md`.\n2. Identify the line containing \"milk\".\n3. Use `file_edit` to change it to \"buy almond milk\".",
+    "tool_calls": [
+     {
+      "id": "call_b01e4c54e5864c51",
+      "type": "function",
+      "function": {
+       "name": "file_read",
+       "arguments": "{\"path\": \"notes.md\"}"
+      }
+     }
+    ]
+   },
+   "finish_reason": "tool_calls"
+  }
+ ]
+}

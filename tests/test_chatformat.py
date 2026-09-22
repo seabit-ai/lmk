@@ -69,10 +69,11 @@ def test_template_kwargs_reach_the_chat_template_on_every_render():
 # --- dialects: the per-family knowledge, chosen from the template text
 
 def test_the_dialect_is_read_off_the_chat_template():
-    from lmk.chatformat import GEMMA4, PLAIN, QWEN, dialect_for_template
+    from lmk.chatformat import GEMMA4, GEMMA4_LEGACY_TOOLS, PLAIN, QWEN, dialect_for_template
 
     assert dialect_for_template("... {{ '<think>\n' }} ...") is QWEN
-    assert dialect_for_template("... {{- '<|channel>thought\n<channel|>' -}} ...") is GEMMA4
+    assert dialect_for_template("... {{- '<|channel>thought\n<channel|>' -}} ... tc.get('id') == follow.get('tool_call_id')") is GEMMA4
+    assert dialect_for_template("... {{- '<|channel>thought\n<channel|>' -}} ... message['tool_responses'] ...") is GEMMA4_LEGACY_TOOLS
     assert dialect_for_template("{% for m in messages %}{{ m.content }}{% endfor %}") is PLAIN
     assert dialect_for_template(None) is PLAIN
 
@@ -80,7 +81,7 @@ def test_the_dialect_is_read_off_the_chat_template():
 def test_qwen_thinks_by_default_and_the_prompt_can_end_inside_the_think_block():
     from lmk.chatformat import QWEN
 
-    assert QWEN.thinking_default is True and QWEN.think_open == "<think>" and QWEN.think_close == "</think>"
+    assert QWEN.thinking_default is True and QWEN.prompt_decides_thinking is True and QWEN.think_open == "<think>" and QWEN.think_close == "</think>"
     assert QWEN.starts_in_reasoning("...<|im_start|>assistant\n<think>\n") is True
     assert QWEN.starts_in_reasoning("...<|im_start|>assistant\n<think>\n\n</think>\n\n") is False
 
@@ -88,7 +89,7 @@ def test_qwen_thinks_by_default_and_the_prompt_can_end_inside_the_think_block():
 def test_gemma_does_not_think_unless_asked_and_opens_its_own_thought_channel():
     from lmk.chatformat import GEMMA4
 
-    assert GEMMA4.thinking_default is False
+    assert GEMMA4.thinking_default is False and GEMMA4.prompt_decides_thinking is False
     assert (GEMMA4.think_open, GEMMA4.think_close) == ("<|channel>thought\n", "<channel|>")
     # thinking on: the prompt ends with the model turn and the model writes the channel itself
     assert GEMMA4.starts_in_reasoning("...<turn|>\n<|turn>model\n") is False
@@ -96,8 +97,15 @@ def test_gemma_does_not_think_unless_asked_and_opens_its_own_thought_channel():
     assert GEMMA4.starts_in_reasoning("...<|turn>model\n<|channel>thought\n<channel|>") is False
 
 
-def test_gemma_turns_openai_tool_results_into_tool_responses_named_after_the_call():
+def test_the_current_gemma_template_takes_openai_tool_results_as_they_are():
     from lmk.chatformat import GEMMA4
+
+    wire = [{"role": "tool", "tool_call_id": "c", "content": "x"}]
+    assert GEMMA4.for_template(wire) == [{"role": "tool", "tool_call_id": "c", "content": "x"}]
+
+
+def test_the_earlier_gemma_template_needs_tool_responses_named_after_the_call():
+    from lmk.chatformat import GEMMA4_LEGACY_TOOLS as GEMMA4
 
     wire = [{"role": "user", "content": "read it"},
             {"role": "assistant", "content": None, "tool_calls": [
@@ -112,7 +120,7 @@ def test_gemma_turns_openai_tool_results_into_tool_responses_named_after_the_cal
 
 
 def test_a_tool_result_whose_call_is_unknown_keeps_going_with_an_unknown_name():
-    from lmk.chatformat import GEMMA4
+    from lmk.chatformat import GEMMA4_LEGACY_TOOLS as GEMMA4
 
     out = GEMMA4.for_template([{"role": "tool", "tool_call_id": "nope", "content": "x"}])
     assert out[0]["tool_responses"] == [{"name": "unknown", "response": "x"}]

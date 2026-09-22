@@ -55,3 +55,6 @@
   集成测试开关思考各 5/5；三个 agent 任务 3/3；decode 53.7（比标准版慢 11%，与"字节少就快"的预期相反）、prefill 746、cached 89k。
   它回答的是"122B 能否上 64 GB Mac"——从内存看能（43.9 GiB baseline + KV），但没有 64 GB 机器实测；作者是个人（baa-ai），下载 484。
   ⇒ 进表，备注写明 2 bit 专家、出处、速度不升反降；"Not tested" 写 64 GB 机器与难任务质量。
+- **MDL-012 Gemma 4 26B-A4B 进 lmk（exp05）**：第二个家族。Dialect（思考标记/缺省/每轮必思考/消息形状）落地；集成测试开关各 5/5；
+  agent 任务 3/3；decode 113.5、冷 prefill 约 1,850、cached 87k；15 GB 权重、262k 窗口。三条 Qwen 隐含假设被翻出（F1–F3）。
+  Gemma 的 `thinking: false` 是提示不是硬开关（F3）。

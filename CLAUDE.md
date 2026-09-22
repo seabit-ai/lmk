@@ -77,7 +77,7 @@
 | `lmk/serve.py` `server.py` | 前台服务；HTTP 路由；请求的唯一出口 |
 | `lmk/admission.py` | 引擎前面的准入队列，四条规则（设计 memory-guard §F） |
 | `lmk/board.py` | `lmk status` 看到的请求状态、刚结束的、总数 |
-| `lmk/chat.py` `chatformat.py` `splitter.py` | 渲染 prompt、OpenAI 形状的流、思考/回答/工具调用三路切分 |
+| `lmk/chat.py` `chatformat.py` `splitter.py` | 渲染 prompt、OpenAI 形状的流、思考/回答/工具调用三路切分。**家族方言** `Dialect`（思考标记、思考缺省、prompt 还是模型决定思考、消息形状）住在 chatformat，按模板文本选 QWEN / GEMMA4 / GEMMA4_LEGACY_TOOLS / PLAIN；切分器只吃 `Markers` |
 | `docs/models/<name>.md` | 每个实测模型一页（owner 裁，2026-09-22："the only way to make those things super clear"）：Fits / Speed / Recommended configuration / Thinking / Tested / Not tested；单测锁住每个 TESTED_MODELS 都有页且六节齐全；`lmk up`/`status` 印链接 |
 | `lmk/bench.py` | `lmk bench`：预热 + 冷 prefill / cache 命中 / decode 三探针，出 `docs/benchmarks.md` 的一行 |
 | `lmk/sampling.py` `stopmatch.py` | OpenAI 采样参数 → 引擎名字、校验、模型的 generation_config 缺省；stop 只截回答段（设计 2026-09-21-sampling） |
@@ -97,6 +97,9 @@
   `make clean venv` → `make cache-compat` + `make itest`；不过就 `CACHE_FORMAT_VERSION` +1。
 - 引擎缺省是贪心（temp 0）且不读模型的 generation_config；引擎的 `stop_strings` 对思考段也生效；`seed` 在批处理路径被引擎忽略。
   三条都由 lmk 侧兜住（`sampling.py` / `stopmatch.py`），别把 stop 或 seed "顺手"直接传给引擎。
+- **第二个家族翻出来的 Qwen 假设**（Gemma 4，2026-09-22，exp05 F1–F4）：思考开≠每轮都有思考；冷 prefill≠命中为零（Gemma 能取回
+  10 个 turn 头 token）；`thinking: false` 对 Gemma 是提示不是硬开关；同一模型的两个模板修订对工具结果要不同形状。
+  **进表的模型必须是 `lmk pull` 拿到的那份**——本机现成副本（oMLX/LM Studio 留下的）可能是旧修订，只能当线索。
 - 思考 / 回答 / 工具调用的区分**引擎不知道**（对模型都是 token），是 lmk 从文本标记读出来的；换模型家族时靠模板自动选解析器。
 - 读长 prompt 会把所有正在生成的请求拖到近乎停顿（引擎每圈：大家各出 1 token + 一块 2048 的 prefill）。这是准入队列规则二存在的原因。
 - 模型模板把 `enable_thinking` / `reasoning_effort` 渲染在 prompt 最前面：**中途换档 = 整段对话冷算**。力度是 server 级常量（未实现，见 backlog）。

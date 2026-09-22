@@ -60,8 +60,11 @@ class BenchResult:
 
     @property
     def cold_was_cold(self) -> bool:
-        """False when the seed was reused and the 'cold' prompt came back from the cache."""
-        return self.cold.cached_tokens == 0
+        """False when the seed was reused and the 'cold' prompt came back from the cache.
+        A few cached tokens are still cold: the turn header before the nonce is the same in every
+        prompt and some families' caches can hand back that much (Gemma: 10 tokens, exp05); the
+        cache works in 256-token blocks, so less than one block means nothing after the header matched."""
+        return self.cold.cached_tokens < 256
 
     @property
     def cold_prefill_tok_s(self) -> float:
