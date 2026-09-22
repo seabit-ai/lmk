@@ -34,7 +34,7 @@ TESTED_MODELS: dict[str, TestedModel] = {
         repo="mlx-community/Qwen3.5-122B-A10B-4bit", size_gb=69.6,
         note="Mixture of experts, 10B active: ~60 tokens/s and reads prompts at ~750 tokens/s on an M3 Ultra, "
              "but needs about 70 GB for the weights (a 96 GB Mac fits a 165k context). With thinking on it can "
-             "think for thousands of tokens on a small task; consider `thinking: false`."),
+             "think for thousands of tokens on a small task; with `thinking: false` it calls tools correctly in a few dozen tokens."),
 }
 DEFAULT_MODEL_NAME = "qwen3.8-27b-4bit"
 

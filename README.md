@@ -116,7 +116,7 @@ M3 Ultra with 96 GB. Put the name under `model.name` in `~/.lmk/config.yaml`; `l
 |---|---|---|---|
 | `qwen3.8-27b-4bit` (default) | [lmstudio-community/Qwen3.8-27B-MLX-4bit](https://huggingface.co/lmstudio-community/Qwen3.8-27B-MLX-4bit) | 16.1 GB | Text and images in; tool calls and thinking. About 16 GB of memory for the weights. ~39 tokens/s on an M3 Ultra (~33 on long agent conversations). |
 | `qwen3.8-27b-8bit` | [lmstudio-community/Qwen3.8-27B-MLX-8bit](https://huggingface.co/lmstudio-community/Qwen3.8-27B-MLX-8bit) | 29.5 GB | The same model at 8-bit: less quantization loss, about 30 GB of memory for the weights, ~23 tokens/s on an M3 Ultra. Prompt reading is as fast as 4-bit. |
-| `qwen3.5-122b-a10b-4bit` | [mlx-community/Qwen3.5-122B-A10B-4bit](https://huggingface.co/mlx-community/Qwen3.5-122B-A10B-4bit) | 69.6 GB | Mixture of experts, 10B active: ~60 tokens/s and reads prompts at ~750 tokens/s on an M3 Ultra, but needs about 70 GB for the weights (a 96 GB Mac fits a 165k context). With thinking on it can think for thousands of tokens on a small task; consider `thinking: false`. |
+| `qwen3.5-122b-a10b-4bit` | [mlx-community/Qwen3.5-122B-A10B-4bit](https://huggingface.co/mlx-community/Qwen3.5-122B-A10B-4bit) | 69.6 GB | Mixture of experts, 10B active: ~60 tokens/s and reads prompts at ~750 tokens/s on an M3 Ultra, but needs about 70 GB for the weights (a 96 GB Mac fits a 165k context). With thinking on it can think for thousands of tokens on a small task; with `thinking: false` it calls tools correctly in a few dozen tokens. |
 
 Any other MLX model on HuggingFace loads through `model.repo` (see Configuration), untested by us.
 The runtime keeps its prompt cache on disk only for models whose config has a `vision_config`;
