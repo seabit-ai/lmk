@@ -29,7 +29,9 @@ def server():
 
 
 def chat(srv, messages, **extra):
-    body = {"model": "itest-model", "stream": True, "messages": messages, **extra}
+    # temperature 0: these tests check what the model can do, not how it samples; since lmk took
+    # the model's own sampling defaults (temp 1.0 for Qwen) a greedy run is the repeatable one
+    body = {"model": "itest-model", "stream": True, "messages": messages, "temperature": 0, **extra}
     req = urllib.request.Request(f"http://127.0.0.1:{srv.port}/v1/chat/completions", data=json.dumps(body).encode(),
                                  headers={"Content-Type": "application/json", "X-Lmk-Purpose": "itest"}, method="POST")
     raw = urllib.request.urlopen(req, timeout=600).read().decode()

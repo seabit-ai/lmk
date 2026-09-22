@@ -9,7 +9,7 @@
 * A step answers in `about a second` on a small cache miss — also after lmk has been restarted, because the cache is on disk, not in memory.
 * Good visibility: `lmk status` shows every request in flight and where it is — starting, prefilling, decoding, waiting for its turn.
 * Parallel requests, configurable, if you have the memory.
-* One tested model today, Qwen3.8-27B-MLX-4bit; any MLX model on HuggingFace can be configured, untested by us. `Wish list` items are welcome.
+* Two tested models today, Qwen3.8-27B at 4-bit and at 8-bit; any MLX model on HuggingFace can be configured, untested by us. `Wish list` items are welcome.
 * Built on [mlx-engine](https://github.com/lmstudio-ai/mlx-engine). Huge thanks to the LM Studio and MLX teams.
 
 Measured on an M3 Ultra (96 GB) with Qwen3.8-27B-MLX-4bit, one request at a time, from lmk's own
@@ -114,7 +114,7 @@ picked a model and want your agent to be fast on it every day, that is what lmk 
 
 - **`seed` is ignored** — the engine drops it on the batched code path lmk runs on. For a repeatable answer
   send `temperature: 0`. `response_format` / JSON schema output is not wired up yet.
-- One tested model (Qwen3.8-27B, 4-bit). Others load through `model.repo`, untested by us.
+- Two tested models (Qwen3.8-27B at 4-bit and 8-bit). Others load through `model.repo`, untested by us.
 - The memory rules below are tested on one machine (96 GB), where most of them never trigger; on a smaller Mac
   they are covered by unit tests only.
 - No PDF input.
