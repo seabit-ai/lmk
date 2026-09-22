@@ -13,7 +13,7 @@ The fastest model here, and the smallest of the tested ones: 16 GB of weights.
 |---|---|
 | weights in memory | 16 GB |
 | memory when loaded | 14 GiB (measured on the M3 Ultra) |
-| smallest Mac (expected, not tested) | 32 GB — leaves about 9 GiB for conversations |
+| needs at least (expected, not tested) | 32 GB — leaves about 9 GiB for conversations |
 | context on a 96 GB Mac | 262,144 (its maximum) |
 | download | 15.6 GB, `lmk pull` |
 

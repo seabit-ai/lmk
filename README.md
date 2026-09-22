@@ -120,26 +120,26 @@ conversations), not measured on those Macs — if you run one, `lmk bench` and a
 would tell everyone.
 
 <!-- models-table -->
-### 32 GB Mac or larger
+### Needs at least 32 GB
 
 | `model.name` (click for its page) | HuggingFace repo | download | memory when loaded | left for conversations on 32 GB | notes |
 |---|---|---|---|---|---|
 | [`qwen3.8-27b-4bit`](docs/models/qwen3.8-27b-4bit.md) (default) | [lmstudio-community/Qwen3.8-27B-MLX-4bit](https://huggingface.co/lmstudio-community/Qwen3.8-27B-MLX-4bit) | 16.1 GB | 15 GiB | 8 GiB | Text and images in; tool calls and thinking. About 16 GB of memory for the weights. ~39 tokens/s on an M3 Ultra (~33 on long agent conversations). |
 | [`gemma-4-26b-a4b-4bit`](docs/models/gemma-4-26b-a4b-4bit.md) | [mlx-community/gemma-4-26b-a4b-it-4bit](https://huggingface.co/mlx-community/gemma-4-26b-a4b-it-4bit) | 15.6 GB | 14 GiB | 9 GiB | Google's Gemma 4, a mixture of experts with 4B active: the fastest model here (~120 tokens/s, reads prompts at ~1,800 tokens/s on an M3 Ultra) in 16 GB. Text and images in, tool calls. Thinking is off unless you turn it on, and even off it sometimes thinks briefly. |
 
-### 48 GB Mac or larger
+### Needs at least 48 GB
 
 | `model.name` (click for its page) | HuggingFace repo | download | memory when loaded | left for conversations on 48 GB | notes |
 |---|---|---|---|---|---|
 | [`qwen3.8-27b-8bit`](docs/models/qwen3.8-27b-8bit.md) | [lmstudio-community/Qwen3.8-27B-MLX-8bit](https://huggingface.co/lmstudio-community/Qwen3.8-27B-MLX-8bit) | 29.5 GB | 27 GiB | 8 GiB | The same model at 8-bit: less quantization loss, about 30 GB of memory for the weights, ~23 tokens/s on an M3 Ultra. Prompt reading is as fast as 4-bit. |
 
-### 64 GB Mac or larger
+### Needs at least 64 GB
 
 | `model.name` (click for its page) | HuggingFace repo | download | memory when loaded | left for conversations on 64 GB | notes |
 |---|---|---|---|---|---|
 | [`qwen3.5-122b-a10b-48gb`](docs/models/qwen3.5-122b-a10b-48gb.md) | [baa-ai/Qwen3.5-122B-A10B-RAM-48GB-MLX](https://huggingface.co/baa-ai/Qwen3.5-122B-A10B-RAM-48GB-MLX) | 47.2 GB | 44 GiB | 5 GiB | The same 122B with its experts squeezed to 2–3 bits (attention stays at 5–8) to fit in less memory: about 44 GB for the weights, the full 262k context on a 96 GB Mac. A community quantization, not the model authors'. ~54 tokens/s on an M3 Ultra — slower than the 4-bit, not faster. Same thinking caveat. |
 
-### 96 GB Mac or larger
+### Needs at least 96 GB
 
 | `model.name` (click for its page) | HuggingFace repo | download | memory when loaded | left for conversations on 96 GB | notes |
 |---|---|---|---|---|---|

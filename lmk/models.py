@@ -88,7 +88,7 @@ def tested_models_markdown() -> str:
         tiers.setdefault(smallest_mac_gb(m), []).append(name)
     out = []
     for gb in sorted(tiers):
-        out.append(f"### {gb} GB Mac or larger")
+        out.append(f"### Needs at least {gb} GB")
         out.append("")
         out.append("| `model.name` (click for its page) | HuggingFace repo | download | memory when loaded | "
                    f"left for conversations on {gb} GB | notes |")

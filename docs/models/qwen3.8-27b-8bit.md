@@ -9,7 +9,7 @@ weight bytes. Text and images in, tool calls, thinking.
 |---|---|
 | weights in memory | 30 GB |
 | memory when loaded | 27 GiB (measured on the M3 Ultra) |
-| smallest Mac (expected, not tested) | 48 GB — leaves about 8 GiB for conversations |
+| needs at least (expected, not tested) | 48 GB — leaves about 8 GiB for conversations |
 | context on a 96 GB Mac | 262,144 (its maximum) |
 | download | 29.5 GB, `lmk pull` |
 

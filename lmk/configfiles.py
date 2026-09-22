@@ -106,7 +106,7 @@ def _model_list() -> str:
     for name, m in TESTED_MODELS.items():
         tiers.setdefault(smallest_mac_gb(m), []).append(name)
     for gb in sorted(tiers):
-        lines.append(f"#   -- {gb} GB Mac or larger --")
+        lines.append(f"#   -- needs at least {gb} GB --")
         for name in tiers[gb]:
             m = TESTED_MODELS[name]
             lines.append(f"#   {name:<24} {m.size_gb:>5.1f} GB download, {m.loaded_gib:.0f} GiB loaded   {m.repo}")
