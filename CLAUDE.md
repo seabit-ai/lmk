@@ -63,7 +63,7 @@
 `K1–K7` 第一版的里程碑（`docs/design/2026-09-19-lmk.md`）· `WISH` 自建 server 的愿望清单（`research/2026-09-19-local-llm-server-wishlist`）·
 `LMK` 引擎摸底（`research/2026-09-19-lmk-spike`）· `OOBE`（`research/2026-09-20-lmk-oobe`）· `SVY` 同类方案调研与 oMLX 实测
 （`research/2026-09-20-local-server-survey`）· `UPS` 给上游的提案（`research/2026-09-20-mlx-engine-upstream`）· `MG` 内存护栏与并发
-（`research/2026-09-20-memory-guard`）· *kitten*：`LMS` LM Studio provider 调研、`CCE` 压缩与 cache 的经济账、`BHC` 另一个 agent 的失败案例研究。
+（`research/2026-09-20-memory-guard`）· `THK` 思考长度（`research/2026-09-20-thinking-length`）· `SMP` 采样参数（`research/2026-09-21-sampling`）· *kitten*：`LMS` LM Studio provider 调研、`CCE` 压缩与 cache 的经济账、`BHC` 另一个 agent 的失败案例研究。
 
 ## 地图
 | 文件 | 管什么 |
@@ -73,6 +73,7 @@
 | `lmk/admission.py` | 引擎前面的准入队列，四条规则（设计 memory-guard §F） |
 | `lmk/board.py` | `lmk status` 看到的请求状态、刚结束的、总数 |
 | `lmk/chat.py` `chatformat.py` `splitter.py` | 渲染 prompt、OpenAI 形状的流、思考/回答/工具调用三路切分 |
+| `lmk/sampling.py` `stopmatch.py` | OpenAI 采样参数 → 引擎名字、校验、模型的 generation_config 缺省；stop 只截回答段（设计 2026-09-21-sampling） |
 | `lmk/engine.py` | **与 mlx-engine 之间唯一的接缝**（`Engine` 协议、`MlxEngine`、`FakeEngine`） |
 | `lmk/persistcache.py` | 持久化前缀 cache：身份、上限、跨重启恢复 |
 | `lmk/config.py` `configfiles.py` `models.py` `modelfit.py` `memory.py` | 配置与缺省值、两份配置文件、模型清单与 HF 解析、装不装得下、内存读数 |
@@ -86,6 +87,8 @@
 - 引擎自带的磁盘预算（一个满窗口 / 空闲盘的四分之一）是为它的**临时** cache 设计的，已在 `persistcache.cache_budget` 里覆盖；别"顺手"改回去。
 - cache 身份**不含引擎 commit**（升级不该赔掉用户 100GB 的 cache）。升级引擎的规程：`make cache-fixture` → 换 `ENGINE_COMMIT` 与 requirements →
   `make clean venv` → `make cache-compat` + `make itest`；不过就 `CACHE_FORMAT_VERSION` +1。
+- 引擎缺省是贪心（temp 0）且不读模型的 generation_config；引擎的 `stop_strings` 对思考段也生效；`seed` 在批处理路径被引擎忽略。
+  三条都由 lmk 侧兜住（`sampling.py` / `stopmatch.py`），别把 stop 或 seed "顺手"直接传给引擎。
 - 思考 / 回答 / 工具调用的区分**引擎不知道**（对模型都是 token），是 lmk 从文本标记读出来的；换模型家族时靠模板自动选解析器。
 - 读长 prompt 会把所有正在生成的请求拖到近乎停顿（引擎每圈：大家各出 1 token + 一块 2048 的 prefill）。这是准入队列规则二存在的原因。
 - 模型模板把 `enable_thinking` / `reasoning_effort` 渲染在 prompt 最前面：**中途换档 = 整段对话冷算**。力度是 server 级常量（未实现，见 backlog）。
