@@ -21,7 +21,7 @@ def _seed_text() -> str:
 
     model:
       name: {DEFAULT_MODEL_NAME}       # a tested model; the list is in config.yaml.example
-      # Instead of name — one of these two — for a model that is not in the tested list:
+      # For a model that is not in the tested list, replace the name: line with ONE of these:
       # repo: mlx-community/Qwen3-30B-A3B-4bit   # its HuggingFace address after huggingface.co/ (any MLX model;
       #                                          # `lmk pull` downloads it; whether it works, we have not checked)
       # path: /Users/me/models/Some-Model-MLX    # a model folder already on this Mac (nothing to download)

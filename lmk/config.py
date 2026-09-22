@@ -111,7 +111,7 @@ def _positive_int(section: dict, where: str, key: str, default: int) -> int:
 def _model_source(model: dict) -> ModelSource:
     named = [k for k in ("name", "repo", "path") if model.get(k)]
     if len(named) > 1:
-        raise ConfigError(f"model: set only one of name / repo / path (found {', '.join(named)})")
+        raise ConfigError(f"model: name, repo and path each say which model to load, so keep only one of them (found {', '.join(named)})")
     if not named:
         return ModelSource("name", DEFAULT_MODEL_NAME)
     kind, value = named[0], str(model[named[0]])
