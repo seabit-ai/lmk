@@ -160,8 +160,8 @@ def human_block(r: BenchResult) -> str:
             else f"      —           (seed {r.seed} reused and the cache still had it)")
     hit = f"{_k(r.hit_tok_s):>7} tokens/s" if r.hit_tok_s is not None else "       ? tokens/s   (this lmk does not report restore time)"
     lines = [f"  prefill          {cold}",
-             f"  cached prefill   {hit}   ({r.hit.cached_tokens:,} of {r.hit.prompt_tokens:,} tokens from disk; "
-             f"first token after {r.hit_first_token_s:.2f} s, the rest is the last partial block computed)",
+             f"  cached prefill   {hit}   ({r.hit.cached_tokens:,} of {r.hit.prompt_tokens:,} from disk; "
+             f"first token {r.hit_first_token_s:.2f} s incl. the last partial block)",
              f"  decode           {r.decode_tok_s:>7.1f} tokens/s"]
     if r.warmup.first_token_ms > 3000:
         lines.append(f"  (the warm-up request took {r.warmup.first_token_ms / 1000:.0f} s: the weights had to be paged back in; not counted)")

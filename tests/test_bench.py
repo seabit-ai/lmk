@@ -68,8 +68,8 @@ def test_human_block_is_three_numbers_and_flags_a_slow_warm_up_only_when_it_happ
     fast = bench.BenchResult(seed=1, warmup=bench.Probe(20, 0, 8, 300, 500), cold=bench.Probe(4060, 0, 32, 12_775, 14_143),
                              hit=bench.Probe(4060, 3840, 32, 1_010, 1_800, restore_ms=72), decode=bench.Probe(66, 0, 400, 422, 17_869))
     assert bench.human_block(fast) == ("  prefill              318 tokens/s\n"
-                                       "  cached prefill       53k tokens/s   (3,840 of 4,060 tokens from disk; "
-                                       "first token after 1.01 s, the rest is the last partial block computed)\n"
+                                       "  cached prefill       53k tokens/s   (3,840 of 4,060 from disk; "
+                                       "first token 1.01 s incl. the last partial block)\n"
                                        "  decode              22.9 tokens/s")
     slow = bench.BenchResult(seed=1, warmup=bench.Probe(20, 0, 8, 37_000, 37_500), cold=fast.cold, hit=fast.hit, decode=fast.decode)
     assert bench.human_block(slow).endswith("(the warm-up request took 37 s: the weights had to be paged back in; not counted)")
