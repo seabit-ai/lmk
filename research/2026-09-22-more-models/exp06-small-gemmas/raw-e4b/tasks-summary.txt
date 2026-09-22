@@ -1,0 +1,4 @@
+T1 step1: [('file_read', {'path': 'notes.md'})] | tokens 123
+T1 step2: [('file_edit', {'new_text': '- buy almond milk', 'old_text': '- buy oat milk', 'path': 'notes.md'})] | tokens 164
+T2: [] | An operation is idempotent if applying it multiple times produces the same result as applying it a single time, meaning  | tokens 306
+T3: [('file_read', {'max_lines': 5, 'path': 'notes.md'})] | types: ['int', 'str'] | tokens 68

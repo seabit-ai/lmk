@@ -111,18 +111,21 @@ def test_every_tested_model_has_its_own_page():
         page = Path(__file__).resolve().parent.parent / "docs" / "models" / f"{name}.md"
         assert page.exists(), f"docs/models/{name}.md is missing: every tested model gets a page"
         text = page.read_text()
-        for heading in ("## Fits", "## Speed", "## Recommended configuration", "## Thinking", "## Tested", "## Not tested"):
+        for heading in ("## Fits", "## Speed", "## Recommended configuration", "## Thinking", "## Known issues", "## Tested", "## Not tested"):
             assert heading in text, f"{page.name} lacks '{heading}'"
         from lmk.models import smallest_mac_gb
         assert f"| needs at least (expected, not tested) | {smallest_mac_gb(TESTED_MODELS[name])} GB" in text, \
             f"{page.name}: the smallest-Mac row disagrees with smallest_mac_gb()"
 
 
-def test_models_are_grouped_by_the_smallest_mac_that_leaves_room_for_conversations():
-    from lmk.models import TESTED_MODELS, room_for_conversations_gib, smallest_mac_gb, tested_models_markdown
+def test_models_are_grouped_by_the_smallest_mac_with_a_useful_context():
+    from lmk.models import TESTED_MODELS, context_on, smallest_mac_gb, tested_models_markdown
 
-    assert smallest_mac_gb(TESTED_MODELS["qwen3.8-27b-4bit"]) == 32       # loads on 24 GB, but with 1.5 GiB to talk in
-    assert smallest_mac_gb(TESTED_MODELS["qwen3.5-122b-a10b-4bit"]) == 96
-    assert room_for_conversations_gib(TESTED_MODELS["qwen3.5-122b-a10b-4bit"], 96) == pytest.approx(9.9, abs=0.1)
+    m122 = TESTED_MODELS["qwen3.5-122b-a10b-4bit"]
+    assert context_on(m122, 96) == 165_888                  # measured on our 96 GB Mac wins over the formula
+    assert context_on(m122, 64) == 0 and smallest_mac_gb(m122) == 96
+    m27 = TESTED_MODELS["qwen3.8-27b-4bit"]
+    assert context_on(m27, 96) == 262_144 and context_on(m27, 24) < 32_768 and smallest_mac_gb(m27) == 32
     md = tested_models_markdown()
     assert md.index("### Needs at least 32 GB") < md.index("### Needs at least 48 GB") < md.index("### Needs at least 96 GB")
+    assert "| context on 32 GB |" in md and "165k of 262k" in md

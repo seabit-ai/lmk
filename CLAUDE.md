@@ -21,6 +21,9 @@
 ## lmk 是什么（定位，已裁，别重新争）
 一台机器、一个模型、常驻常热的 appliance，给 agent 用。用户拿到的是一个地址 + 一个 model id。
 明确不做：模型库浏览、多模型同驻、每模型参数面板、菜单栏应用、网页管理台、自动更新。理由与被否方案：`docs/design/2026-09-20-lmk-oobe.md` §A。
+**第二个价值（owner，2026-09-22）：把部落知识收拢、封装给客户。** "which model, what settings, what breaks" 这类知识散在论坛和
+各人踩坑里；lmk 把它做成产品的一部分——实测模型表（分组、该机型能用的上下文、三个速度）、每模型一页（推荐配置整段可粘贴、
+Known issues）、启动时校验会炸的配置值。加模型的工作量大头就是把坑撞出来写下来，不是接线。
 它为什么值得存在（实测，条件见原文）：Qwen3.5/3.8 这类混合架构模型上，对话的每一步 0.8–1.5 秒出字，同机 oMLX 约 10 秒——
 `research/2026-09-20-local-server-survey/`。这个优势来自 mlx-engine 的 checkpoint 策略；对用户来说"谁写的"无所谓，体验才是结论。
 
@@ -78,7 +81,7 @@
 | `lmk/admission.py` | 引擎前面的准入队列，四条规则（设计 memory-guard §F） |
 | `lmk/board.py` | `lmk status` 看到的请求状态、刚结束的、总数 |
 | `lmk/chat.py` `chatformat.py` `splitter.py` | 渲染 prompt、OpenAI 形状的流、思考/回答/工具调用三路切分。**家族方言** `Dialect`（思考标记、思考缺省、prompt 还是模型决定思考、消息形状）住在 chatformat，按模板文本选 QWEN / GEMMA4 / GEMMA4_LEGACY_TOOLS / PLAIN；切分器只吃 `Markers` |
-| `docs/models/<name>.md` | 每个实测模型一页（owner 裁，2026-09-22："the only way to make those things super clear"）：Fits / Speed / Recommended configuration / Thinking / Tested / Not tested；单测锁住每个 TESTED_MODELS 都有页且六节齐全；`lmk up`/`status` 印链接 |
+| `docs/models/<name>.md` | 每个实测模型一页（owner 裁，2026-09-22："the only way to make those things super clear"）：Fits / Speed / Recommended configuration / Thinking / **Known issues** / Tested / Not tested；单测锁住每个 TESTED_MODELS 都有页且七节齐全。README 的 Models 表由 `tested_models_markdown()` 生成（按'至少 N GB'分组，窗口用引擎公式 `context_on`）；`lmk up`/`status` 印链接 |
 | `lmk/bench.py` | `lmk bench`：预热 + 冷 prefill / cache 命中 / decode 三探针，出 `docs/benchmarks.md` 的一行 |
 | `lmk/sampling.py` `stopmatch.py` | OpenAI 采样参数 → 引擎名字、校验、模型的 generation_config 缺省；stop 只截回答段（设计 2026-09-21-sampling） |
 | `lmk/engine.py` | **与 mlx-engine 之间唯一的接缝**（`Engine` 协议、`MlxEngine`、`FakeEngine`） |
@@ -97,6 +100,8 @@
   `make clean venv` → `make cache-compat` + `make itest`；不过就 `CACHE_FORMAT_VERSION` +1。
 - 引擎缺省是贪心（temp 0）且不读模型的 generation_config；引擎的 `stop_strings` 对思考段也生效；`seed` 在批处理路径被引擎忽略。
   三条都由 lmk 侧兜住（`sampling.py` / `stopmatch.py`），别把 stop 或 seed "顺手"直接传给引擎。
+- **进表的门槛**：集成测试开关各 5/5 **且** exp03 那三个 agent 任务在模型缺省采样下多轮全对；过不了的（Gemma 4 12B）写进 README '试过未列'，不进表。
+- zsh 里 `set -- $var` 不拆词（未加引号的变量不做 word splitting）——跑多模型循环用 bash 脚本，别在 zsh 单行里 `for pair in "a b"`（2026-09-22 起错了一个默认配置的服务占了 1235 端口）。
 - **第二个家族翻出来的 Qwen 假设**（Gemma 4，2026-09-22，exp05 F1–F4）：思考开≠每轮都有思考；冷 prefill≠命中为零（Gemma 能取回
   10 个 turn 头 token）；`thinking: false` 对 Gemma 是提示不是硬开关；同一模型的两个模板修订对工具结果要不同形状。
   **进表的模型必须是 `lmk pull` 拿到的那份**——本机现成副本（oMLX/LM Studio 留下的）可能是旧修订，只能当线索。

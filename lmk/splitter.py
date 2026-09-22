@@ -69,11 +69,9 @@ class OutputSplitter:
             self._phase = "text"
             return True
         if self._phase == "text":
-            if not self._tool_start:
-                self._emit(self._on_text, p)
-                self._pending = ""
-                return False
-            return self._until(self._tool_start, self._on_text, "tool")
+            # a tool call or another think block may begin anywhere in the answer: Gemma 4 opens
+            # thought channels mid-turn, even a second, empty one right before a tool call (exp06)
+            return self._until_any([(self._tool_start, "tool"), (self._think_open, "reasoning")], self._on_text)
         # "tool": hold everything until the end marker, then hand over the whole block
         i = p.find(self._tool_end)
         if i < 0:
@@ -83,13 +81,24 @@ class OutputSplitter:
         return True
 
     def _until(self, marker: str, emit, next_phase: str) -> bool:
+        return self._until_any([(marker, next_phase)], emit)
+
+    def _until_any(self, markers: list, emit) -> bool:
+        """Emit up to the earliest of the markers and switch to its phase; hold back any tail that
+        could be the start of one of them."""
         p = self._pending
-        i = p.find(marker)
-        if i >= 0:
+        live = [(m, phase) for m, phase in markers if m]
+        if not live:
+            self._emit(emit, p)
+            self._pending = ""
+            return False
+        hits = [(p.find(m), m, phase) for m, phase in live if m in p]
+        if hits:
+            i, m, phase = min(hits)
             self._emit(emit, p[:i])
-            self._pending, self._phase = p[i + len(marker):], next_phase
+            self._pending, self._phase = p[i + len(m):], phase
             return True
-        keep = _partial_suffix_len(p, marker)
+        keep = max(_partial_suffix_len(p, m) for m, _ in live)
         self._emit(emit, p[:len(p) - keep])
         self._pending = p[len(p) - keep:]
         return False

@@ -1,0 +1,35 @@
+{
+ "id": "chatcmpl-27ef65c342c64c869052653f",
+ "created": 1790095292,
+ "model": "gemma-4-e4b-4bit",
+ "object": "chat.completion",
+ "usage": {
+  "prompt_tokens": 240,
+  "completion_tokens": 165,
+  "total_tokens": 405,
+  "prompt_tokens_details": {
+   "cached_tokens": 195
+  }
+ },
+ "choices": [
+  {
+   "index": 0,
+   "message": {
+    "role": "assistant",
+    "content": null,
+    "reasoning_content": "The user wants to change \"milk\" to \"almond milk\" in `notes.md`.\nThe current content of `notes.md` is:\n```markdown\n# notes\n- ship lmk\n- buy oat milk\n- call mom\n```\nThe line to change is `- buy oat milk`.\nThe goal is to change it to `- buy almond milk`.\n\nI need to use the `file_edit` tool.\n\n`path`: `notes.md`\n`old_text`: `- buy oat milk`\n`new_text`: `- buy almond milk`",
+    "tool_calls": [
+     {
+      "id": "call_73fae3683fe442aa",
+      "type": "function",
+      "function": {
+       "name": "file_edit",
+       "arguments": "{\"new_text\": \"- buy almond milk\", \"old_text\": \"- buy oat milk\", \"path\": \"notes.md\"}"
+      }
+     }
+    ]
+   },
+   "finish_reason": "tool_calls"
+  }
+ ]
+}

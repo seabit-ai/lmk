@@ -11,7 +11,7 @@ Qwen3.5-122B-A10B: a mixture-of-experts model, 122B parameters of which 10B are 
 |---|---|
 | weights in memory | 70 GB |
 | memory when loaded | 65 GiB (measured on the M3 Ultra) |
-| needs at least (expected, not tested) | 96 GB — leaves about 10 GiB for conversations |
+| needs at least (expected, not tested) | 96 GB — about 167k of context there; the full 262k from 128 GB up |
 | context on a 96 GB Mac | 165,888 — lowered from 262,144 to fit; about 10 GB is left for conversations |
 | download | 69.6 GB, `lmk pull` |
 
@@ -45,6 +45,15 @@ called tools correctly in a few dozen tokens per step.
 
 Server-wide, never per request — the setting sits at the start of every prompt, so changing it
 makes every cached conversation cold once.
+
+## Known issues
+
+- **With thinking on, any count in the request can send it into a loop:** "a 250-word story",
+  "about 250 words", "exactly three bullets" — it drafts, then counts the words of its draft one by
+  one, and runs out of tokens without answering (6,000 tokens, no story). `thinking: false` avoids it.
+- **The context is cut to 165k on a 96 GB Mac**, and nothing else can hold GPU memory beside it.
+- **Two long conversations at once fill it up:** the token budget for parallel requests is about
+  430k against 980k for the 27B.
 
 ## Tested
 

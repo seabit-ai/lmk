@@ -15,7 +15,7 @@ LM Studio / mlx-community, and 2-bit experts are an aggressive setting — read 
 |---|---|
 | weights in memory | 44 GB |
 | memory when loaded | 44 GiB (measured on the M3 Ultra) |
-| needs at least (expected, not tested) | 64 GB — leaves about 5 GiB for conversations |
+| needs at least (expected, not tested) | 64 GB — about 83k of context there; the full 262k from 96 GB up |
 | context on a 96 GB Mac | 262,144 (its maximum), with room for two long conversations at once |
 | download | 47.2 GB, `lmk pull` |
 
@@ -42,6 +42,13 @@ Same as the 4-bit: **off is the usable setting for an agent.** With thinking on,
 request sends this model into counting the words of its draft one by one until it runs out of
 tokens. Its template has only an on/off switch. Server-wide, never per request — changing it makes
 every cached conversation cold once.
+
+## Known issues
+
+- Same thinking loop as [qwen3.5-122b-a10b-4bit](qwen3.5-122b-a10b-4bit.md): use `thinking: false`.
+- **Slower than the 4-bit, not faster** (54 against 60 tok/s) despite reading fewer bytes per token.
+- **2-bit experts.** Quality on hard tasks is unmeasured; our four small tasks showed no difference.
+- **A community quantization** (baa-ai), not the model authors' or a maintained org's.
 
 ## Tested
 

@@ -1,0 +1,7 @@
+gemma-4-e4b-4bit on Apple M3 Ultra 96 GB — measuring, about a minute
+  prefill             2199 tokens/s
+  cached prefill      183k tokens/s   (3,840 of 4,038 from disk; first token 0.19 s incl. the last partial block)
+  decode              93.5 tokens/s
+
+  seed 833712   ·   row for docs/benchmarks.md:
+| Apple M3 Ultra | 96 GB | gemma-4-e4b-4bit | 131,072 | 2199 tok/s (4,027 tokens) | 183k tok/s (3,840 cached; first token 0.19 s) | 93.5 tok/s | dev | 08f0c07 | 2026-09-22 |
