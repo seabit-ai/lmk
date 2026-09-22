@@ -100,3 +100,16 @@ def test_the_readme_models_table_is_the_tested_list():
 
     readme = (Path(__file__).resolve().parent.parent / "README.md").read_text()
     assert tested_models_markdown() in readme, "README.md 'Models' table is out of date: paste tested_models_markdown()"
+
+
+def test_every_tested_model_has_its_own_page():
+    from pathlib import Path
+
+    from lmk.models import TESTED_MODELS
+
+    for name in TESTED_MODELS:
+        page = Path(__file__).resolve().parent.parent / "docs" / "models" / f"{name}.md"
+        assert page.exists(), f"docs/models/{name}.md is missing: every tested model gets a page"
+        text = page.read_text()
+        for heading in ("## Fits", "## Speed", "## Recommended configuration", "## Thinking", "## Tested", "## Not tested"):
+            assert heading in text, f"{page.name} lacks '{heading}'"

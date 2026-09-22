@@ -39,12 +39,19 @@ TESTED_MODELS: dict[str, TestedModel] = {
 DEFAULT_MODEL_NAME = "qwen3.8-27b-4bit"
 
 
+def model_page_url(name: str) -> str:
+    """Each tested model has a page: what fits, how fast, the recommended config, what to know."""
+    return f"https://github.com/seabit-ai/lmk/blob/main/docs/models/{name}.md"
+
+
 def tested_models_markdown() -> str:
-    """The table in README.md under "Models". A unit test holds the README to it."""
-    rows = ["| `model.name` | HuggingFace repo | weights | notes |", "|---|---|---|---|"]
+    """The table in README.md under "Models". A unit test holds the README to it,
+    and another holds every row to a page under docs/models/."""
+    rows = ["| `model.name` (click for its page) | HuggingFace repo | weights | notes |", "|---|---|---|---|"]
     for name, m in TESTED_MODELS.items():
         default = " (default)" if name == DEFAULT_MODEL_NAME else ""
-        rows.append(f"| `{name}`{default} | [{m.repo}](https://huggingface.co/{m.repo}) | {m.size_gb:.1f} GB | {m.note} |")
+        rows.append(f"| [`{name}`](docs/models/{name}.md){default} | [{m.repo}](https://huggingface.co/{m.repo}) | "
+                    f"{m.size_gb:.1f} GB | {m.note} |")
     return "\n".join(rows)
 
 
