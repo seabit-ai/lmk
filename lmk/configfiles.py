@@ -21,8 +21,10 @@ def _seed_text() -> str:
 
     model:
       name: {DEFAULT_MODEL_NAME}       # a tested model; the list is in config.yaml.example
-      # repo: some-org/Some-Model-MLX-4bit   # instead of name: any MLX model on HuggingFace, untested by us
-      # path: /path/to/a/model/dir           # instead of name: a directory already on this disk
+      # Instead of name — one of these two — for a model that is not in the tested list:
+      # repo: mlx-community/Qwen3-30B-A3B-4bit   # its HuggingFace address after huggingface.co/ (any MLX model;
+      #                                          # `lmk pull` downloads it; whether it works, we have not checked)
+      # path: /Users/me/models/Some-Model-MLX    # a model folder already on this Mac (nothing to download)
       # context_length: 131072               # default: the model's own maximum, lowered if memory is short
 
     listen:
@@ -50,8 +52,9 @@ _TEMPLATE = f"""\
 # model:
 #   # Name the model in exactly ONE of these three ways:
 #   name: {DEFAULT_MODEL_NAME}              # a tested model — the list is in config.yaml.example
-#   repo: some-org/Some-Model-MLX-4bit # any MLX model on HuggingFace; untested by us
-#   path: /path/to/a/model/dir         # a directory already on this disk; `lmk pull` is not needed
+#   repo: mlx-community/Qwen3-30B-A3B-4bit   # its HuggingFace address after huggingface.co/ — any MLX
+#                                            # model; `lmk pull` downloads it; untested by us
+#   path: /Users/me/models/Some-Model-MLX    # a model folder already on this Mac; nothing to download
 #   # Clients send that name as "model" (for repo / path: the last part, in lower case).
 #
 #   context_length: 131072     # default: the model's own maximum. If this Mac is short of

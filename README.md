@@ -145,8 +145,9 @@ list of models we have tested. The settings, with their defaults:
 
 ```yaml
 model:
-  name: qwen3.8-27b-4bit          # a tested model; or  repo: <any MLX model on HuggingFace>
-                             #                 or  path: <a directory on this disk>
+  name: qwen3.8-27b-4bit          # a tested model (see Models); or, for any other model, one of:
+                             #   repo: mlx-community/Qwen3-30B-A3B-4bit   (its HuggingFace address after huggingface.co/)
+                             #   path: /Users/me/models/Some-Model-MLX    (a model folder already on this Mac)
                              # clients send that name as "model" (repo / path: its last part, lower case)
   # context_length:                             (default: the model's maximum; lmk lowers it if
                              #                   memory is short, and `lmk status` shows the value in use)
