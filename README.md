@@ -137,6 +137,7 @@ and an issue with the row would tell everyone. Speeds are from the M3 Ultra ([`d
 | model | good for | context on 32 GB | images | thinking | reads a new prompt | reads a cached one | writes |
 |---|---|---|---|---|---|---|---|
 | [`qwen3.8-27b-4bit`](docs/models/qwen3.8-27b-4bit.md) (default) | the default: the model lmk was built and measured against, a safe first choice | 85k of 262k | yes | on by default at the top level; `reasoning_effort: low` or `medium` to think less | 323 tok/s | 53k tok/s | 40 tok/s |
+| [`gemma-4-31b-4bit`](docs/models/gemma-4-31b-4bit.md) | the other family at the 27B's size: Google's dense 31B, no thinking unless asked; slower than the Qwen and its cache costs more per token | 39k of 262k | yes | off by default; same as the 26B-A4B | 252 tok/s | 26k tok/s | 33 tok/s |
 
 ### Needs at least 48 GB
 
