@@ -139,7 +139,7 @@ picked a model and want your agent to be fast on it every day, that is what lmk 
 
 ## Configuration
 
-There is nothing you have to configure. `~/.lmk/config.yaml` starts out as comments only;
+There is nothing you have to configure. `~/.lmk/config.yaml` is written at install with every value in use, so what you see is what runs;
 `~/.lmk/config.yaml.example` next to it is the full, always-current reference — including the
 list of models we have tested. The settings, with their defaults:
 

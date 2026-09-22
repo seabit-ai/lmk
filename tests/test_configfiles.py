@@ -1,12 +1,24 @@
 import yaml
 
-from lmk.configfiles import example_text, refresh_example, seed_config
+from lmk.configfiles import _home_for_humans, example_text, refresh_example, seed_config
 
 
-def test_seed_writes_only_comments_and_never_overwrites(tmp_path):
+def test_the_default_home_is_written_as_tilde_for_humans(monkeypatch):
+    monkeypatch.delenv("LMK_HOME", raising=False)
+    assert _home_for_humans() == "~/.lmk"
+    monkeypatch.setenv("LMK_HOME", "/tmp/elsewhere")
+    assert _home_for_humans() == "/tmp/elsewhere"
+
+
+def test_seed_is_a_real_config_with_every_value_written_out_and_is_never_overwritten(tmp_path, monkeypatch):
+    monkeypatch.setenv("LMK_HOME", str(tmp_path))
     path = tmp_path / "config.yaml"
     assert seed_config(path) is True
-    assert yaml.safe_load(path.read_text()) is None  # nothing but comments: no default is frozen on disk
+    doc = yaml.safe_load(path.read_text())
+    assert set(doc) == {"model", "listen", "cache", "requests", "log"}          # nothing commented away
+    assert doc["model"] == {"name": "qwen3.8-27b-4bit"} and doc["listen"] == {"host": "127.0.0.1", "port": 1235}
+    assert doc["cache"] == {"dir": f"{tmp_path}/cache", "max_size": "200G"} and doc["log"] == {"dir": f"{tmp_path}/logs"}
+    assert doc["requests"] == {"max_parallel": 2, "max_queue": 16, "max_wait_seconds": 600}
     path.write_text("listen: {port: 9}\n")
     assert seed_config(path) is False
     assert path.read_text() == "listen: {port: 9}\n"
