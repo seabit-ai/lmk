@@ -14,6 +14,10 @@ Run it on your Mac and paste the row into an [issue](https://github.com/seabit-a
 lmk bench
 ```
 
+Each run prints the seed behind its cold prompt. `lmk bench --seed <that number>` later — after
+`lmk down && lmk up`, or after a reboot — sends the same prompt again: if it comes back from the
+cache, the cache survived, and the run says so instead of reporting a cold number.
+
 | chip | memory | model | context | cold prefill | cache-hit first token | decode | lmk | engine | date |
 |---|---|---|---|---|---|---|---|---|---|
 | Apple M3 Ultra | 96 GB | qwen3.8-27b-4bit | 262,144 | 323 tok/s (4,074 tokens) | 1.02 s (3,840 cached) | 39.5 tok/s | v0.1.0+ | 08f0c07 | 2026-09-22 |

@@ -293,7 +293,7 @@ def cmd_bench(args) -> int:
         return _fail("✗ lmk is busy; a benchmark needs it to itself.  See:  lmk status", 1)
     model = status["model"]
     _say(f"  benchmarking {model['id']} at {url} — about a minute, one request at a time")
-    result = bench.run_bench(bench.stream_via_http(url), model["id"], say=_say)
+    result = bench.run_bench(bench.stream_via_http(url), model["id"], seed=args.seed, say=_say)
     _say("")
     _say(bench.human_block(result))
     _say("")
@@ -317,6 +317,8 @@ def main(argv: Optional[list[str]] = None) -> int:
     sub.add_parser("down", help="stop lmk and do not start it at login")
     p = sub.add_parser("bench", help="measure prefill, cache-hit and decode speed on this Mac; prints a row for docs/benchmarks.md")
     p.add_argument("--url", help="an lmk other than the configured one (default: this Mac's)")
+    p.add_argument("--seed", type=int, help="reuse a seed from an earlier run: the cold probe then tests whether "
+                                            "the cache still holds that prompt (default: a fresh one, so it is cold)")
     sub.add_parser("serve", help=argparse.SUPPRESS)  # what launchd runs
 
     args = parser.parse_args(argv)
