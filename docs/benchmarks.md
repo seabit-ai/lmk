@@ -23,5 +23,6 @@ cache, the cache survived, and the run says so instead of reporting a cold numbe
 | Apple M3 Ultra | 96 GB | qwen3.8-27b-4bit | 262,144 | 323 tok/s (4,074 tokens) | 53k tok/s (3,840 cached; first token 1.02 s) | 39.5 tok/s | v0.2.0+ | 08f0c07 | 2026-09-22 |
 | Apple M3 Ultra | 96 GB | qwen3.8-27b-8bit | 262,144 | 319 tok/s (4,074 tokens) | 44k tok/s (3,840 cached; first token 1.07 s) | 23.1 tok/s | v0.2.0+ | 08f0c07 | 2026-09-22 |
 | Apple M3 Ultra | 96 GB | qwen3.5-122b-a10b-4bit | 165,888 (lowered from 262,144 to fit) | 753 tok/s (4,032 tokens) | 89k tok/s (3,840 cached; first token 0.50 s) | 60.5 tok/s | v0.3.0+ | 08f0c07 | 2026-09-22 |
+| Apple M3 Ultra | 96 GB | qwen3.5-122b-a10b-48gb | 262,144 | 746 tok/s (4,034 tokens) | 89k tok/s (3,840 cached; first token 0.53 s) | 53.7 tok/s | v0.4.0+ | 08f0c07 | 2026-09-22 |
 
 Numbers from real agent traffic (a 56-tool, 11k-token system prompt; a 27k-token conversation) are in the [README](../README.md); they differ from these synthetic probes and both are true under their conditions.
