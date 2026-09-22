@@ -38,6 +38,10 @@
   有副作用的大动作单独成命令（下载 = `lmk pull`，不是 `up` 的副作用）。配置键名带单位（`max_wait_seconds`）。省打字靠"打印可粘贴的片段"。
 - **只报数字，不猜原因。** lmk 不知道内存被谁吃了，就不说"另一个程序在用"。没核实过的原因不进给用户看的字。
 - 要用一段话才解释得清的限制，是设计的问题，不是文档的问题（cache 上限那次的教训：`lmk-oobe.md` §C2 修订）。
+- **交付前过一遍用户面**（2026-09-22 owner 纠偏："you tend to implement with an engineer mind-set; I'm more concerned about what
+  the end user experience looks like"）。命令输出、配置文件、README、报错信息，每个都问三句：第一次用的人看到什么？他要的数/
+  要做的决定在不在第一眼？哪些行是噪音？当天四例全是 owner 先发现：`lmk bench` 输出满是过程、三个数反而没有；`model.id` 与 `name`
+  要一段话解释；种子 config 全注释；实测模型清单装前找不到。功能做完、测试绿 ≠ 完成。
 - 下结论也戴这顶帽子：用户感受得到的量（等几秒）当标尺；"代码是谁写的""功能清单谁长"是工程师的账本，放后面。
 
 ## 取证与实验（research/）
