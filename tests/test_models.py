@@ -91,3 +91,12 @@ def test_finding_a_model_does_not_go_through_the_function_mlx_engine_disables(tm
     monkeypatch.setattr(huggingface_hub, "snapshot_download", sabotaged)
     hf_cache(tmp_path, monkeypatch)
     assert resolve_model(ModelSource("repo", "org/Some-Model")).revision == "abc123"
+
+
+def test_the_readme_models_table_is_the_tested_list():
+    from pathlib import Path
+
+    from lmk.models import tested_models_markdown
+
+    readme = (Path(__file__).resolve().parent.parent / "README.md").read_text()
+    assert tested_models_markdown() in readme, "README.md 'Models' table is out of date: paste tested_models_markdown()"
