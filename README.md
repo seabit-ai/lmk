@@ -157,10 +157,6 @@ and an issue with the row would tell everyone. Speeds are from the M3 Ultra ([`d
 | [`qwen3.5-122b-a10b-4bit`](docs/models/qwen3.5-122b-a10b-4bit.md) | the biggest model here, and faster than the 27B (10B active of 122B); needs the whole GPU of a 96 GB Mac | 165k of 262k | yes | on/off only; **use `thinking: false`** — on, it can think for thousands of tokens on a small task | 753 tok/s | 89k tok/s | 60 tok/s |
 <!-- /models-table -->
 
-**Tried and not listed:** Gemma 4 12B (`lmstudio-community/gemma-4-12B-it-MLX-4bit`) passed the
-integration tests but, on our agent tasks, looped after a tool result in 1 run of 3 and dropped an
-argument in 2 of 3. It may improve with a newer quantization; for a small Mac, the E4B did better.
-
 Any other MLX model on HuggingFace loads through `model.repo` (see Configuration), untested by us.
 The runtime keeps its prompt cache on disk only for models whose config has a `vision_config`;
 a text-only model runs, but every restart starts cold. Speed on other Macs: [`docs/benchmarks.md`](docs/benchmarks.md).
