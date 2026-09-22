@@ -20,9 +20,8 @@ _TEMPLATE = f"""\
 #   name: {DEFAULT_MODEL_NAME}              # a tested model — the list is in config.yaml.example
 #   repo: some-org/Some-Model-MLX-4bit # any MLX model on HuggingFace; untested by us
 #   path: /path/to/a/model/dir         # a directory already on this disk; `lmk pull` is not needed
+#   # Clients send that name as "model" (for repo / path: the last part, in lower case).
 #
-#   id: my-model               # what clients send as "model". Default: the name, or the
-#                              # repo / directory name in lower case.
 #   context_length: 131072     # default: the model's own maximum. If this Mac is short of
 #                              # memory lmk lowers it; `lmk status` shows the value in use.
 #

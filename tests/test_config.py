@@ -36,7 +36,6 @@ def test_the_seeded_all_comment_file_behaves_like_no_file(tmp_path, monkeypatch)
 def test_full_config(tmp_path):
     cfg = load_config(write(tmp_path, """
 model:
-  id: kitten-27b
   path: ~/models/Qwen3.8-27B-MLX-4bit
   context_length: 200000
 listen:
@@ -48,7 +47,7 @@ cache:
 log:
   dir: /tmp/lmk-logs
 """))
-    assert cfg.model.id == "kitten-27b"
+    assert cfg.model.id == "qwen3.8-27b-mlx-4bit"      # the directory name: there is no separate id
     assert cfg.model.source.kind == "path"
     assert cfg.model.source.path == Path.home() / "models" / "Qwen3.8-27B-MLX-4bit"
     assert cfg.model.context_length == 200000
@@ -104,3 +103,8 @@ def test_requests_section(tmp_path):
 def test_request_limits_must_be_whole_numbers_of_one_or_more(tmp_path, bad):
     with pytest.raises(ConfigError, match=r"requests.max_parallel must be a whole number, 1 or more"):
         load_config(write(tmp_path, f"requests: {{max_parallel: {bad}}}"))
+
+
+def test_a_leftover_model_id_is_refused_and_told_what_the_name_is_now(tmp_path):
+    with pytest.raises(ConfigError, match=r"model.id is gone.*'qwen3.8-27b-8bit'.*Remove the id: line"):
+        load_config(write(tmp_path, "model: {name: qwen3.8-27b-8bit, id: whatever}"))

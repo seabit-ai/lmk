@@ -40,7 +40,7 @@ def test_every_uncommented_template_line_is_a_valid_config(tmp_path, monkeypatch
     body = "\n".join(line[2:] if line.startswith("# ") else line.lstrip("#") for line in _TEMPLATE.splitlines()[3:])
     body = "\n".join(l for l in body.splitlines() if not l.strip().startswith(("repo:", "path:")))
     cfg = load_config(_write(tmp_path / "c.yaml", body))
-    assert cfg.model.id == "my-model" and cfg.model.context_length == 131072 and cfg.port == 1235
+    assert cfg.model.id == "qwen3.8-27b-4bit" and cfg.model.context_length == 131072 and cfg.port == 1235
     assert cfg.requests.max_queue == 16
 
 
