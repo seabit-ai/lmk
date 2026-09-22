@@ -62,3 +62,5 @@
   漏参数；F6）。切分器改为正文阶段也认思考开标记（F5）。详情在 `docs/models/gemma-4-12b-4bit.md`（owner：不进 README，别污染客户的阅读上下文）。
 - **MDL-014 模型表改版（owner 意见）**：去掉仓库/GiB 等工程字段；按"至少 N GB"分组，列出该机型上的上下文（引擎公式 + 实测系数，96 GB 用实测）、
   图片、思考、三个速度、一句"适合什么"。每个模型页加 "Known issues" 节（owner 提议）。
+- **MDL-015 Gemma 4 31B（exp07）**：owner 纠偏"模型不是按尺寸计价的商品"后实测。集成测试开关各 5/5；agent 任务 9/9；decode 33 / prefill 252 /
+  cached 26k（KV 80 KB/token，列表最大）；32 GB 组。进表：同尺寸档的第二个家族选择，速度与 cache 不如 27B，质量未比。

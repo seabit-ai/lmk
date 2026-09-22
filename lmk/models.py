@@ -84,6 +84,11 @@ TESTED_MODELS: dict[str, TestedModel] = {
         thinking="off by default; same as the 26B-A4B",
         good_for="the small one: 7 GB, runs on a 16 GB Mac, and still got every agent task right in our tests",
         fit=MemoryFit(6.33, 16384, 26624, 16, 0.02, 40960), speed=Speed(2_199, 183_000, 93.5)),
+    "gemma-4-31b-4bit": TestedModel(
+        repo="lmstudio-community/gemma-4-31B-it-MLX-4bit", size_gb=18.4, max_context=262_144, images=True,
+        thinking="off by default; same as the 26B-A4B",
+        good_for="the other family at the 27B's size: Google's dense 31B, no thinking unless asked; slower than the Qwen and its cache costs more per token",
+        fit=MemoryFit(17.15, 81920, 10752, 64, 0.78, 819200), speed=Speed(252, 26_000, 33.0)),
 }
 DEFAULT_MODEL_NAME = "qwen3.8-27b-4bit"
 
