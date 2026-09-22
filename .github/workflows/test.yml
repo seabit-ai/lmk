@@ -1,0 +1,34 @@
+# Unit tests and lint: no GPU, no model (FakeEngine). The integration tests (`make itest`)
+# load the real model and stay on a developer's Mac.
+name: test
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  unit:
+    runs-on: macos-14   # Apple Silicon: the mlx wheels in requirements.txt are arm64-only
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: unit tests
+        run: make test PYTHON311=python3.11
+      - name: lint
+        run: make lint PYTHON311=python3.11
+
+  install:
+    # The path a user takes: install.sh from a checkout into a throwaway LMK_HOME,
+    # then the installed `lmk` command answers. Does not download the model.
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+      - name: install.sh
+        run: LMK_HOME="$RUNNER_TEMP/lmk-home" sh ./install.sh
+      - name: the installed command runs
+        run: |
+          "$RUNNER_TEMP/lmk-home/bin/lmk" --help
+          "$RUNNER_TEMP/lmk-home/bin/lmk" status || true   # not running: exit code is non-zero, output must say so
