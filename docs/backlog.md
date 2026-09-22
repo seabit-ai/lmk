@@ -51,8 +51,8 @@
    `github.com/<用户名>/lmk` 改为 `seabit-ai/lmk`。全历史 grep 为 0。提交哈希全变；两个"改仓库地址"的提交因此变空、被剪掉（53 → 51）。
    **远端还是旧历史，owner 下次 push 必须是强推**（`git push --force-with-lease origin main`）。改前的镜像备份在
    `~/src/lmk-backup-before-name-scrub-2026-09-21.git`——里面有真名，强推确认无误后删掉。
-2. `lmk up` 的 agent 片段：分支 `agent-snippets` 上加了 OpenClaw 片段（kitten 片段保留），待 owner 合并。
-   没在真 OpenClaw 里跑过（`research/2026-09-21-agent-config-snippets` ACS-003）。
+2. ~~`lmk up` 的 agent 片段~~ **已合 main（2026-09-21）**：OpenClaw 片段 + kitten 片段。没在真 OpenClaw 里跑过
+   （`research/2026-09-21-agent-config-snippets` ACS-003）。
 3. 公开后实测 `curl | sh`。
 
 ## 想法（没裁过，别当计划）
