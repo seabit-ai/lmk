@@ -110,7 +110,7 @@ def _model_list() -> str:
         for name in tiers[gb]:
             m = TESTED_MODELS[name]
             lines.append(f"#   {name:<24} {m.size_gb:>5.1f} GB download, {m.loaded_gib:.0f} GiB loaded   {m.repo}")
-            lines.append(f"#   {'':<24} {m.note}")
+            lines.append(f"#   {'':<24} {m.good_for}. Thinking: {m.thinking}")
     return "\n".join(lines) + "\n"
 
 

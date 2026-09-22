@@ -1,0 +1,25 @@
+{
+ "id": "chatcmpl-8d137650358d4dc9ae6fe3d8",
+ "created": 1790095067,
+ "model": "gemma-4-12b-4bit",
+ "object": "chat.completion",
+ "usage": {
+  "prompt_tokens": 240,
+  "completion_tokens": 2000,
+  "total_tokens": 2240,
+  "prompt_tokens_details": {
+   "cached_tokens": 195
+  }
+ },
+ "choices": [
+  {
+   "index": 0,
+   "message": {
+    "role": "assistant",
+    "content": "<|channel>thought",
+    "reasoning_content": "<|channel>thought\n<|channel>thought\n"
+   },
+   "finish_reason": "length"
+  }
+ ]
+}

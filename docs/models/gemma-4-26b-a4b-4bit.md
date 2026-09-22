@@ -13,7 +13,7 @@ The fastest model here, and the smallest of the tested ones: 16 GB of weights.
 |---|---|
 | weights in memory | 16 GB |
 | memory when loaded | 14 GiB (measured on the M3 Ultra) |
-| needs at least (expected, not tested) | 32 GB — leaves about 9 GiB for conversations |
+| needs at least (expected, not tested) | 24 GB — about 46k of context there; the full 262k from 36 GB up |
 | context on a 96 GB Mac | 262,144 (its maximum) |
 | download | 15.6 GB, `lmk pull` |
 
@@ -41,6 +41,15 @@ with no thinking at all. And off is a hint, not a lock: on a one-sentence questi
 for about 250 tokens before answering, and once before a plain file read. Either way lmk splits the thinking out into `reasoning_content`.
 Its template has no effort levels. Server-wide, never per request — the setting sits at the start
 of every prompt, so changing it makes every cached conversation cold once.
+
+## Known issues
+
+- **Thinks with thinking off.** On a one-sentence question it thought for ~250 tokens first, and once
+  before a plain file read. `thinking: false` is a hint to this model, not a lock.
+- **With thinking on it may not think.** An obvious next step (read this file) gets a tool call with
+  no thinking at all. Fine for agents; surprising if you expected `reasoning_content` every turn.
+- **Two template revisions exist on HuggingFace** with different shapes for tool results; lmk reads
+  the template and handles both. If you point `model.path` at an older download, expect the older one.
 
 ## Tested
 

@@ -114,37 +114,52 @@ M3 Ultra with 96 GB. **Each model has its own page** with what fits, how fast, t
 configuration and what to know before using it. Put the name under `model.name` in `~/.lmk/config.yaml`;
 `lmk pull` downloads it.
 
-The groups say which Mac a model should run on. That is expected from the memory it takes on our
-96 GB Mac (Apple gives the GPU about 81% of unified memory; we keep at least 4 GiB for
-conversations), not measured on those Macs — if you run one, `lmk bench` and an issue with the row
-would tell everyone.
+The groups say which Mac a model should run on, and the context column what fits there. Both are
+computed with the runtime's own memory formula from what each model took on our 96 GB Mac (Apple
+gives the GPU about 81% of unified memory), not measured on those Macs — if you run one, `lmk bench`
+and an issue with the row would tell everyone. Speeds are from the M3 Ultra ([`docs/benchmarks.md`](docs/benchmarks.md)).
 
 <!-- models-table -->
+### Needs at least 16 GB
+
+| model | good for | context on 16 GB | images | thinking | reads a new prompt | reads a cached one | writes |
+|---|---|---|---|---|---|---|---|
+| [`gemma-4-e4b-4bit`](docs/models/gemma-4-e4b-4bit.md) | the small one: 7 GB, runs on a 16 GB Mac, and still got every agent task right in our tests | 75k of 131k | yes | off by default; same as the 26B-A4B | 2,199 tok/s | 183k tok/s | 94 tok/s |
+
+### Needs at least 24 GB
+
+| model | good for | context on 24 GB | images | thinking | reads a new prompt | reads a cached one | writes |
+|---|---|---|---|---|---|---|---|
+| [`gemma-4-26b-a4b-4bit`](docs/models/gemma-4-26b-a4b-4bit.md) | the fastest model here by far (4B active of 26B), in 16 GB | 46k of 262k | yes | off by default; `thinking: true` lets the model decide per turn, and even off it sometimes thinks briefly | 1,833 tok/s | 83k tok/s | 120 tok/s |
+
 ### Needs at least 32 GB
 
-| `model.name` (click for its page) | HuggingFace repo | download | memory when loaded | left for conversations on 32 GB | notes |
-|---|---|---|---|---|---|
-| [`qwen3.8-27b-4bit`](docs/models/qwen3.8-27b-4bit.md) (default) | [lmstudio-community/Qwen3.8-27B-MLX-4bit](https://huggingface.co/lmstudio-community/Qwen3.8-27B-MLX-4bit) | 16.1 GB | 15 GiB | 8 GiB | Text and images in; tool calls and thinking. About 16 GB of memory for the weights. ~39 tokens/s on an M3 Ultra (~33 on long agent conversations). |
-| [`gemma-4-26b-a4b-4bit`](docs/models/gemma-4-26b-a4b-4bit.md) | [mlx-community/gemma-4-26b-a4b-it-4bit](https://huggingface.co/mlx-community/gemma-4-26b-a4b-it-4bit) | 15.6 GB | 14 GiB | 9 GiB | Google's Gemma 4, a mixture of experts with 4B active: the fastest model here (~120 tokens/s, reads prompts at ~1,800 tokens/s on an M3 Ultra) in 16 GB. Text and images in, tool calls. Thinking is off unless you turn it on, and even off it sometimes thinks briefly. |
+| model | good for | context on 32 GB | images | thinking | reads a new prompt | reads a cached one | writes |
+|---|---|---|---|---|---|---|---|
+| [`qwen3.8-27b-4bit`](docs/models/qwen3.8-27b-4bit.md) (default) | the default: the model lmk was built and measured against, a safe first choice | 85k of 262k | yes | on by default at the top level; `reasoning_effort: low` or `medium` to think less | 323 tok/s | 53k tok/s | 40 tok/s |
 
 ### Needs at least 48 GB
 
-| `model.name` (click for its page) | HuggingFace repo | download | memory when loaded | left for conversations on 48 GB | notes |
-|---|---|---|---|---|---|
-| [`qwen3.8-27b-8bit`](docs/models/qwen3.8-27b-8bit.md) | [lmstudio-community/Qwen3.8-27B-MLX-8bit](https://huggingface.co/lmstudio-community/Qwen3.8-27B-MLX-8bit) | 29.5 GB | 27 GiB | 8 GiB | The same model at 8-bit: less quantization loss, about 30 GB of memory for the weights, ~23 tokens/s on an M3 Ultra. Prompt reading is as fast as 4-bit. |
+| model | good for | context on 48 GB | images | thinking | reads a new prompt | reads a cached one | writes |
+|---|---|---|---|---|---|---|---|
+| [`qwen3.8-27b-8bit`](docs/models/qwen3.8-27b-8bit.md) | the same model with less quantization loss; reads prompts as fast, writes 40% slower | 89k of 262k | yes | same as the 4-bit | 319 tok/s | 44k tok/s | 23 tok/s |
 
 ### Needs at least 64 GB
 
-| `model.name` (click for its page) | HuggingFace repo | download | memory when loaded | left for conversations on 64 GB | notes |
-|---|---|---|---|---|---|
-| [`qwen3.5-122b-a10b-48gb`](docs/models/qwen3.5-122b-a10b-48gb.md) | [baa-ai/Qwen3.5-122B-A10B-RAM-48GB-MLX](https://huggingface.co/baa-ai/Qwen3.5-122B-A10B-RAM-48GB-MLX) | 47.2 GB | 44 GiB | 5 GiB | The same 122B with its experts squeezed to 2–3 bits (attention stays at 5–8) to fit in less memory: about 44 GB for the weights, the full 262k context on a 96 GB Mac. A community quantization, not the model authors'. ~54 tokens/s on an M3 Ultra — slower than the 4-bit, not faster. Same thinking caveat. |
+| model | good for | context on 64 GB | images | thinking | reads a new prompt | reads a cached one | writes |
+|---|---|---|---|---|---|---|---|
+| [`qwen3.5-122b-a10b-48gb`](docs/models/qwen3.5-122b-a10b-48gb.md) | the 122B squeezed to fit a 64 GB Mac (experts at 2–3 bits; a community quantization); slower than the 4-bit, not faster | 83k of 262k | yes | same as the 4-bit: use `thinking: false` | 746 tok/s | 89k tok/s | 54 tok/s |
 
 ### Needs at least 96 GB
 
-| `model.name` (click for its page) | HuggingFace repo | download | memory when loaded | left for conversations on 96 GB | notes |
-|---|---|---|---|---|---|
-| [`qwen3.5-122b-a10b-4bit`](docs/models/qwen3.5-122b-a10b-4bit.md) | [mlx-community/Qwen3.5-122B-A10B-4bit](https://huggingface.co/mlx-community/Qwen3.5-122B-A10B-4bit) | 69.6 GB | 65 GiB | 10 GiB | Mixture of experts, 10B active: ~60 tokens/s and reads prompts at ~750 tokens/s on an M3 Ultra, but needs about 70 GB for the weights (a 96 GB Mac fits a 165k context). With thinking on it can think for thousands of tokens on a small task; with `thinking: false` it calls tools correctly in a few dozen tokens. |
+| model | good for | context on 96 GB | images | thinking | reads a new prompt | reads a cached one | writes |
+|---|---|---|---|---|---|---|---|
+| [`qwen3.5-122b-a10b-4bit`](docs/models/qwen3.5-122b-a10b-4bit.md) | the biggest model here, and faster than the 27B (10B active of 122B); needs the whole GPU of a 96 GB Mac | 165k of 262k | yes | on/off only; **use `thinking: false`** — on, it can think for thousands of tokens on a small task | 753 tok/s | 89k tok/s | 60 tok/s |
 <!-- /models-table -->
+
+**Tried and not listed:** Gemma 4 12B (`lmstudio-community/gemma-4-12B-it-MLX-4bit`) passed the
+integration tests but, on our agent tasks, looped after a tool result in 1 run of 3 and dropped an
+argument in 2 of 3. It may improve with a newer quantization; for a small Mac, the E4B did better.
 
 Any other MLX model on HuggingFace loads through `model.repo` (see Configuration), untested by us.
 The runtime keeps its prompt cache on disk only for models whose config has a `vision_config`;

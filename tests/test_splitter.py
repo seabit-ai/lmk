@@ -89,3 +89,15 @@ def test_a_family_without_thinking_treats_everything_as_text_or_tool():
     plain = Markers(START, END, None, None)
     assert run(["<think>not a marker here</think> hi"], starts_in_reasoning=False, markers=plain) == \
         [("t", "<think>not a marker here</think> hi")]
+
+
+def test_a_second_think_block_after_the_answer_started_is_reasoning_not_text():
+    # Gemma 4 12B, thinking off: thinks, closes, then emits an empty channel right before the tool call (exp06)
+    out = run(["<|channel>thought\nplan\n<channel|>", "<|channel>thought\n<channel|>",
+               "<|tool_call>call:file_read{path:<|\"|>a<|\"|>}<tool_call|>"], starts_in_reasoning=False, markers=GEMMA)
+    assert out == [("r", "plan\n"), ("tool", 'call:file_read{path:<|"|>a<|"|>}')]
+
+
+def test_think_open_split_across_fragments_mid_answer_is_held_back_until_it_is_clear():
+    out = run(["Sure. <|chan", "nel>thought\nhmm<channel|>", " Done."], starts_in_reasoning=False, markers=GEMMA)
+    assert out == [("t", "Sure. "), ("r", "hmm"), ("t", "Done.")]

@@ -58,3 +58,7 @@
 - **MDL-012 Gemma 4 26B-A4B 进 lmk（exp05）**：第二个家族。Dialect（思考标记/缺省/每轮必思考/消息形状）落地；集成测试开关各 5/5；
   agent 任务 3/3；decode 113.5、冷 prefill 约 1,850、cached 87k；15 GB 权重、262k 窗口。三条 Qwen 隐含假设被翻出（F1–F3）。
   Gemma 的 `thinking: false` 是提示不是硬开关（F3）。
+- **MDL-013 小 Gemma（exp06）**：E4B 进表（16 GB 组；agent 任务四轮全对；decode 93.5 / prefill 2,199）；12B 不进表（工具结果后贪心循环、
+  漏参数；F6）。切分器改为正文阶段也认思考开标记（F5）。README 新增"试过未列"段。
+- **MDL-014 模型表改版（owner 意见）**：去掉仓库/GiB 等工程字段；按"至少 N GB"分组，列出该机型上的上下文（引擎公式 + 实测系数，96 GB 用实测）、
+  图片、思考、三个速度、一句"适合什么"。每个模型页加 "Known issues" 节（owner 提议）。

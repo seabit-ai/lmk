@@ -1,0 +1,35 @@
+{
+ "id": "chatcmpl-cd34c7c93f664fcc875b68c6",
+ "created": 1790095298,
+ "model": "gemma-4-e4b-4bit",
+ "object": "chat.completion",
+ "usage": {
+  "prompt_tokens": 186,
+  "completion_tokens": 71,
+  "total_tokens": 257,
+  "prompt_tokens_details": {
+   "cached_tokens": 169
+  }
+ },
+ "choices": [
+  {
+   "index": 0,
+   "message": {
+    "role": "assistant",
+    "content": null,
+    "reasoning_content": "The user wants to see the first 5 lines of a file named `notes.md`. I need to use the `file_read` tool for this, specifying the file path and the desired number of lines.",
+    "tool_calls": [
+     {
+      "id": "call_2f77ef32a0874246",
+      "type": "function",
+      "function": {
+       "name": "file_read",
+       "arguments": "{\"max_lines\": 5, \"path\": \"notes.md\"}"
+      }
+     }
+    ]
+   },
+   "finish_reason": "tool_calls"
+  }
+ ]
+}

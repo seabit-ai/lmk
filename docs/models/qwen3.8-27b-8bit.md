@@ -9,7 +9,7 @@ weight bytes. Text and images in, tool calls, thinking.
 |---|---|
 | weights in memory | 30 GB |
 | memory when loaded | 27 GiB (measured on the M3 Ultra) |
-| needs at least (expected, not tested) | 48 GB — leaves about 8 GiB for conversations |
+| needs at least (expected, not tested) | 48 GB — about 89k of context there; the full 262k from 96 GB up |
 | context on a 96 GB Mac | 262,144 (its maximum) |
 | download | 29.5 GB, `lmk pull` |
 
@@ -34,6 +34,12 @@ model:
 ## Thinking
 
 Same as [qwen3.8-27b-4bit](qwen3.8-27b-4bit.md): on by default at the highest level, `reasoning_effort` to lower it, server-wide.
+
+## Known issues
+
+- Same as [qwen3.8-27b-4bit](qwen3.8-27b-4bit.md): top-level thinking by default, slower on long
+  conversations, a slow first touch after idle.
+- **Writes 40% slower than the 4-bit** (23 against 39 tok/s); reading prompts is as fast.
 
 ## Tested
 

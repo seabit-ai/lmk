@@ -1,0 +1,34 @@
+{
+ "id": "chatcmpl-08c4f701914546488bccad17",
+ "created": 1790095233,
+ "model": "gemma-4-12b-4bit",
+ "object": "chat.completion",
+ "usage": {
+  "prompt_tokens": 195,
+  "completion_tokens": 25,
+  "total_tokens": 220,
+  "prompt_tokens_details": {
+   "cached_tokens": 169
+  }
+ },
+ "choices": [
+  {
+   "index": 0,
+   "message": {
+    "role": "assistant",
+    "content": null,
+    "tool_calls": [
+     {
+      "id": "call_224e0e89893b478d",
+      "type": "function",
+      "function": {
+       "name": "file_read",
+       "arguments": "{\"path\": \"notes.md\"}"
+      }
+     }
+    ]
+   },
+   "finish_reason": "tool_calls"
+  }
+ ]
+}
