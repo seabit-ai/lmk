@@ -46,3 +46,21 @@ def test_text_only_conversations_pass_through_untouched():
 def test_only_inline_base64_data_urls_are_accepted(url):
     with pytest.raises(ImageInputError):
         split_images([{"role": "user", "content": [{"type": "image_url", "image_url": {"url": url}}]}])
+
+
+def test_template_kwargs_reach_the_chat_template_on_every_render():
+    from lmk.chatformat import TemplateChatFormat
+
+    class Tok:
+        chat_template = ""
+        calls = []
+
+        def apply_chat_template(self, messages, **kw):
+            self.calls.append(kw)
+            return "P"
+
+    tok = Tok()
+    fmt = TemplateChatFormat(tok, {"enable_thinking": False, "reasoning_effort": "low"})
+    fmt.render([{"role": "user", "content": "hi"}], None)
+    assert tok.calls[0]["enable_thinking"] is False and tok.calls[0]["reasoning_effort"] == "low"
+    assert TemplateChatFormat(Tok()).render([], None) == "P"     # no kwargs: the template's defaults

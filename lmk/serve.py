@@ -41,7 +41,7 @@ def serve() -> int:
              requestedContextLength=cfg.model.context_length, build=build_id())
     engine = MlxEngine(cfg.model.id, resolved.path, cfg.model.context_length, cache_dir=cfg.cache_dir,
                        cache_max_bytes=cfg.cache_max_bytes, repo=cfg.model.source.repo, revision=resolved.revision,
-                       max_parallel=cfg.requests.max_parallel)
+                       max_parallel=cfg.requests.max_parallel, template_kwargs=cfg.model.template_kwargs())
     model = engine.loaded_model()
     if model.context_length < (model.requested_context_length or 0):
         log.warn("LmkContextLowered", "not enough memory for the requested context; using a shorter one",

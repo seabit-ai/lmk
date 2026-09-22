@@ -18,10 +18,15 @@ class ChatFormat(Protocol):
 
 
 class TemplateChatFormat:
-    def __init__(self, tokenizer: Any):
+    def __init__(self, tokenizer: Any, template_kwargs: Optional[dict] = None):
+        """template_kwargs: server-level constants handed to the chat template on every render —
+        `enable_thinking`, `reasoning_effort`. The template renders them at the very start of the
+        prompt, so they must never vary per request or the whole conversation goes cold
+        (kitten design 2026-09-19-llm-call-flow-control §6.2)."""
         from mlx_lm.tokenizer_utils import _infer_tool_parser
 
         self._tokenizer = tokenizer
+        self._template_kwargs = dict(template_kwargs or {})
         parser_type = _infer_tool_parser(getattr(tokenizer, "chat_template", None))
         self._parser = importlib.import_module(f"mlx_lm.tool_parsers.{parser_type}") if parser_type else None
         self.tool_call_start = getattr(self._parser, "tool_call_start", None)
@@ -31,7 +36,7 @@ class TemplateChatFormat:
     def render(self, messages, tools):
         return self._tokenizer.apply_chat_template(
             [_for_template(m) for m in messages], tools=tools or None,
-            tokenize=False, add_generation_prompt=True)
+            tokenize=False, add_generation_prompt=True, **self._template_kwargs)
 
     def starts_in_reasoning(self, prompt_text):
         # Some templates (Qwen3.5) put the think-open tag in the generation
