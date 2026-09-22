@@ -42,6 +42,15 @@ def serve() -> int:
     engine = MlxEngine(cfg.model.id, resolved.path, cfg.model.context_length, cache_dir=cfg.cache_dir,
                        cache_max_bytes=cfg.cache_max_bytes, repo=cfg.model.source.repo, revision=resolved.revision,
                        max_parallel=cfg.requests.max_parallel, template_kwargs=cfg.model.template_kwargs())
+    try:
+        # a value the template rejects (Qwen3.8 accepts exactly xhigh / medium / low for reasoning_effort)
+        # must stop the start with a clean exit, not the first request with a 500 — and not a restart loop
+        engine.chat_format().render([{"role": "user", "content": "probe"}], None)
+    except Exception as e:  # noqa: BLE001 - the template raises its own exception type
+        log.error("LmkConfigInvalid", f"the model's chat template rejects model.thinking / model.reasoning_effort: {e}",
+                  path=str(config_path()), templateKwargs=cfg.model.template_kwargs())
+        engine.close()
+        return EXIT_WILL_NOT_FIX_ITSELF
     model = engine.loaded_model()
     if model.context_length < (model.requested_context_length or 0):
         log.warn("LmkContextLowered", "not enough memory for the requested context; using a shorter one",

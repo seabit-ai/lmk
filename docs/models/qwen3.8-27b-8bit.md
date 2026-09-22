@@ -26,7 +26,7 @@ so it feels closer to 4-bit than the decode number suggests.
 ```yaml
 model:
   name: qwen3.8-27b-8bit
-  # reasoning_effort: low     # this model's template knows low / medium / high; default is the highest
+  # reasoning_effort: low     # this model's template knows low / medium / xhigh; default is xhigh, the highest
 ```
 
 ## Thinking

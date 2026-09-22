@@ -60,7 +60,7 @@ class ModelConfig:
     source: ModelSource
     context_length: Optional[int]  # None: the model's own maximum
     thinking: Optional[bool]       # None: the template's default (Qwen: on). False: the model answers without thinking
-    reasoning_effort: Optional[str]  # for templates that know it (Qwen3.8: low / medium / high); None: the template's default
+    reasoning_effort: Optional[str]  # for templates that know it (Qwen3.8: low / medium / xhigh); None: the template's default
 
     def template_kwargs(self) -> dict:
         kwargs = {}
@@ -159,7 +159,7 @@ def load_config(path: Optional[Path] = None) -> LmkConfig:
         raise ConfigError("model.thinking must be true or false")
     effort = model.get("reasoning_effort")
     if effort is not None and (not isinstance(effort, str) or not effort):
-        raise ConfigError("model.reasoning_effort must be a word the model's chat template knows, such as low / medium / high")
+        raise ConfigError("model.reasoning_effort must be a word the model's chat template knows, such as low / medium / xhigh")
     return LmkConfig(
         model=ModelConfig(id=_default_model_id(source), source=source,
                           context_length=context_length, thinking=thinking, reasoning_effort=effort),
