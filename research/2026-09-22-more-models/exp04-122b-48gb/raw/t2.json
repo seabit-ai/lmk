@@ -1,0 +1,24 @@
+{
+ "id": "chatcmpl-01afbcb25fc9483abc327647",
+ "created": 1790088325,
+ "model": "qwen3.5-122b-a10b-ram-48gb-mlx",
+ "object": "chat.completion",
+ "usage": {
+  "prompt_tokens": 404,
+  "completion_tokens": 20,
+  "total_tokens": 424,
+  "prompt_tokens_details": {
+   "cached_tokens": 256
+  }
+ },
+ "choices": [
+  {
+   "index": 0,
+   "message": {
+    "role": "assistant",
+    "content": "Idempotent means that performing an operation multiple times has the same effect as performing it once."
+   },
+   "finish_reason": "stop"
+  }
+ ]
+}

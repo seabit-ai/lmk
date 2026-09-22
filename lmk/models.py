@@ -35,6 +35,11 @@ TESTED_MODELS: dict[str, TestedModel] = {
         note="Mixture of experts, 10B active: ~60 tokens/s and reads prompts at ~750 tokens/s on an M3 Ultra, "
              "but needs about 70 GB for the weights (a 96 GB Mac fits a 165k context). With thinking on it can "
              "think for thousands of tokens on a small task; with `thinking: false` it calls tools correctly in a few dozen tokens."),
+    "qwen3.5-122b-a10b-48gb": TestedModel(
+        repo="baa-ai/Qwen3.5-122B-A10B-RAM-48GB-MLX", size_gb=47.2,
+        note="The same 122B with its experts squeezed to 2–3 bits (attention stays at 5–8) to fit in less memory: "
+             "about 44 GB for the weights, the full 262k context on a 96 GB Mac. A community quantization, not the "
+             "model authors'. ~54 tokens/s on an M3 Ultra — slower than the 4-bit, not faster. Same thinking caveat."),
 }
 DEFAULT_MODEL_NAME = "qwen3.8-27b-4bit"
 

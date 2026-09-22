@@ -69,7 +69,7 @@ def test_naming_the_model_two_ways_is_refused(tmp_path):
 
 
 def test_an_unknown_name_points_at_the_list_and_at_repo(tmp_path):
-    with pytest.raises(ConfigError, match=r"not in the tested list \(qwen3.8-27b-4bit, qwen3.8-27b-8bit, qwen3.5-122b-a10b-4bit\).*model.repo"):
+    with pytest.raises(ConfigError, match=r"not in the tested list \(qwen3.8-27b-4bit, qwen3.8-27b-8bit, qwen3.5-122b-a10b-4bit, qwen3.5-122b-a10b-48gb\).*model.repo"):
         load_config(write(tmp_path, "model: {name: llama-9000}"))
 
 
