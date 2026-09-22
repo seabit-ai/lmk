@@ -74,6 +74,7 @@
 | `lmk/admission.py` | 引擎前面的准入队列，四条规则（设计 memory-guard §F） |
 | `lmk/board.py` | `lmk status` 看到的请求状态、刚结束的、总数 |
 | `lmk/chat.py` `chatformat.py` `splitter.py` | 渲染 prompt、OpenAI 形状的流、思考/回答/工具调用三路切分 |
+| `lmk/bench.py` | `lmk bench`：预热 + 冷 prefill / cache 命中 / decode 三探针，出 `docs/benchmarks.md` 的一行 |
 | `lmk/sampling.py` `stopmatch.py` | OpenAI 采样参数 → 引擎名字、校验、模型的 generation_config 缺省；stop 只截回答段（设计 2026-09-21-sampling） |
 | `lmk/engine.py` | **与 mlx-engine 之间唯一的接缝**（`Engine` 协议、`MlxEngine`、`FakeEngine`） |
 | `lmk/persistcache.py` | 持久化前缀 cache：身份、上限、跨重启恢复 |
@@ -97,4 +98,6 @@
 - **部署前两件事**（2026-09-20 踩的）：① 测试命令别接管道再 `&&`——`make test | tail -1 && make install` 里 `tail` 的成功会盖住测试的失败，
   一个没过的测试就这样被部署了。用 `set -o pipefail`，或让测试单独成一步。② `make install` 会重启服务：先看 `lmk status` 确认
   `answering 0 · waiting 0`，owner 可能正在用；重启还会清空看板上的 "just finished" 与累计数（它们只在内存里）。
+- 另起临时 lmk（实验、bench 别的模型）收尾**按 PID 杀**，别 `pkill -f "lmk serve"`——它连 launchd 的常驻服务一起杀，且干净退出后
+  launchd 不重拉（2026-09-22 踩过，`lmk up` 拉回）。
 - 测试用的临时 `LMK_HOME` 安装不得碰 `~/.local/bin/lmk`（已在 install.sh 里挡住）；launchd label 固定 `ai.kitten.lmk`，换 label 会让新旧服务抢端口。

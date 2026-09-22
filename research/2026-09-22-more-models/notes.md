@@ -23,3 +23,12 @@
   decode 22.9 对 39.3 tok/s，冷 prefill 318 对 325 tok/s，权重 29.5 GB 对 16.1 GB。
   顺带发现：采样合并后集成测试变随机（缺省 temp 1.0），8bit 第一次把图里的 4217 读成 4917；集成测试改为 temperature 0 后两模型全过。
   采样合并当时没有重跑 `make itest`（CLAUDE.md 规则 5 的漏洞），这次补上：4bit 5/5。
+
+## bench（owner 裁：固定模板 + 随机数打头使 cache 失效；`lmk bench` + `docs/benchmarks.md`）
+- **BNC-001 空闲九小时后的第一次触碰慢三倍。** 常驻 4bit 服务空闲约 9 小时、其间另外加载过三份权重（itest、exp01）之后，
+  bench 的冷 prefill 第一次 110 tok/s（4,074 token 首 token 37.0 s；引擎的 prefill 计划与 restoreMs 都正常），紧接着第二次 319 tok/s。
+  解释：权重被系统换页/压缩，第一次触碰读回来——与 LM Studio 时代"切换慢是权重 page-in"一致。没直接量页面状态，是从两次差推的。
+  ⇒ bench 先发一个小预热请求并单独报它的首 token 时间，正式数在预热之后量。
+- **BNC-002 bench 的两行（同机、同日）**：4bit 323 tok/s / 1.02 s / 39.5 tok/s；8bit 319 / 1.07 / 23.1。与 exp01 服务端日志的数一致（318/325、22.9/39.3）。
+- 事故：给临时 8bit 服务收尾用 `pkill -f "lmk serve"`，把 launchd 的常驻服务一起杀了（干净退出，按设计不自动重拉）；当时无人在用，
+  `lmk up` 拉回，看板计数清零。教训进 CLAUDE.md：临时服务记 PID 按 PID 杀。

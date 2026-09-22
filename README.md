@@ -24,6 +24,9 @@ request log (`LmkChatDone`) and [`research/2026-09-20-memory-guard`](research/20
 The cache-hit numbers are with the cache files warm in the OS page cache; a true cold read after a
 reboot is not measured yet.
 
+`lmk bench` measures the same three things on your Mac and prints a row for
+[`docs/benchmarks.md`](docs/benchmarks.md) — other machines and models are what that table is missing.
+
 ### Why not the server you already have?
 
 Same Mac, same model, same requests (September 2026; method and raw numbers in
@@ -95,6 +98,7 @@ Everything lmk installs lives in `~/.lmk`. The model goes to the shared HuggingF
 | `lmk status` | Is it up, what is it doing right now, how full is the cache. |
 | `lmk logs` | Recent events. `-f` to follow, `--raw` for the model runtime's own output. |
 | `lmk down` | Stop it, and don't start it at login. Model, cache and config are kept. |
+| `lmk bench` | Prefill, cache-hit and decode speed on this Mac, as a row for [`docs/benchmarks.md`](docs/benchmarks.md). |
 
 When a request seems stuck, `lmk status` shows what it is doing:
 

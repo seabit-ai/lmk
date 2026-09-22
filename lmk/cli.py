@@ -271,6 +271,37 @@ def cmd_down(_args) -> int:
     return 0
 
 
+def cmd_bench(args) -> int:
+    import datetime
+
+    from lmk import bench
+
+    if args.url:
+        url = args.url.rstrip("/")
+        try:
+            with urllib.request.urlopen(f"{url}/lmk/v1/status", timeout=2) as r:
+                status = json.loads(r.read())
+        except (OSError, ValueError):
+            return _fail(f"✗ no lmk answers at {url}", 1)
+    else:
+        cfg = load_config()
+        url = render.base_url(cfg.host, cfg.port)
+        status = _get_status(cfg)
+        if status is None:
+            return _fail("✗ lmk is not running.  Start it:  lmk up", 1)
+    if status.get("in_flight") or status.get("waiting"):
+        return _fail("✗ lmk is busy; a benchmark needs it to itself.  See:  lmk status", 1)
+    model = status["model"]
+    _say(f"  benchmarking {model['id']} at {url} — about a minute, one request at a time")
+    result = bench.run_bench(bench.stream_via_http(url), model["id"], seed=args.seed, say=_say)
+    _say("")
+    _say(bench.human_block(result))
+    _say("")
+    _say("  For docs/benchmarks.md (paste this row into an issue at github.com/seabit-ai/lmk):")
+    _say(bench.markdown_row(result, bench.machine(), status, datetime.date.today().isoformat()))
+    return 0
+
+
 def main(argv: Optional[list[str]] = None) -> int:
     parser = argparse.ArgumentParser(prog="lmk", description="One local model, always on, for your agent.")
     sub = parser.add_subparsers(dest="command", required=True, metavar="command")
@@ -284,6 +315,10 @@ def main(argv: Optional[list[str]] = None) -> int:
     p.add_argument("-n", "--lines", type=int, default=40)
     p.add_argument("--raw", action="store_true", help="the model runtime's own output instead of lmk's events")
     sub.add_parser("down", help="stop lmk and do not start it at login")
+    p = sub.add_parser("bench", help="measure prefill, cache-hit and decode speed on this Mac; prints a row for docs/benchmarks.md")
+    p.add_argument("--url", help="an lmk other than the configured one (default: this Mac's)")
+    p.add_argument("--seed", type=int, help="reuse a seed from an earlier run: the cold probe then tests whether "
+                                            "the cache still holds that prompt (default: a fresh one, so it is cold)")
     sub.add_parser("serve", help=argparse.SUPPRESS)  # what launchd runs
 
     args = parser.parse_args(argv)
@@ -292,6 +327,7 @@ def main(argv: Optional[list[str]] = None) -> int:
             from lmk.serve import serve
 
             return serve()
-        return {"pull": cmd_pull, "up": cmd_up, "status": cmd_status, "logs": cmd_logs, "down": cmd_down}[args.command](args)
+        return {"pull": cmd_pull, "up": cmd_up, "status": cmd_status, "logs": cmd_logs, "down": cmd_down,
+                "bench": cmd_bench}[args.command](args)
     except ConfigError as e:
         return _fail(f"✗ {render.short_path(str(config_path()))}: {e}", 2)
