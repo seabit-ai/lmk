@@ -228,6 +228,11 @@ with the raw numbers: [`research/2026-09-20-local-server-survey`](research/2026-
 
 Upgrade: `git pull && ./install.sh && lmk up`. Your cache is kept across upgrades.
 
+`install.sh` run from a clone installs that clone. Run without one
+(`curl -fsSL https://raw.githubusercontent.com/seabit-ai/lmk/main/install.sh | sh`) it installs
+the newest [release](https://github.com/seabit-ai/lmk/releases); `LMK_REF=main` (or a tag, or a
+commit) picks something else. `lmk status` shows which build is running.
+
 Remove: `lmk down`, then delete `~/.lmk`. The model stays in the HuggingFace cache until you
 delete it there (`hf cache rm`, or remove its folder under `~/.cache/huggingface/hub`).
 
@@ -239,6 +244,9 @@ make test      # unit tests — no GPU, no model
 make itest     # integration tests — load the configured model
 make install   # install this working tree into ~/.lmk and restart the service
 ```
+
+CI (`.github/workflows/test.yml`) runs the unit tests, lint and `install.sh` on an Apple Silicon
+runner; the integration tests need the model and a GPU and stay on a developer's Mac.
 
 How we work here, the map of the code and the traps already hit are in [`CLAUDE.md`](CLAUDE.md); what is open,
 unverified or decided-but-not-built is in [`docs/backlog.md`](docs/backlog.md). Design notes are in

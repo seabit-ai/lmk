@@ -7,7 +7,8 @@
 set -eu
 
 LMK_HOME="${LMK_HOME:-$HOME/.lmk}"
-LMK_REF="${LMK_REF:-main}"          # branch, tag or commit to fetch when not run from a checkout
+LMK_REF="${LMK_REF:-}"              # a tag, branch or commit to fetch when not run from a checkout;
+                                    # empty = the newest release tag (v*)
 LMK_SRC="${LMK_SRC:-}"              # a checkout to install from; found by itself when run from one
 if [ -z "$LMK_SRC" ]; then
   HERE="$(cd "$(dirname "$0")" 2>/dev/null && pwd || true)"
@@ -39,9 +40,15 @@ trap 'rm -rf "$STAGE"' EXIT
 if [ -n "$LMK_SRC" ]; then
   say "· installing lmk from $LMK_SRC"
   cp -R "$LMK_SRC/lmk" "$LMK_SRC/requirements.txt" "$LMK_SRC/ENGINE_COMMIT" "$STAGE/"
-  BUILD="$(git -C "$LMK_SRC" rev-parse --short HEAD 2>/dev/null || echo unknown)"
+  # the tag when on one, else `v0.1.0-3-gabc1234` (3 commits past v0.1.0), else the short commit
+  BUILD="$(git -C "$LMK_SRC" describe --tags --always --match 'v*' 2>/dev/null || echo unknown)"
   [ -z "$(git -C "$LMK_SRC" status --porcelain 2>/dev/null)" ] || BUILD="$BUILD-dirty-$(date +%m%d%H%M%S)"
 else
+  if [ -z "$LMK_REF" ]; then
+    LMK_REF="$(git ls-remote --tags --refs https://github.com/seabit-ai/lmk 'v*' 2>/dev/null \
+               | sed 's|.*refs/tags/||' | sort -V | tail -1)"
+    [ -n "$LMK_REF" ] || fail "could not find a release of lmk on GitHub (to install a branch: LMK_REF=main sh install.sh)"
+  fi
   say "· fetching lmk ($LMK_REF)"
   curl -fsSL "https://github.com/seabit-ai/lmk/archive/$LMK_REF.tar.gz" | tar -xz -C "$STAGE" --strip-components 1 \
     || fail "could not download lmk ($LMK_REF)"
