@@ -10,7 +10,7 @@
 | 开箱体验（`lmk pull/up/status/logs/down`、`~/.lmk/`、零必填配置 + 自动刷新的 example、HF 共享目录、`install.sh`） | 完成，已合 main | `docs/design/2026-09-20-lmk-oobe.md` |
 | 内存护栏（加载前检查、准入队列四条规则、`requests.*` 三个配置、内存读数） | 完成，已合 main | `docs/design/2026-09-20-memory-guard.md` |
 | 状态看板（`lmk status [-w]`：starting/prefill/decode、排队原因、刚结束的、cache 命中率） | 完成，已合 main | 同上 + `lmk/board.py` |
-| repo | `github.com/seabit-ai/lmk`，私有，MIT（Copyright Seabit AI）。owner 的机器上由 `make install` 部署、launchd 常驻 | — |
+| repo | `github.com/seabit-ai/lmk`，**公开**（2026-09-22，v0.1.0），MIT（Copyright Seabit AI）。owner 的机器上由 `make install` 部署、launchd 常驻 | — |
 
 测试：单测 122（无 GPU）、集成测试 5 + cache 兼容 1（真实模型）。
 
@@ -32,7 +32,6 @@
 
 ## 没验证过的（写进 README 的都验证过；这些没有）
 - **重启机器后 launchd 自动拉起**——自第一版起就没验证过。下次重启后 `lmk status` 看一眼。
-- `curl … | sh` 这条安装路径（repo 私有，测不了）；从 clone 里 `./install.sh` 已验证（21 秒）。
 - 小内存 Mac：准入规则三（token 账）只有单测；加载前检查的"装不下"分支只有单测。我们只有一台 96GB 的机器。
 - 准入规则四（内存压力危急）在真机上从未触发——要触发就得把机器压到危急，没做。
 - cache 取回的代价只量到 27k token（约 0.37 秒；约 75ms + 10ms/1k）；更长的上下文、**重启机器后的真冷读**没量。
@@ -41,16 +40,10 @@
 - 等待中的客户端断开：感知不到，会占着队位直到被放行后第一次写失败或等满 `max_wait_seconds`。没加探测。
 - PDF 输入不支持。
 
-## 公开之前要做的
-已裁（owner，2026-09-21）：`docs/design` 与 `research` **随公开版走**；机器名 m3u（= M3 Ultra）可以出现；kitten 的名字可以出现
-（它迟早也公开）；文档与注释里的中文保留，全英文化不是目标。
-1. ~~真名~~ **已清（2026-09-21）**：owner 的名字与 GitHub 用户名已从**全部历史**里替换为 "owner"（文件内容 + 提交信息），旧地址
-   `github.com/<用户名>/lmk` 改为 `seabit-ai/lmk`。全历史 grep 为 0。提交哈希全变；两个"改仓库地址"的提交因此变空、被剪掉（53 → 51）。
-   **远端还是旧历史，owner 下次 push 必须是强推**（`git push --force-with-lease origin main`）。改前的镜像备份在
-   `~/src/lmk-backup-before-name-scrub-2026-09-21.git`——里面有真名，强推确认无误后删掉。
-2. ~~`lmk up` 的 agent 片段~~ **已合 main（2026-09-21）**：OpenClaw 片段 + kitten 片段。没在真 OpenClaw 里跑过
-   （`research/2026-09-21-agent-config-snippets` ACS-003）。
-3. 公开后实测 `curl | sh`。
+## 公开（2026-09-22 已公开，v0.1.0）
+- 真名清理、agent 片段、`curl | sh` 实测都已完成。`curl | sh` 从公开仓库装到临时目录 25 秒，装到 v0.1.0；
+  发现并修了一个 heredoc 反引号 bug（分支 `install-heredoc`）。CI 首跑通过（1m17s）。
+- 未验证之一"`curl | sh` 这条安装路径"由此关闭；其余未验证项不变。
 
 ## 想法（没裁过，别当计划）
 - 给上游 mlx-engine 提"持久化前缀 cache"：评论稿在 `research/2026-09-20-mlx-engine-upstream/`（针对其 issue #354），是否已由 owner 发出未确认。

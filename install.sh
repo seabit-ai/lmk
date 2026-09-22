@@ -89,7 +89,7 @@ cat > "$BIN/lmk" <<EOF
 export LMK_HOME="$LMK_HOME"
 export PYTHONPATH="$APP/.engine/mlx-engine:$APP"
 # -P: do not put the current directory on the import path — typed inside a clone of this
-# repo, `lmk` would otherwise run the clone's code instead of the installed one
+# repo, lmk would otherwise run the clone's code instead of the installed one
 exec "$APP/.venv/bin/python" -P -m lmk "\$@"
 EOF
 chmod +x "$BIN/lmk"
