@@ -107,6 +107,20 @@ When a request seems stuck, `lmk status` shows what it is doing:
                reading prompt 10,240 / 26,938 (38%) · turn · my-session/step-4 · 37s
 ```
 
+## Models
+
+Tested end to end with a real agent — tool calls, thinking, images and the on-disk prompt cache — on an
+M3 Ultra with 96 GB. Put the name under `model.name` in `~/.lmk/config.yaml`; `lmk pull` downloads it.
+
+| `model.name` | HuggingFace repo | weights | notes |
+|---|---|---|---|
+| `qwen3.8-27b-4bit` (default) | [lmstudio-community/Qwen3.8-27B-MLX-4bit](https://huggingface.co/lmstudio-community/Qwen3.8-27B-MLX-4bit) | 16.1 GB | Text and images in; tool calls and thinking. About 16 GB of memory for the weights. ~39 tokens/s on an M3 Ultra (~33 on long agent conversations). |
+| `qwen3.8-27b-8bit` | [lmstudio-community/Qwen3.8-27B-MLX-8bit](https://huggingface.co/lmstudio-community/Qwen3.8-27B-MLX-8bit) | 29.5 GB | The same model at 8-bit: less quantization loss, about 30 GB of memory for the weights, ~23 tokens/s on an M3 Ultra. Prompt reading is as fast as 4-bit. |
+
+Any other MLX model on HuggingFace loads through `model.repo` (see Configuration), untested by us.
+The runtime keeps its prompt cache on disk only for models whose config has a `vision_config`;
+a text-only model runs, but every restart starts cold. Speed on other Macs: [`docs/benchmarks.md`](docs/benchmarks.md).
+
 ## What lmk is not
 
 lmk runs **one model per machine**, and that is the point. There is no model library to browse, no
@@ -118,7 +132,7 @@ picked a model and want your agent to be fast on it every day, that is what lmk 
 
 - **`seed` is ignored** — the engine drops it on the batched code path lmk runs on. For a repeatable answer
   send `temperature: 0`. `response_format` / JSON schema output is not wired up yet.
-- Two tested models (Qwen3.8-27B at 4-bit and 8-bit). Others load through `model.repo`, untested by us.
+- Two tested models (see Models). Others load through `model.repo`, untested by us.
 - The memory rules below are tested on one machine (96 GB), where most of them never trigger; on a smaller Mac
   they are covered by unit tests only.
 - No PDF input.

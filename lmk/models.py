@@ -34,6 +34,15 @@ TESTED_MODELS: dict[str, TestedModel] = {
 DEFAULT_MODEL_NAME = "qwen3.8-27b-4bit"
 
 
+def tested_models_markdown() -> str:
+    """The table in README.md under "Models". A unit test holds the README to it."""
+    rows = ["| `model.name` | HuggingFace repo | weights | notes |", "|---|---|---|---|"]
+    for name, m in TESTED_MODELS.items():
+        default = " (default)" if name == DEFAULT_MODEL_NAME else ""
+        rows.append(f"| `{name}`{default} | [{m.repo}](https://huggingface.co/{m.repo}) | {m.size_gb:.1f} GB | {m.note} |")
+    return "\n".join(rows)
+
+
 class ModelNotDownloaded(Exception):
     def __init__(self, repo: str, why: str):
         super().__init__(f"{repo}: {why}")
