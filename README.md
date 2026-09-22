@@ -196,6 +196,7 @@ lmk follows the OpenAI shape and puts its additions where that shape has room, s
 keep working and yours can do better:
 
 - **Cache hits** are reported per request in `usage.prompt_tokens_details.cached_tokens`.
+  The usage chunk also carries `lmk.restore_ms` (how long the cached part took to come back from disk) and `lmk.first_token_ms`.
 - **Thinking** arrives separately, in `delta.reasoning_content`.
 - **Tool calls** come back as structured `tool_calls` with JSON arguments, whatever format the model writes natively.
 - **Prompt-reading progress**: while a long prompt is being read, the stream carries chunks with
