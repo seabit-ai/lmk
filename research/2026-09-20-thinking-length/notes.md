@@ -42,3 +42,14 @@ lmk 忽略请求里的采样参数、也不传缺省值 ⇒ 每一步取概率�
 ## 未测
 - 同一请求在 `medium` / `low` 下的思考 token 数与结果质量。
 - 采样（temperature 1.0 / top_k 20 / top_p 0.95）对思考长度与质量的影响。
+
+### THK-005（2026-09-22）Qwen3.8 的 reasoning_effort 到底改了什么
+模板（`chat_template.jinja:47-53`）只认 `xhigh`（缺省）/ `medium` / `low`，别的值抛异常（"Supported types are xhigh (default), medium, and low."）。
+三档在 prompt 里的落法（实渲染）：
+- **xhigh**：在最前面插一段 system："Reasoning effort is set to xhigh. Please think carefully through the task, validate key assumptions,
+  consider plausible alternatives, and prioritize correctness, consistency, and clarity in the final answer."
+- **medium**：**什么都不插**——prompt 从 user 开始。
+- **low**：插 "Reasoning effort is set to low. Keep your thinking brief and focused, moving directly to the conclusion without unnecessary elaboration."
+即力度不是采样参数，是一句系统提示；lmk 之前一直在给每个请求加"请仔细思考、验证假设、考虑替代方案"（THK-002 的"最高档"实体就是这句）。
+`enable_thinking: false` 是另一条路：assistant 开头直接给空的 `<think>\n\n</think>`。
+lmk 09-22 起：坏值在启动时试渲染即发现，`LmkConfigInvalid` 干净退出（不进 launchd 重启循环）。

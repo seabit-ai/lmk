@@ -154,7 +154,7 @@ model:
                              #   path: /Users/me/models/Some-Model-MLX    (a model folder already on this Mac)
                              # clients send that name as "model" (repo / path: its last part, lower case)
   # thinking: false           # the model answers without thinking (default: the template's own, on for Qwen)
-  # reasoning_effort: low     # for templates that know it (Qwen3.8: low / medium / high); a server-wide constant
+  # reasoning_effort: low     # for templates that know it (Qwen3.8: low / medium / xhigh); a server-wide constant
   # context_length:                             (default: the model's maximum; lmk lowers it if
                              #                   memory is short, and `lmk status` shows the value in use)
 listen: {host: 127.0.0.1, port: 1235}

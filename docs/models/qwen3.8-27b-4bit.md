@@ -22,13 +22,16 @@ Text and images in, tool calls, thinking. This is the model lmk itself was built
 ```yaml
 model:
   name: qwen3.8-27b-4bit
-  # reasoning_effort: low     # this model's template knows low / medium / high; default is the highest
+  # reasoning_effort: low     # this model's template knows low / medium / xhigh; default is xhigh, the highest
 ```
 
 ## Thinking
 
-Thinking is on by default and at the highest level: the template has no default effort, so every
-request runs at the top tier. Lower it with `reasoning_effort` if answers spend too long thinking.
+Thinking is on by default and at the highest level. `reasoning_effort` is not a sampling knob: the
+template turns it into a system line at the very start of the prompt. `xhigh` (the default) says
+"think carefully, validate key assumptions, consider plausible alternatives"; `low` says "keep your
+thinking brief, move directly to the conclusion"; `medium` adds nothing. Those three are the only
+accepted values; anything else stops `lmk up` with the template's message.
 Server-wide, never per request — the setting sits at the start of every prompt, so changing it
 makes every cached conversation cold once.
 
