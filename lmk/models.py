@@ -24,7 +24,12 @@ class TestedModel:
 TESTED_MODELS: dict[str, TestedModel] = {
     "qwen3.8-27b-4bit": TestedModel(
         repo="lmstudio-community/Qwen3.8-27B-MLX-4bit", size_gb=16.1,
-        note="Text and images in; tool calls and thinking. About 16 GB of memory for the weights. ~33 tokens/s on an M3 Ultra."),
+        note="Text and images in; tool calls and thinking. About 16 GB of memory for the weights. "
+             "~39 tokens/s on an M3 Ultra (~33 on long agent conversations)."),
+    "qwen3.8-27b-8bit": TestedModel(
+        repo="lmstudio-community/Qwen3.8-27B-MLX-8bit", size_gb=29.5,
+        note="The same model at 8-bit: less quantization loss, about 30 GB of memory for the weights, "
+             "~23 tokens/s on an M3 Ultra. Prompt reading is as fast as 4-bit."),
 }
 DEFAULT_MODEL_NAME = "qwen3.8-27b-4bit"
 

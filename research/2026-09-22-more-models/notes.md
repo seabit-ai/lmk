@@ -19,3 +19,7 @@
 
 ## 裁决（owner，2026-09-22）
 先做 Qwen3.8-27B-MLX-8bit（同家族，本机已有）。
+- **MDL-005 27B-8bit 实测（exp01）。** 集成测试 5/5（工具调用、cache 命中、warmup、图片、跨重启；温度 0）。同条件对照 4bit：
+  decode 22.9 对 39.3 tok/s，冷 prefill 318 对 325 tok/s，权重 29.5 GB 对 16.1 GB。
+  顺带发现：采样合并后集成测试变随机（缺省 temp 1.0），8bit 第一次把图里的 4217 读成 4917；集成测试改为 temperature 0 后两模型全过。
+  采样合并当时没有重跑 `make itest`（CLAUDE.md 规则 5 的漏洞），这次补上：4bit 5/5。
