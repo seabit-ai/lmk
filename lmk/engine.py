@@ -53,6 +53,9 @@ class Engine(Protocol):
     def sampling_defaults(self) -> dict:
         """Engine kwargs used when a request names no sampling parameter (see lmk.sampling)."""
         ...
+    def thinking_enabled(self) -> bool:
+        """What every prompt says about thinking: the configured constant, else the family's default."""
+        ...
     def preflight(self, prompt_text: str, images_b64: Optional[list[str]] = None) -> Preflight: ...
     def token_budget(self) -> Optional[int]: ...
     def gpu_memory_bytes(self) -> int: ...
@@ -91,6 +94,7 @@ class MlxEngine:
         self._model = LoadedModel(id=model_id, path=model_path, context_length=in_use,
                                   requested_context_length=requested)
         self._format = TemplateChatFormat(self._kit.tokenizer, template_kwargs)
+        self._thinking = bool((template_kwargs or {}).get("enable_thinking", self._format.dialect.thinking_default))
         from lmk.sampling import model_defaults
         self._sampling_defaults = model_defaults(model_path)
 
@@ -99,6 +103,9 @@ class MlxEngine:
 
     def sampling_defaults(self) -> dict:
         return dict(self._sampling_defaults)
+
+    def thinking_enabled(self) -> bool:
+        return self._thinking
 
     def chat_format(self) -> ChatFormat:
         return self._format
@@ -221,9 +228,10 @@ class FakeEngine:
                  script: Optional[list[str]] = None, stats: Optional[GenerationStats] = None,
                  prefill_steps: Optional[list[int]] = None, modalities: Optional[list[str]] = None,
                  cache: Optional[dict] = None, token_budget: Optional[int] = None, gpu_bytes: int = 0,
-                 sampling_defaults: Optional[dict] = None):
+                 sampling_defaults: Optional[dict] = None, thinking: bool = True):
         self._model = model
         self._sampling_defaults = sampling_defaults or {}
+        self._thinking = thinking
         self._format = chat_format
         self._script = script or []
         self._stats = stats or GenerationStats()
@@ -255,6 +263,9 @@ class FakeEngine:
 
     def sampling_defaults(self) -> dict:
         return dict(self._sampling_defaults)
+
+    def thinking_enabled(self) -> bool:
+        return self._thinking
 
     def chat_format(self) -> ChatFormat:
         return self._format

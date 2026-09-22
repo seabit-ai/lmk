@@ -1,0 +1,25 @@
+{
+ "id": "chatcmpl-5b86bd0c58b44d3288064db8",
+ "created": 1790091830,
+ "model": "gemma-4-26b-a4b-4bit",
+ "object": "chat.completion",
+ "usage": {
+  "prompt_tokens": 187,
+  "completion_tokens": 272,
+  "total_tokens": 459,
+  "prompt_tokens_details": {
+   "cached_tokens": 170
+  }
+ },
+ "choices": [
+  {
+   "index": 0,
+   "message": {
+    "role": "assistant",
+    "content": "An operation is idempotent if performing it multiple times has the same effect as performing it once.",
+    "reasoning_content": "*   Question: \"In one sentence, what does 'idempotent' mean?\"\n    *   Constraint: One sentence.\n    *   Context: Coding/Mathematics/Computer Science.\n\n    *   Mathematical definition: An operation that can be applied multiple times without changing the result beyond the initial application.\n    *   CS/API definition: An operation that can be performed multiple times without changing the state of the system beyond the first application.\n\n    *   *Draft 1:* An idempotent operation is one that can be applied multiple times without changing the result beyond the initial application.\n    *   *Draft 2:* In computing, an operation is idempotent if performing it multiple times has the same effect as performing it once.\n    *   *Draft 3:* Idempotency means that applying an operation multiple times results in the same state as applying it once.\n\n    *   Draft 2 is very clear for a general/coding context.\n    *   Draft 3 is also very good.\n\n    \"An operation is idempotent if performing it multiple times has the same effect as performing it once.\"\n\n    *   One sentence? Yes.\n    *   Accurate? Yes."
+   },
+   "finish_reason": "stop"
+  }
+ ]
+}

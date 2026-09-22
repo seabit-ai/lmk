@@ -15,7 +15,7 @@ from lmk.clock import get_current_clock
 from lmk.chatformat import ImageInputError, split_images
 from lmk.engine import Engine, Preflight
 from lmk.sampling import parse_sampling
-from lmk.splitter import OutputSplitter
+from lmk.splitter import Markers, OutputSplitter
 from lmk.stopmatch import StopMatcher
 
 
@@ -144,8 +144,8 @@ def run_chat(engine: Engine, body: dict, identity: CallerIdentity,
     generation = engine.generate(prompt, max_tokens=max_tokens, request_id=request_id, on_prefill=on_prefill,
                                  images_b64=images, tokens=prepared.preflight.tokens, sampling=prepared.sampling)
     delta({"role": "assistant"})
-    splitter = OutputSplitter(fmt.tool_call_start, fmt.tool_call_end, fmt.starts_in_reasoning(prompt),
-                              on_reasoning, on_text, on_tool_block)
+    splitter = OutputSplitter(Markers(fmt.tool_call_start, fmt.tool_call_end, fmt.think_open, fmt.think_close),
+                              fmt.starts_in_reasoning(prompt), on_reasoning, on_text, on_tool_block)
     for piece in generation:
         splitter.write(piece)
         on_progress({"decode": {"part": splitter.part, "completion_tokens": generation.stats.completion_tokens}})

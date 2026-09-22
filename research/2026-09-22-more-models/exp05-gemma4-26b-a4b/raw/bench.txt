@@ -1,0 +1,7 @@
+gemma-4-26b-a4b-it-4bit on Apple M3 Ultra 96 GB — measuring, about a minute
+  prefill                —           (seed 545486 reused and the cache still had it)
+  cached prefill       87k tokens/s   (3,840 of 4,037 from disk; first token 0.26 s incl. the last partial block)
+  decode             113.5 tokens/s
+
+  seed 545486   ·   row for docs/benchmarks.md:
+| Apple M3 Ultra | 96 GB | gemma-4-26b-a4b-it-4bit | 262,144 | — (seed reused: 10 cached) | 87k tok/s (3,840 cached; first token 0.26 s) | 113.5 tok/s | dev | 08f0c07 | 2026-09-22 |

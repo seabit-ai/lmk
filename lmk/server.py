@@ -180,6 +180,10 @@ class LmkServer:
                             "choices": [{"index": 0, "message": message, "finish_reason": result["finish_reason"]}]})
         return result
 
+    @property
+    def engine(self) -> Engine:
+        return self._engine
+
     def status(self) -> dict:
         m = self._engine.loaded_model()
         board = self._board.snapshot()
@@ -189,7 +193,8 @@ class LmkServer:
             "config_fingerprint": self._config_fingerprint,
             "model": {"id": m.id, "path": str(m.path), "context_length": m.context_length,
                       "requested_context_length": m.requested_context_length,
-                      "input_modalities": self._engine.input_modalities()},
+                      "input_modalities": self._engine.input_modalities(),
+                      "thinking": self._engine.thinking_enabled()},
             "sampling_defaults": self._engine.sampling_defaults(),
             "cache": self._engine.cache_stats(),
             "memory": self._memory(),
