@@ -7,6 +7,7 @@ import json
 from pathlib import Path
 from typing import Optional
 
+from lmk.models import TESTED_MODELS, model_page_url
 from lmk.sampling import describe as describe_sampling
 
 FIRST_REQUEST_NOTE = (
@@ -100,6 +101,8 @@ def status_block(status: dict, url: str) -> str:
         context += f" (asked for {requested:,}; lowered to fit this Mac's memory)"
     lines = [f"✓ lmk is up    {url}/v1   (OpenAI-compatible)",
              f"  model      {model['id']} · {', '.join(model.get('input_modalities') or ['text'])} in · {context}"]
+    if model["id"] in TESTED_MODELS:
+        lines.append(f"  about it   {model_page_url(model['id'])}")
     if "sampling_defaults" in status:
         lines.append(f"  sampling   {describe_sampling(status['sampling_defaults'])}   "
                      "(the model's generation_config; a request may override)")

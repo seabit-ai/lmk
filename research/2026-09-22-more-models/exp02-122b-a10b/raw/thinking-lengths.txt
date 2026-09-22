@@ -1,0 +1,4 @@
+122B story | completion tokens 6000 | reasoning chars 19552 | answer chars 0 | finish length
+122B bullets | completion tokens 645 | reasoning chars 2747 | answer chars 303 | finish stop
+27B story | completion tokens 3524 | reasoning chars 8663 | answer chars 1341 | finish stop
+27B bullets | completion tokens 123 | reasoning chars 419 | answer chars 189 | finish stop

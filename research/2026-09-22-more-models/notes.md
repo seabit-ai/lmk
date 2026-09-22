@@ -45,3 +45,9 @@
   | lmstudio-community/gemma-4-E4B-it-MLX-4bit | gemma4 | 6.8 GB | 131k | 同上，更小 |
   | lmstudio-community/Qwen3.6-35B-A3B-MLX-4bit | qwen3_5_moe | 20.4 GB | 262k | 同家族零解析工作；MoE 激活 3B ⇒ decode 应快于 27B；质量与"想太多"（MDL-004 的 122B 教训）要测 |
   未列：Qwen3.6-27B（和 3.8-27B 同尺寸同家族，只是旧一代，没有增量）。
+- **MDL-009 122B-A10B 实测（exp02）**：lmk 零代码改动即可跑（引擎认 qwen3_5_moe）。集成测试 5/5；96 GB 机器上窗口降到 165k；
+  decode 60.5 / prefill 753 / cached 89k tok/s。"想太多"复现且定位到触发点（数量约束 → 逐词点数），Qwen3.5 模板只有思考开关；
+  关思考后 250 词故事 402 token 完成。⇒ 进实测表，备注写明窗口与思考开关；顺手落地了裁而未做的 `model.thinking` / `model.reasoning_effort`。
+  MDL-004 的判定修正为：122B **思考全开**时不适合 agent 小任务；思考关或（若模板支持）低档时未在 agent 任务上评测。
+- **MDL-010 122B 关思考后工具调用正确（exp03）**：集成测试 5/5；两步读改文件、不该用工具时不用、整数参数类型，全对，每步 26–57 token。
+  ⇒ 122B 在 agent 上的可用姿势是 `model.thinking: false`；真实长任务上的质量仍未评。

@@ -22,7 +22,10 @@ def server():
     from lmk.engine import MlxEngine
     from lmk.server import LmkServer
 
-    srv = LmkServer(MlxEngine("itest-model", model_dir(), 32768), "127.0.0.1", 0)
+    # LMK_ITEST_THINKING=off: the same acceptance with thinking disabled (a server-level constant,
+    # `model.thinking: false`) — what an agent on a model that over-thinks would run
+    kwargs = {"enable_thinking": False} if os.environ.get("LMK_ITEST_THINKING") == "off" else {}
+    srv = LmkServer(MlxEngine("itest-model", model_dir(), 32768, template_kwargs=kwargs), "127.0.0.1", 0)
     threading.Thread(target=srv.serve_forever, daemon=True).start()
     yield srv
     srv.shutdown()
@@ -53,7 +56,9 @@ def test_tool_call_round_trip(server):
     assert call["function"]["name"] == "file_read"
     args = json.loads(call["function"]["arguments"])
     assert args["path"] == "notes.md" and args.get("max_lines", 20) == 20  # an integer, not "20"
-    assert first["reasoning"] and "think>" not in first["content"]
+    if os.environ.get("LMK_ITEST_THINKING") != "off":
+        assert first["reasoning"]
+    assert "think>" not in first["content"]
 
     second = chat(server, [system, ask,
                            {"role": "assistant", "content": None, "tool_calls": [{k: v for k, v in call.items() if k != "index"}]},

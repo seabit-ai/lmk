@@ -30,16 +30,28 @@ TESTED_MODELS: dict[str, TestedModel] = {
         repo="lmstudio-community/Qwen3.8-27B-MLX-8bit", size_gb=29.5,
         note="The same model at 8-bit: less quantization loss, about 30 GB of memory for the weights, "
              "~23 tokens/s on an M3 Ultra. Prompt reading is as fast as 4-bit."),
+    "qwen3.5-122b-a10b-4bit": TestedModel(
+        repo="mlx-community/Qwen3.5-122B-A10B-4bit", size_gb=69.6,
+        note="Mixture of experts, 10B active: ~60 tokens/s and reads prompts at ~750 tokens/s on an M3 Ultra, "
+             "but needs about 70 GB for the weights (a 96 GB Mac fits a 165k context). With thinking on it can "
+             "think for thousands of tokens on a small task; with `thinking: false` it calls tools correctly in a few dozen tokens."),
 }
 DEFAULT_MODEL_NAME = "qwen3.8-27b-4bit"
 
 
+def model_page_url(name: str) -> str:
+    """Each tested model has a page: what fits, how fast, the recommended config, what to know."""
+    return f"https://github.com/seabit-ai/lmk/blob/main/docs/models/{name}.md"
+
+
 def tested_models_markdown() -> str:
-    """The table in README.md under "Models". A unit test holds the README to it."""
-    rows = ["| `model.name` | HuggingFace repo | weights | notes |", "|---|---|---|---|"]
+    """The table in README.md under "Models". A unit test holds the README to it,
+    and another holds every row to a page under docs/models/."""
+    rows = ["| `model.name` (click for its page) | HuggingFace repo | weights | notes |", "|---|---|---|---|"]
     for name, m in TESTED_MODELS.items():
         default = " (default)" if name == DEFAULT_MODEL_NAME else ""
-        rows.append(f"| `{name}`{default} | [{m.repo}](https://huggingface.co/{m.repo}) | {m.size_gb:.1f} GB | {m.note} |")
+        rows.append(f"| [`{name}`](docs/models/{name}.md){default} | [{m.repo}](https://huggingface.co/{m.repo}) | "
+                    f"{m.size_gb:.1f} GB | {m.note} |")
     return "\n".join(rows)
 
 

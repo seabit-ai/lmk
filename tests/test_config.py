@@ -69,7 +69,7 @@ def test_naming_the_model_two_ways_is_refused(tmp_path):
 
 
 def test_an_unknown_name_points_at_the_list_and_at_repo(tmp_path):
-    with pytest.raises(ConfigError, match=r"not in the tested list \(qwen3.8-27b-4bit, qwen3.8-27b-8bit\).*model.repo"):
+    with pytest.raises(ConfigError, match=r"not in the tested list \(qwen3.8-27b-4bit, qwen3.8-27b-8bit, qwen3.5-122b-a10b-4bit\).*model.repo"):
         load_config(write(tmp_path, "model: {name: llama-9000}"))
 
 
@@ -108,3 +108,12 @@ def test_request_limits_must_be_whole_numbers_of_one_or_more(tmp_path, bad):
 def test_a_leftover_model_id_is_refused_and_told_what_the_name_is_now(tmp_path):
     with pytest.raises(ConfigError, match=r"model.id is gone.*'qwen3.8-27b-8bit'.*Remove the id: line"):
         load_config(write(tmp_path, "model: {name: qwen3.8-27b-8bit, id: whatever}"))
+
+
+def test_thinking_and_effort_are_server_constants_handed_to_the_template(tmp_path):
+    cfg = load_config(write(tmp_path, "model: {name: qwen3.8-27b-4bit}"))
+    assert cfg.model.template_kwargs() == {}                       # the template's own defaults
+    cfg = load_config(write(tmp_path, "model: {name: qwen3.8-27b-4bit, thinking: false, reasoning_effort: low}"))
+    assert cfg.model.template_kwargs() == {"enable_thinking": False, "reasoning_effort": "low"}
+    with pytest.raises(ConfigError, match="model.thinking must be true or false"):
+        load_config(write(tmp_path, "model: {name: qwen3.8-27b-4bit, thinking: sometimes}"))

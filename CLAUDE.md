@@ -78,6 +78,7 @@
 | `lmk/admission.py` | 引擎前面的准入队列，四条规则（设计 memory-guard §F） |
 | `lmk/board.py` | `lmk status` 看到的请求状态、刚结束的、总数 |
 | `lmk/chat.py` `chatformat.py` `splitter.py` | 渲染 prompt、OpenAI 形状的流、思考/回答/工具调用三路切分 |
+| `docs/models/<name>.md` | 每个实测模型一页（owner 裁，2026-09-22："the only way to make those things super clear"）：Fits / Speed / Recommended configuration / Thinking / Tested / Not tested；单测锁住每个 TESTED_MODELS 都有页且六节齐全；`lmk up`/`status` 印链接 |
 | `lmk/bench.py` | `lmk bench`：预热 + 冷 prefill / cache 命中 / decode 三探针，出 `docs/benchmarks.md` 的一行 |
 | `lmk/sampling.py` `stopmatch.py` | OpenAI 采样参数 → 引擎名字、校验、模型的 generation_config 缺省；stop 只截回答段（设计 2026-09-21-sampling） |
 | `lmk/engine.py` | **与 mlx-engine 之间唯一的接缝**（`Engine` 协议、`MlxEngine`、`FakeEngine`） |

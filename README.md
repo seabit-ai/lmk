@@ -9,7 +9,7 @@
 * A step answers in `about a second` on a small cache miss — also after lmk has been restarted, because the cache is on disk, not in memory.
 * Good visibility: `lmk status` shows every request in flight and where it is — starting, prefilling, decoding, waiting for its turn.
 * Parallel requests, configurable, if you have the memory.
-* Two tested models today, Qwen3.8-27B at 4-bit and at 8-bit; any MLX model on HuggingFace can be configured, untested by us. `Wish list` items are welcome.
+* Three tested models today, Qwen3.8-27B at 4-bit and 8-bit and the Qwen3.5-122B mixture of experts; any MLX model on HuggingFace can be configured, untested by us. `Wish list` items are welcome.
 * Built on [mlx-engine](https://github.com/lmstudio-ai/mlx-engine). Huge thanks to the LM Studio and MLX teams.
 
 Measured on an M3 Ultra (96 GB) with Qwen3.8-27B-MLX-4bit, one request at a time, from lmk's own
@@ -110,12 +110,15 @@ When a request seems stuck, `lmk status` shows what it is doing:
 ## Models
 
 Tested end to end with a real agent — tool calls, thinking, images and the on-disk prompt cache — on an
-M3 Ultra with 96 GB. Put the name under `model.name` in `~/.lmk/config.yaml`; `lmk pull` downloads it.
+M3 Ultra with 96 GB. **Each model has its own page** with what fits, how fast, the recommended
+configuration and what to know before using it. Put the name under `model.name` in `~/.lmk/config.yaml`;
+`lmk pull` downloads it.
 
-| `model.name` | HuggingFace repo | weights | notes |
+| `model.name` (click for its page) | HuggingFace repo | weights | notes |
 |---|---|---|---|
-| `qwen3.8-27b-4bit` (default) | [lmstudio-community/Qwen3.8-27B-MLX-4bit](https://huggingface.co/lmstudio-community/Qwen3.8-27B-MLX-4bit) | 16.1 GB | Text and images in; tool calls and thinking. About 16 GB of memory for the weights. ~39 tokens/s on an M3 Ultra (~33 on long agent conversations). |
-| `qwen3.8-27b-8bit` | [lmstudio-community/Qwen3.8-27B-MLX-8bit](https://huggingface.co/lmstudio-community/Qwen3.8-27B-MLX-8bit) | 29.5 GB | The same model at 8-bit: less quantization loss, about 30 GB of memory for the weights, ~23 tokens/s on an M3 Ultra. Prompt reading is as fast as 4-bit. |
+| [`qwen3.8-27b-4bit`](docs/models/qwen3.8-27b-4bit.md) (default) | [lmstudio-community/Qwen3.8-27B-MLX-4bit](https://huggingface.co/lmstudio-community/Qwen3.8-27B-MLX-4bit) | 16.1 GB | Text and images in; tool calls and thinking. About 16 GB of memory for the weights. ~39 tokens/s on an M3 Ultra (~33 on long agent conversations). |
+| [`qwen3.8-27b-8bit`](docs/models/qwen3.8-27b-8bit.md) | [lmstudio-community/Qwen3.8-27B-MLX-8bit](https://huggingface.co/lmstudio-community/Qwen3.8-27B-MLX-8bit) | 29.5 GB | The same model at 8-bit: less quantization loss, about 30 GB of memory for the weights, ~23 tokens/s on an M3 Ultra. Prompt reading is as fast as 4-bit. |
+| [`qwen3.5-122b-a10b-4bit`](docs/models/qwen3.5-122b-a10b-4bit.md) | [mlx-community/Qwen3.5-122B-A10B-4bit](https://huggingface.co/mlx-community/Qwen3.5-122B-A10B-4bit) | 69.6 GB | Mixture of experts, 10B active: ~60 tokens/s and reads prompts at ~750 tokens/s on an M3 Ultra, but needs about 70 GB for the weights (a 96 GB Mac fits a 165k context). With thinking on it can think for thousands of tokens on a small task; with `thinking: false` it calls tools correctly in a few dozen tokens. |
 
 Any other MLX model on HuggingFace loads through `model.repo` (see Configuration), untested by us.
 The runtime keeps its prompt cache on disk only for models whose config has a `vision_config`;
@@ -132,7 +135,7 @@ picked a model and want your agent to be fast on it every day, that is what lmk 
 
 - **`seed` is ignored** — the engine drops it on the batched code path lmk runs on. For a repeatable answer
   send `temperature: 0`. `response_format` / JSON schema output is not wired up yet.
-- Two tested models (see Models). Others load through `model.repo`, untested by us.
+- Three tested models (see Models). Others load through `model.repo`, untested by us.
 - The memory rules below are tested on one machine (96 GB), where most of them never trigger; on a smaller Mac
   they are covered by unit tests only.
 - No PDF input.
@@ -149,6 +152,8 @@ model:
                              #   repo: mlx-community/Qwen3-30B-A3B-4bit   (its HuggingFace address after huggingface.co/)
                              #   path: /Users/me/models/Some-Model-MLX    (a model folder already on this Mac)
                              # clients send that name as "model" (repo / path: its last part, lower case)
+  # thinking: false           # the model answers without thinking (default: the template's own, on for Qwen)
+  # reasoning_effort: low     # for templates that know it (Qwen3.8: low / medium / high); a server-wide constant
   # context_length:                             (default: the model's maximum; lmk lowers it if
                              #                   memory is short, and `lmk status` shows the value in use)
 listen: {host: 127.0.0.1, port: 1235}

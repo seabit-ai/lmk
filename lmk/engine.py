@@ -68,7 +68,8 @@ class MlxEngine:
 
     def __init__(self, model_id: str, model_path: Path, context_length: Optional[int] = None, *,
                  cache_dir: Optional[Path] = None, cache_max_bytes: Optional[int] = None,
-                 repo: Optional[str] = None, revision: Optional[str] = None, max_parallel: int = 2):
+                 repo: Optional[str] = None, revision: Optional[str] = None, max_parallel: int = 2,
+                 template_kwargs: Optional[dict] = None):
         from mlx_engine.generate import get_runtime_load_info, load_model  # heavy import, kept out of module scope
 
         if not model_path.exists():
@@ -89,7 +90,7 @@ class MlxEngine:
         in_use = get_runtime_load_info(self._kit).get("context_length") or requested
         self._model = LoadedModel(id=model_id, path=model_path, context_length=in_use,
                                   requested_context_length=requested)
-        self._format = TemplateChatFormat(self._kit.tokenizer)
+        self._format = TemplateChatFormat(self._kit.tokenizer, template_kwargs)
         from lmk.sampling import model_defaults
         self._sampling_defaults = model_defaults(model_path)
 
