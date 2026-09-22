@@ -233,3 +233,62 @@ def test_bad_image_requests_are_a_400_before_any_stream_starts(modalities, messa
         srv.shutdown()
     assert e.value.code == 400 and needle in json.loads(e.value.read())["error"]["message"]
     assert engine.requests == []
+
+
+def serve_with_defaults(script, defaults):
+    engine = FakeEngine(MODEL, chat_format=FakeChatFormat(), script=script,
+                        stats=GenerationStats(prompt_tokens=441, cached_tokens=256, completion_tokens=88),
+                        sampling_defaults=defaults)
+    srv = LmkServer(engine, "127.0.0.1", 0)
+    threading.Thread(target=srv.serve_forever, daemon=True).start()
+    return srv, engine
+
+
+def test_sampling_parameters_reach_the_engine_under_its_own_names_over_the_models_defaults():
+    srv, engine = serve_with_defaults(TEXT_TURN, {"temp": 1.0, "top_p": 0.95, "top_k": 20})
+    try:
+        post(srv, {"model": "kitten-27b", "messages": [], "temperature": 0.3, "stop": ["\n\n", "END"]}).read()
+        post(srv, {"model": "kitten-27b", "messages": []}).read()
+    finally:
+        srv.shutdown()
+    # stop is lmk's to enforce (answer part only); the engine never sees it
+    assert engine.requests[0]["sampling"] == {"temp": 0.3, "top_p": 0.95, "top_k": 20}
+    assert engine.requests[1]["sampling"] == {"temp": 1.0, "top_p": 0.95, "top_k": 20}
+
+
+def test_an_out_of_range_sampling_value_is_a_400_that_names_the_field():
+    srv, engine = serve_with_defaults(TEXT_TURN, {})
+    try:
+        with pytest.raises(urllib.error.HTTPError) as e:
+            post(srv, {"model": "kitten-27b", "messages": [], "top_p": 3})
+    finally:
+        srv.shutdown()
+    err = json.loads(e.value.read())["error"]
+    assert e.value.code == 400 and err["param"] == "top_p" and "between 0 (exclusive) and 1" in err["message"]
+    assert engine.requests == []
+
+
+def test_seed_is_accepted_but_logged_as_ignored(capsys):
+    srv, engine = serve_with_defaults(TEXT_TURN, {})
+    try:
+        post(srv, {"model": "kitten-27b", "messages": [], "seed": 7}).read()
+    finally:
+        srv.shutdown()
+    assert "sampling" in engine.requests[0] and "seed" not in engine.requests[0]["sampling"]
+    logged = [json.loads(l) for l in capsys.readouterr().err.splitlines() if l.startswith("{")]
+    ignored = [l for l in logged if l["event"] == "LmkParamIgnored"]
+    assert ignored and ignored[0]["params"] == ["seed"]
+    done = [l for l in logged if l["event"] == "LmkChatDone"]
+    assert done[0]["sampling"] == {}
+
+
+def test_stop_applies_to_the_answer_not_the_thinking_and_ends_generation():
+    # "Both" appears in the thinking; it must not stop there. "found" is in the answer: stop before it.
+    srv, engine = serve_with_defaults(TEXT_TURN, {})
+    try:
+        chunks = stream_chunks(post(srv, {"model": "kitten-27b", "messages": [], "stream": True, "stop": ["Both", " found"]}))
+    finally:
+        srv.shutdown()
+    assert deltas(chunks, "reasoning_content") == "Both are done.\n"
+    assert deltas(chunks, "content") == "Here's what I"
+    assert [c["choices"][0]["finish_reason"] for c in chunks if c["choices"] and c["choices"][0]["finish_reason"]] == ["stop"]

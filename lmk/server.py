@@ -12,6 +12,7 @@ from lmk.chatformat import ImageInputError
 from lmk.clock import get_current_clock
 from lmk.config import RequestsConfig
 from lmk.engine import Engine
+from lmk.sampling import SamplingError
 from lmk.memory import get_current_memory
 
 
@@ -84,6 +85,9 @@ class LmkServer:
             prepared = prepare_chat(self._engine, body, warmup=warmup)
         except ImageInputError as e:
             _send_json(h, 400, {"error": {"type": "invalid_request", "param": "messages", "message": str(e)}})
+            return
+        except SamplingError as e:
+            _send_json(h, 400, {"error": {"type": "invalid_request", "param": e.param, "message": str(e)}})
             return
         identity = CallerIdentity(purpose=h.headers.get("X-Lmk-Purpose"), ref_id=h.headers.get("X-Lmk-Ref-Id"),
                                   traceparent=h.headers.get("traceparent"))
@@ -185,6 +189,7 @@ class LmkServer:
             "model": {"id": m.id, "path": str(m.path), "context_length": m.context_length,
                       "requested_context_length": m.requested_context_length,
                       "input_modalities": self._engine.input_modalities()},
+            "sampling_defaults": self._engine.sampling_defaults(),
             "cache": self._engine.cache_stats(),
             "memory": self._memory(),
             "requests": self._admission.counts(),

@@ -35,6 +35,7 @@ def test_status_reports_the_resident_model(server):
     assert body["model"] == {"id": "kitten-27b", "path": "/m/x", "context_length": 200000,
                              "requested_context_length": 262144, "input_modalities": ["text"]}
     assert body["cache"] == {"dir": "/c/abc", "used_bytes": 10, "max_bytes": 100, "records": 2}
+    assert body["sampling_defaults"] == {}   # FakeEngine has no generation_config; MlxEngine reads the model's
     assert body["in_flight"] == []
     assert body["uptime_ms"] >= 0
 
