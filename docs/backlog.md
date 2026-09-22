@@ -31,7 +31,6 @@
   kitten 的集成测试从本服务的 `/lmk/v1/status` 读回了名字。待 owner 合并、装新 kitten 并重启 kittend 后，他的会话在看板上才有名字。
 
 ## 等 owner 定的
-- `lmk up` 的输出里那段 "kitten — put this in .kitten/config.yaml"：是否改成只在机器上有 `~/.kitten/` 时才打印（陌生用户不知道 kitten 是什么）。
 - owner 机器上 `~/.lmstudio/models/` 里那份同款模型（15G）已无人使用，删不删。
 
 ## 没验证过的（写进 README 的都验证过；这些没有）

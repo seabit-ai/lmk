@@ -151,7 +151,7 @@ def cmd_up(_args) -> int:
     url = render.base_url(cfg.host, cfg.port)
     running = _get_status(cfg)
     if running is not None and running.get("config_fingerprint") == fingerprint(cfg, resolved.revision):
-        _say(render.status_block(running, url) + "\n\n" + render.connect_block(url, cfg.model.id))
+        _say(render.status_block(running, url) + "\n\n" + render.connect_block(url, running["model"]))
         return 0
     if running is None:
         owner = service.port_owner(cfg.port)
@@ -197,7 +197,8 @@ def cmd_up(_args) -> int:
     problem = _smoke(cfg)
     if problem:
         return _fail(f"✗ lmk started but a test request failed: {problem}\n" + _why_it_did_not_start(cfg), 5)
-    _say(render.status_block(_get_status(cfg) or status, url) + "\n\n" + render.connect_block(url, cfg.model.id))
+    status = _get_status(cfg) or status
+    _say(render.status_block(status, url) + "\n\n" + render.connect_block(url, status["model"]))
     return 0
 
 
