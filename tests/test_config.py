@@ -64,7 +64,7 @@ def test_any_hf_repo_is_accepted_and_its_id_is_the_repo_name_lowercased(tmp_path
 
 
 def test_naming_the_model_two_ways_is_refused(tmp_path):
-    with pytest.raises(ConfigError, match="only one of name / repo / path"):
+    with pytest.raises(ConfigError, match="keep only one of them"):
         load_config(write(tmp_path, "model: {name: qwen3.8-27b-4bit, path: /x}"))
 
 
