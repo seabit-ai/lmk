@@ -4,7 +4,7 @@ from lmk import render
 
 STATUS = {
     "build": "abc1234", "uptime_ms": 11_520_000,
-    "model": {"id": "qwen3.8-27b", "path": "/m", "context_length": 262144, "requested_context_length": 262144,
+    "model": {"id": "qwen3.8-27b-4bit", "path": "/m", "context_length": 262144, "requested_context_length": 262144,
               "input_modalities": ["text", "image"]},
     "cache": {"dir": "/Users/someone/.lmk/cache/0123abcd", "used_bytes": 10 * 1024**3, "max_bytes": 162 * 1024**3,
               "records": 209},
@@ -22,7 +22,7 @@ def test_the_header_says_where_it_is_what_runs_memory_cache_and_limits():
                         "prompt_tokens": 1_251_870, "cached_tokens": 1_204_113}
     text = render.status_block(status, "http://127.0.0.1:1235")
     assert text.splitlines()[0] == "✓ lmk is up    http://127.0.0.1:1235/v1   (OpenAI-compatible)"
-    assert "  model      qwen3.8-27b · text, image in · 262,144 tokens" in text and "lowered" not in text
+    assert "  model      qwen3.8-27b-4bit · text, image in · 262,144 tokens" in text and "lowered" not in text
     assert "  memory     pressure: normal · 64% of 96.0 GB free · lmk holds 15.1 GB" in text
     assert ("  cache      10.0 GB of 162.0 GB in /Users/someone/.lmk/cache · since start 96% of prompt tokens "
             "came from it (1,204,113 of 1,251,870)") in text
@@ -87,14 +87,14 @@ def test_a_status_from_an_older_lmk_still_renders():
 
 
 def test_connect_block_is_ready_to_paste():
-    text = render.connect_block("http://127.0.0.1:1235", {"id": "qwen3.8-27b", "context_length": 262144,
+    text = render.connect_block("http://127.0.0.1:1235", {"id": "qwen3.8-27b-4bit", "context_length": 262144,
                                                           "input_modalities": ["text", "image"]})
     assert "base URL   http://127.0.0.1:1235/v1" in text
     assert 'baseUrl: "http://127.0.0.1:1235/v1",' in text              # OpenClaw wants it with /v1
-    assert 'id: "qwen3.8-27b",' in text and "pick the model lmk/qwen3.8-27b:" in text
+    assert 'id: "qwen3.8-27b-4bit",' in text and "pick the model lmk/qwen3.8-27b-4bit:" in text
     assert 'input: ["text", "image"],' in text and "contextWindow: 262144," in text
     assert "        base_url: http://127.0.0.1:1235" in text          # kitten wants it without /v1
-    assert '      local: "lmk:qwen3.8-27b"' in text
+    assert '      local: "lmk:qwen3.8-27b-4bit"' in text
     assert "about 3s per 1,000 tokens" in text
 
 

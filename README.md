@@ -1,21 +1,28 @@
 # lmk
 
-**One local model, always on, for your agent — on an Apple Silicon Mac.**
+**Run Qwen3.8-27B on an Apple Silicon Mac, simplified.**
 
-Agents don't send one prompt; they send the same growing conversation dozens of times, once per
-tool call. lmk keeps every prompt it has processed on disk, so each step of a conversation starts
-answering in **about a second** — also after lmk, or the Mac, has been restarted.
+* Runs `Qwen3.8-27B-MLX-4bit` with its full `262k` context. Tested on my own `M3 Ultra 96G`.
+* The prefill cache lives on `local disk` and `never expires` (evicted by LRU only when the disk budget is full). For my agents this is the feature that matters most.
+* `OpenAI-compatible API`, pinned to one model (`~/.lmk/config.yaml`). No wondering whether a request loaded a second model by mistake.
+* Sessions with a `shared prefix` share the cache — multiple agents on the same system prompt and tools, or a conversation `forked` or `rewound`.
+* A step answers in `about a second` on a small cache miss — also after lmk has been restarted, because the cache is on disk, not in memory.
+* Good visibility: `lmk status` shows every request in flight and where it is — starting, prefilling, decoding, waiting for its turn.
+* Parallel requests, configurable, if you have the memory.
+* One tested model today, Qwen3.8-27B-MLX-4bit; any MLX model on HuggingFace can be configured, untested by us. `Wish list` items are welcome.
+* Built on [mlx-engine](https://github.com/lmstudio-ai/mlx-engine). Huge thanks to the LM Studio and MLX teams.
 
-Measured on an M3 Ultra with Qwen3.8-27B and a real agent's requests (56 tools, 11k-token system
-prompt, a 27k-token conversation):
+Measured on an M3 Ultra (96 GB) with Qwen3.8-27B-MLX-4bit, one request at a time, from lmk's own
+request log (`LmkChatDone`) and [`research/2026-09-20-memory-guard`](research/2026-09-20-memory-guard/notes.md) MG-009:
 
-| | time to first token |
-|---|---|
-| next step of a running conversation | **0.8 – 1.5 s** |
-| first request after lmk restarts | 2.4 s |
-| a prompt lmk has never seen | ~3 s per 1,000 tokens (37 s for that 11k prompt) — once |
+| | tokens/s | what a step feels like |
+|---|---|---|
+| prefill, cache hit (restored from disk) | **~65,000** (about 75 ms + 10 ms per 1k tokens) | a 27k conversation resumes in 0.4 s, a 70k one in 1 s |
+| prefill, cache miss (computed) | **~320** on an empty context; ~200 when appended to 50k+ cached tokens | an 11k system prompt costs 37 s — once |
+| decode | **~33** (27 at 60k+ context) | |
 
-It speaks the OpenAI chat-completions API, so any agent that can talk to OpenAI can talk to lmk.
+The cache-hit numbers are with the cache files warm in the OS page cache; a true cold read after a
+reboot is not measured yet.
 
 ### Why not the server you already have?
 
@@ -26,21 +33,20 @@ Same Mac, same model, same requests (September 2026; method and raw numbers in
 |---|---|---|
 | **lmk** | **0.8 – 1.5 s** | 2.4 s |
 | oMLX 0.7.0.dev4 | 9.8 – 10.0 s | 12.9 s |
-| LM Studio | fast while the model stays loaded | starts over: its cache does not survive a model reload |
+| LM Studio | 0.8 – 1.5 s | starts over: its cache does not survive a model reload |
 
-oMLX also keeps its cache on disk across restarts, and it does far more than lmk (many models,
-an Anthropic API, a menu-bar app). The gap above is specific to models like Qwen3.5/3.8, which mix
-attention with a recurrent state: for those oMLX caches in 4,096-token blocks, so every step
-re-reads up to 4,095 tokens. lmk saves a resume point at the end of every request, so a conversation
-continues from where it stopped. On a plain-attention model we expect the gap to disappear; we
-have not measured that.
+* LM Studio's cache is gone after a model reload, a process restart or a reboot.
+* oMLX caches in 4,096-token blocks, so a step re-reads up to 4,095 tokens. At ~320 tokens/s cold prefill on my
+  M3 Ultra that is about 7 s per step on average. lmk saves a resume point at the end of every request
+  (256-token granularity), so each step continues from where the last one stopped. With my agent the
+  difference is 1–2 s against 10–20 s per step, and an agent loop makes many steps per task.
 
 ## Install
 
-You need an Apple Silicon Mac and `git`. No Python required — the installer brings its own.
+You need an Apple Silicon Mac and `git`. No Python required — the installer brings its own (venv).
 The default model takes about 16 GB of memory for its weights, more as conversations grow, and
 16 GB of disk. We have run lmk on one machine so far — an M3 Ultra with 96 GB — so how it behaves
-on a smaller Mac is not something we can promise yet.
+on a smaller/larger Mac is something you may want to leave feedback to let us know.
 
 ```sh
 git clone https://github.com/seabit-ai/lmk && cd lmk && ./install.sh
@@ -55,7 +61,7 @@ your agent:
 
 ```
 ✓ lmk is up    http://127.0.0.1:1235/v1   (OpenAI-compatible)
-  model      qwen3.8-27b   (text, image in)
+  model      qwen3.8-27b-4bit   (text, image in)
   context    262,144 tokens
   cache      0 B of 200.0 GB   ~/.lmk/cache
   running    1s   (build 908b57c)
@@ -63,7 +69,7 @@ your agent:
 
   Point your agent at it — any OpenAI-compatible client:
     base URL   http://127.0.0.1:1235/v1
-    model      qwen3.8-27b
+    model      qwen3.8-27b-4bit
     API key    anything (lmk does not check it)
 ```
 
@@ -74,7 +80,7 @@ See it answer:
 
 ```sh
 curl http://127.0.0.1:1235/v1/chat/completions \
-  -d '{"model":"qwen3.8-27b","messages":[{"role":"user","content":"Reply with one word: ready"}]}'
+  -d '{"model":"qwen3.8-27b-4bit","messages":[{"role":"user","content":"Reply with one word: ready"}]}'
 ```
 
 Everything lmk installs lives in `~/.lmk`. The model goes to the shared HuggingFace cache
@@ -120,7 +126,7 @@ list of models we have tested. The settings, with their defaults:
 
 ```yaml
 model:
-  name: qwen3.8-27b          # a tested model; or  repo: <any MLX model on HuggingFace>
+  name: qwen3.8-27b-4bit          # a tested model; or  repo: <any MLX model on HuggingFace>
                              #                 or  path: <a directory on this disk>
   # id: what clients send as "model"            (default: the name)
   # context_length:                             (default: the model's maximum; lmk lowers it if
