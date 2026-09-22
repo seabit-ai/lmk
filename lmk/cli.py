@@ -292,13 +292,13 @@ def cmd_bench(args) -> int:
     if status.get("in_flight") or status.get("waiting"):
         return _fail("✗ lmk is busy; a benchmark needs it to itself.  See:  lmk status", 1)
     model = status["model"]
-    _say(f"  benchmarking {model['id']} at {url} — about a minute, one request at a time")
-    result = bench.run_bench(bench.stream_via_http(url), model["id"], seed=args.seed, say=_say)
-    _say("")
+    m = bench.machine()
+    _say(f"{model['id']} on {m['chip']} {m['memory_gb']} GB — measuring, about a minute")
+    result = bench.run_bench(bench.stream_via_http(url), model["id"], seed=args.seed)
     _say(bench.human_block(result))
     _say("")
-    _say("  For docs/benchmarks.md (paste this row into an issue at github.com/seabit-ai/lmk):")
-    _say(bench.markdown_row(result, bench.machine(), status, datetime.date.today().isoformat()))
+    _say(f"  seed {result.seed}   ·   row for docs/benchmarks.md:")
+    _say(bench.markdown_row(result, m, status, datetime.date.today().isoformat()))
     return 0
 
 

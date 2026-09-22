@@ -36,7 +36,8 @@ def new_seed() -> int:
 def nonce_for(seed: int) -> str:
     """Ten digits from the seed: fixed length, so the token count does not move. The same seed
     gives the same prompt — run bench again with it after a restart and the cold probe hits the cache."""
-    return "".join(str(random.Random(seed).randint(0, 9)) for _ in range(10))
+    rng = random.Random(seed)
+    return "".join(str(rng.randint(0, 9)) for _ in range(10))
 
 
 @dataclass
@@ -46,6 +47,7 @@ class Probe:
     completion_tokens: int
     first_token_ms: int
     total_ms: int
+    restore_ms: Optional[int] = None   # server-side: the cached part coming back from disk (lmk's usage chunk)
 
 
 @dataclass
@@ -68,6 +70,14 @@ class BenchResult:
     @property
     def hit_first_token_s(self) -> float:
         return self.hit.first_token_ms / 1000
+
+    @property
+    def hit_tok_s(self) -> Optional[float]:
+        """How fast the cached part comes back from disk, from the server's own restore timing.
+        None when the server did not report it (an older lmk)."""
+        if self.hit.restore_ms is None or self.hit.cached_tokens == 0:
+            return None
+        return self.hit.cached_tokens / max(1, self.hit.restore_ms) * 1000
 
     @property
     def decode_tok_s(self) -> float:
@@ -97,23 +107,21 @@ def _probe(stream: StreamFn, model_id: str, messages: list, max_tokens: int) -> 
     chunks = stream({"model": model_id, "stream": True, "temperature": 0, "max_tokens": max_tokens, "messages": messages})
     first = next(ms for ms, c in chunks
                  if c.get("choices") and any(k in c["choices"][0]["delta"] for k in ("content", "reasoning_content")))
-    usage = next(c["usage"] for _, c in chunks if c.get("usage"))
+    usage_chunk = next(c for _, c in chunks if c.get("usage"))
+    usage = usage_chunk["usage"]
     return Probe(prompt_tokens=usage["prompt_tokens"],
                  cached_tokens=(usage.get("prompt_tokens_details") or {}).get("cached_tokens", 0),
-                 completion_tokens=usage["completion_tokens"], first_token_ms=first, total_ms=chunks[-1][0])
+                 completion_tokens=usage["completion_tokens"], first_token_ms=first, total_ms=chunks[-1][0],
+                 restore_ms=(usage_chunk.get("lmk") or {}).get("restore_ms"))
 
 
 def run_bench(stream: StreamFn, model_id: str, seed: Optional[int] = None,
               say: Callable[[str], None] = lambda _: None) -> BenchResult:
     seed = new_seed() if seed is None else seed
-    say("· warm-up: a tiny request, so paging the weights back in is not charged to the numbers")
     warmup = _probe(stream, model_id, [{"role": "user", "content": "Reply with the single word: ready"}], 8)
     prompt = [{"role": "user", "content": probe_prompt(nonce_for(seed))}]
-    say(f"· cold prefill: a ~4k-token prompt behind seed {seed} (reuse the seed to see whether the cache still has it)")
     cold = _probe(stream, model_id, prompt, 32)
-    say("· cache hit: the same prompt again")
     hit = _probe(stream, model_id, prompt, 32)
-    say(f"· decode: {DECODE_TOKENS} tokens out")
     decode = _probe(stream, model_id, [{"role": "user", "content": DECODE_PROMPT}], DECODE_TOKENS)
     return BenchResult(seed=seed, warmup=warmup, cold=cold, hit=hit, decode=decode)
 
@@ -129,7 +137,7 @@ def machine() -> dict:
             "memory_gb": round(int(mem) / 1024**3) if mem.isdigit() else None}
 
 
-ROW_HEADER = ("| chip | memory | model | context | cold prefill | cache-hit first token | decode | lmk | engine | date |\n"
+ROW_HEADER = ("| chip | memory | model | context | prefill | cached prefill | decode | lmk | engine | date |\n"
               "|---|---|---|---|---|---|---|---|---|---|")
 
 
@@ -139,20 +147,22 @@ def markdown_row(r: BenchResult, m: dict, status: dict, date: str) -> str:
     cold = (f"{r.cold_prefill_tok_s:.0f} tok/s ({r.cold.prompt_tokens - r.cold.cached_tokens:,} tokens)" if r.cold_was_cold
             else f"— (seed reused: {r.cold.cached_tokens:,} cached)")
     return (f"| {m['chip']} | {mem} | {model['id']} | {model['context_length']:,} | {cold} | "
-            f"{r.hit_first_token_s:.2f} s ({r.hit.cached_tokens:,} cached) | {r.decode_tok_s:.1f} tok/s | "
+            f"{_k(r.hit_tok_s)} tok/s ({r.hit.cached_tokens:,} cached; first token {r.hit_first_token_s:.2f} s) | {r.decode_tok_s:.1f} tok/s | "
             f"{status.get('build', '?')} | {str(status.get('engine', '?'))[:7]} | {date} |")
 
 
+def _k(tok_s: Optional[float]) -> str:
+    return "?" if tok_s is None else f"{tok_s / 1000:.0f}k"
+
+
 def human_block(r: BenchResult) -> str:
-    return "\n".join([
-        f"  warm-up           first token after {r.warmup.first_token_ms / 1000:.1f} s   (not in the numbers below; "
-        "more than a few seconds = the weights were paged back in)",
-        (f"  cold prefill      {r.cold_prefill_tok_s:.0f} tokens/s   "
-         f"({r.cold.prompt_tokens - r.cold.cached_tokens:,} uncached tokens, first token after {r.cold.first_token_ms / 1000:.1f} s)"
-         if r.cold_was_cold else
-         f"  seed {r.seed} reused   the prompt was still in the cache: first token after {r.cold.first_token_ms / 1000:.2f} s   "
-         f"({r.cold.cached_tokens:,} of {r.cold.prompt_tokens:,} tokens from the cache) — no cold number this run"),
-        f"  cache hit         first token after {r.hit_first_token_s:.2f} s   ({r.hit.cached_tokens:,} of {r.hit.prompt_tokens:,} tokens from the cache)",
-        f"  decode            {r.decode_tok_s:.1f} tokens/s   ({r.decode.completion_tokens} tokens)",
-        f"  seed              {r.seed}   (lmk bench --seed {r.seed} later, e.g. after a restart: does the cache still have this prompt?)",
-    ])
+    cold = (f"{r.cold_prefill_tok_s:>7.0f} tokens/s" if r.cold_was_cold
+            else f"      —           (seed {r.seed} reused and the cache still had it)")
+    hit = f"{_k(r.hit_tok_s):>7} tokens/s" if r.hit_tok_s is not None else "       ? tokens/s   (this lmk does not report restore time)"
+    lines = [f"  prefill          {cold}",
+             f"  cached prefill   {hit}   ({r.hit.cached_tokens:,} of {r.hit.prompt_tokens:,} tokens from disk; "
+             f"first token after {r.hit_first_token_s:.2f} s, the rest is the last partial block computed)",
+             f"  decode           {r.decode_tok_s:>7.1f} tokens/s"]
+    if r.warmup.first_token_ms > 3000:
+        lines.append(f"  (the warm-up request took {r.warmup.first_token_ms / 1000:.0f} s: the weights had to be paged back in; not counted)")
+    return "\n".join(lines)
