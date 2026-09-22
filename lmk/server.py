@@ -11,7 +11,7 @@ from lmk.chat import CallerIdentity, ClientGone, prepare_chat, run_chat, run_war
 from lmk.chatformat import ImageInputError
 from lmk.clock import get_current_clock
 from lmk.config import RequestsConfig
-from lmk.engine import Engine
+from lmk.engine import Engine, engine_commit
 from lmk.sampling import SamplingError
 from lmk.memory import get_current_memory
 
@@ -185,6 +185,7 @@ class LmkServer:
         board = self._board.snapshot()
         return {
             "build": self._build,
+            "engine": engine_commit(),
             "config_fingerprint": self._config_fingerprint,
             "model": {"id": m.id, "path": str(m.path), "context_length": m.context_length,
                       "requested_context_length": m.requested_context_length,
