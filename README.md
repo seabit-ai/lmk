@@ -55,7 +55,7 @@ your agent:
 
 ```
 ✓ lmk is up    http://127.0.0.1:1235/v1   (OpenAI-compatible)
-  model      qwen3.8-27b   (text, image in)
+  model      qwen3.8-27b-4bit   (text, image in)
   context    262,144 tokens
   cache      0 B of 200.0 GB   ~/.lmk/cache
   running    1s   (build 908b57c)
@@ -63,7 +63,7 @@ your agent:
 
   Point your agent at it — any OpenAI-compatible client:
     base URL   http://127.0.0.1:1235/v1
-    model      qwen3.8-27b
+    model      qwen3.8-27b-4bit
     API key    anything (lmk does not check it)
 ```
 
@@ -74,7 +74,7 @@ See it answer:
 
 ```sh
 curl http://127.0.0.1:1235/v1/chat/completions \
-  -d '{"model":"qwen3.8-27b","messages":[{"role":"user","content":"Reply with one word: ready"}]}'
+  -d '{"model":"qwen3.8-27b-4bit","messages":[{"role":"user","content":"Reply with one word: ready"}]}'
 ```
 
 Everything lmk installs lives in `~/.lmk`. The model goes to the shared HuggingFace cache
@@ -120,7 +120,7 @@ list of models we have tested. The settings, with their defaults:
 
 ```yaml
 model:
-  name: qwen3.8-27b          # a tested model; or  repo: <any MLX model on HuggingFace>
+  name: qwen3.8-27b-4bit          # a tested model; or  repo: <any MLX model on HuggingFace>
                              #                 or  path: <a directory on this disk>
   # id: what clients send as "model"            (default: the name)
   # context_length:                             (default: the model's maximum; lmk lowers it if

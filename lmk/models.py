@@ -22,11 +22,11 @@ class TestedModel:
 # Models we have run end to end with a real agent. config.yaml.example prints this
 # list, so `note` is written for someone choosing a model, not for us.
 TESTED_MODELS: dict[str, TestedModel] = {
-    "qwen3.8-27b": TestedModel(
+    "qwen3.8-27b-4bit": TestedModel(
         repo="lmstudio-community/Qwen3.8-27B-MLX-4bit", size_gb=16.1,
         note="Text and images in; tool calls and thinking. About 16 GB of memory for the weights. ~33 tokens/s on an M3 Ultra."),
 }
-DEFAULT_MODEL_NAME = "qwen3.8-27b"
+DEFAULT_MODEL_NAME = "qwen3.8-27b-4bit"
 
 
 class ModelNotDownloaded(Exception):

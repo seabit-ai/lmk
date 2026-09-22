@@ -16,7 +16,7 @@ def test_no_file_at_all_gives_a_config_that_can_run(tmp_path, monkeypatch):
     cfg = load_config()
     assert cfg.model.source.kind == "name"
     assert cfg.model.source.repo == "lmstudio-community/Qwen3.8-27B-MLX-4bit"
-    assert cfg.model.id == "qwen3.8-27b"
+    assert cfg.model.id == "qwen3.8-27b-4bit"
     assert cfg.model.context_length is None  # the model's own maximum
     assert (cfg.host, cfg.port) == ("127.0.0.1", 1235)
     assert cfg.cache_dir == tmp_path / "home" / "cache"
@@ -66,17 +66,17 @@ def test_any_hf_repo_is_accepted_and_its_id_is_the_repo_name_lowercased(tmp_path
 
 def test_naming_the_model_two_ways_is_refused(tmp_path):
     with pytest.raises(ConfigError, match="only one of name / repo / path"):
-        load_config(write(tmp_path, "model: {name: qwen3.8-27b, path: /x}"))
+        load_config(write(tmp_path, "model: {name: qwen3.8-27b-4bit, path: /x}"))
 
 
 def test_an_unknown_name_points_at_the_list_and_at_repo(tmp_path):
-    with pytest.raises(ConfigError, match=r"not in the tested list \(qwen3.8-27b\).*model.repo"):
+    with pytest.raises(ConfigError, match=r"not in the tested list \(qwen3.8-27b-4bit\).*model.repo"):
         load_config(write(tmp_path, "model: {name: llama-9000}"))
 
 
 def test_a_scalar_where_a_section_belongs_is_explained(tmp_path):
     with pytest.raises(ConfigError, match="model must be a section"):
-        load_config(write(tmp_path, "model: qwen3.8-27b"))
+        load_config(write(tmp_path, "model: qwen3.8-27b-4bit"))
 
 
 def test_context_length_must_be_positive(tmp_path):

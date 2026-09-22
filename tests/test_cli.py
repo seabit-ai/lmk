@@ -49,7 +49,7 @@ def test_up_refuses_to_run_the_service_from_a_source_checkout(home, tmp_path, ca
 
 def test_a_config_mistake_is_reported_with_the_file_it_is_in(home, capsys):
     home.mkdir(parents=True)
-    (home / "config.yaml").write_text("model: qwen3.8-27b\n")
+    (home / "config.yaml").write_text("model: qwen3.8-27b-4bit\n")
     assert cli.main(["status"]) == 2
     err = capsys.readouterr().err
     assert "config.yaml: model must be a section" in err
