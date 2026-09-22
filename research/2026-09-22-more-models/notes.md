@@ -32,3 +32,5 @@
 - **BNC-002 bench 的两行（同机、同日）**：4bit 323 tok/s / 1.02 s / 39.5 tok/s；8bit 319 / 1.07 / 23.1。与 exp01 服务端日志的数一致（318/325、22.9/39.3）。
 - 事故：给临时 8bit 服务收尾用 `pkill -f "lmk serve"`，把 launchd 的常驻服务一起杀了（干净退出，按设计不自动重拉）；当时无人在用，
   `lmk up` 拉回，看板计数清零。教训进 CLAUDE.md：临时服务记 PID 按 PID 杀。
+- **MDL-006 MiniMax-H3 不是语言模型。** HF 标签 text-to-video / image-to-video（diffusers），lmk 跑不了；owner 问起，记一笔。
+  MiniMax 的语言模型是 M 系列（M2.1/M2.5/M3，openclaw 里走云端）；有无 MLX 权重、是否带 vision_config 未查。
