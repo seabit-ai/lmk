@@ -14,13 +14,10 @@
 
 测试：单测 122（无 GPU）、集成测试 5 + cache 兼容 1（真实模型）。
 
-## 下一个：采样参数（已排队，未开题）
-- 现状：请求里的 `temperature` / `top_p` / `seed` / `stop` 等**被忽略**（README 的 "What does not work yet" 第一条）。
-- 已就位：`Engine.generate(..., sampling: dict)` 直通引擎（兼容测试在用 `{"temp": 0.0}`）。缺的是 HTTP 层解析与校验。
-- 引擎 `create_generator` 接受：`temp`、`top_p`、`top_k`、`min_p`、`min_tokens_to_keep`、`seed`、`repetition_penalty`、
-  `repetition_context_size`、`stop_strings`、`top_logprobs`、`json_schema`（结构化输出）、`max_tokens`。
-- 要先过设计的点：OpenAI 名字 → 引擎名字的映射（`temperature`→`temp`、`stop`→`stop_strings`）；缺省值（模型自带的 generation_config？）；
-  `seed` 是"对该模型此后所有生成"生效的（引擎文档原话），并发下的含义；`stop` 与三路切分器的关系；`response_format` / `json_schema` 要不要一起。
+## 下一个：（空）——采样参数已做完，在分支 `sampling` 上待合并
+- 做了：`temperature`/`top_p`/`top_k`/`min_p`/`repetition_penalty`/`stop`；缺省读模型的 `generation_config.json`；
+  stop 由 lmk 在回答段匹配；seed 收下不传并记日志。取证 `research/2026-09-21-sampling`（SMP-001..004，exp01/02）。
+- 没做（单独一题）：`response_format` / `json_schema`（引擎有 `json_schema` 参数）。
 
 ## 已裁但还没做的
 - **思考力度是 server 级常量**（裁于 kitten repo 的 `docs/design/2026-09-19-llm-call-flow-control.md` §6.2）：配置里加
