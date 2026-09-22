@@ -34,3 +34,14 @@
   `lmk up` 拉回，看板计数清零。教训进 CLAUDE.md：临时服务记 PID 按 PID 杀。
 - **MDL-006 MiniMax-H3 不是语言模型。** HF 标签 text-to-video / image-to-video（diffusers），lmk 跑不了；owner 问起，记一笔。
   MiniMax 的语言模型是 M 系列（M2.1/M2.5/M3，openclaw 里走云端）；有无 MLX 权重、是否带 vision_config 未查。
+
+## 候选二轮（2026-09-22，HF 实查）
+- **MDL-007 Qwen3.8 只有 27B 一个尺寸**（官方仓库：27B、27B-FP8、Flash-Next、2.4T-A95B；MLX 版只有 27B 的 4/5/6/8bit）。
+  给小内存 Mac 的选择要往 Qwen3.6 或 Gemma 4 找。
+- **MDL-008 三个过门槛的候选**（都带 vision_config，都是引擎验证过的家族）：
+  | 模型 | 家族 | 权重 | 窗口 | 备注 |
+  |---|---|---|---|---|
+  | lmstudio-community/gemma-4-12B-it-MLX-4bit | gemma4_unified | 6.7 GB | 262k | 16/32GB Mac 的候选；家族不同，工具调用与思考标记要重做 |
+  | lmstudio-community/gemma-4-E4B-it-MLX-4bit | gemma4 | 6.8 GB | 131k | 同上，更小 |
+  | lmstudio-community/Qwen3.6-35B-A3B-MLX-4bit | qwen3_5_moe | 20.4 GB | 262k | 同家族零解析工作；MoE 激活 3B ⇒ decode 应快于 27B；质量与"想太多"（MDL-004 的 122B 教训）要测 |
+  未列：Qwen3.6-27B（和 3.8-27B 同尺寸同家族，只是旧一代，没有增量）。
