@@ -64,3 +64,62 @@ def test_template_kwargs_reach_the_chat_template_on_every_render():
     fmt.render([{"role": "user", "content": "hi"}], None)
     assert tok.calls[0]["enable_thinking"] is False and tok.calls[0]["reasoning_effort"] == "low"
     assert TemplateChatFormat(Tok()).render([], None) == "P"     # no kwargs: the template's defaults
+
+
+# --- dialects: the per-family knowledge, chosen from the template text
+
+def test_the_dialect_is_read_off_the_chat_template():
+    from lmk.chatformat import GEMMA4, PLAIN, QWEN, dialect_for_template
+
+    assert dialect_for_template("... {{ '<think>\n' }} ...") is QWEN
+    assert dialect_for_template("... {{- '<|channel>thought\n<channel|>' -}} ...") is GEMMA4
+    assert dialect_for_template("{% for m in messages %}{{ m.content }}{% endfor %}") is PLAIN
+    assert dialect_for_template(None) is PLAIN
+
+
+def test_qwen_thinks_by_default_and_the_prompt_can_end_inside_the_think_block():
+    from lmk.chatformat import QWEN
+
+    assert QWEN.thinking_default is True and QWEN.think_open == "<think>" and QWEN.think_close == "</think>"
+    assert QWEN.starts_in_reasoning("...<|im_start|>assistant\n<think>\n") is True
+    assert QWEN.starts_in_reasoning("...<|im_start|>assistant\n<think>\n\n</think>\n\n") is False
+
+
+def test_gemma_does_not_think_unless_asked_and_opens_its_own_thought_channel():
+    from lmk.chatformat import GEMMA4
+
+    assert GEMMA4.thinking_default is False
+    assert (GEMMA4.think_open, GEMMA4.think_close) == ("<|channel>thought\n", "<channel|>")
+    # thinking on: the prompt ends with the model turn and the model writes the channel itself
+    assert GEMMA4.starts_in_reasoning("...<turn|>\n<|turn>model\n") is False
+    # thinking off: the template closes an empty thought for the model
+    assert GEMMA4.starts_in_reasoning("...<|turn>model\n<|channel>thought\n<channel|>") is False
+
+
+def test_gemma_turns_openai_tool_results_into_tool_responses_named_after_the_call():
+    from lmk.chatformat import GEMMA4
+
+    wire = [{"role": "user", "content": "read it"},
+            {"role": "assistant", "content": None, "tool_calls": [
+                {"id": "call_1", "type": "function", "function": {"name": "file_read", "arguments": "{\"path\": \"notes.md\"}"}},
+                {"id": "call_2", "type": "function", "function": {"name": "weather", "arguments": "{\"city\": \"Oslo\"}"}}]},
+            {"role": "tool", "tool_call_id": "call_1", "content": "# notes\n- x"},
+            {"role": "tool", "tool_call_id": "call_2", "content": "{\"temp_c\": 7, \"sky\": \"grey\"}"}]
+    out = GEMMA4.for_template(wire)
+    assert out[1]["tool_calls"][0]["function"]["arguments"] == {"path": "notes.md"}   # a mapping, as for Qwen
+    assert out[2] == {"role": "tool", "tool_responses": [{"name": "file_read", "response": "# notes\n- x"}]}
+    assert out[3] == {"role": "tool", "tool_responses": [{"name": "weather", "response": {"temp_c": 7, "sky": "grey"}}]}
+
+
+def test_a_tool_result_whose_call_is_unknown_keeps_going_with_an_unknown_name():
+    from lmk.chatformat import GEMMA4
+
+    out = GEMMA4.for_template([{"role": "tool", "tool_call_id": "nope", "content": "x"}])
+    assert out[0]["tool_responses"] == [{"name": "unknown", "response": "x"}]
+
+
+def test_qwen_leaves_tool_results_in_openai_shape():
+    from lmk.chatformat import QWEN
+
+    wire = [{"role": "tool", "tool_call_id": "c", "content": "x"}]
+    assert QWEN.for_template(wire) == [{"role": "tool", "tool_call_id": "c", "content": "x"}]

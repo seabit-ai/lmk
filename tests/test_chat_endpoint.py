@@ -16,6 +16,7 @@ class FakeChatFormat:
     """Stands in for the model's template + mlx-lm's parser. The tool-call text
     below is what the real 27B wrote in research exp02."""
     tool_call_start, tool_call_end = "<tool_call>", "</tool_call>"
+    think_open, think_close = "<think>", "</think>"
 
     def __init__(self):
         self.rendered = []

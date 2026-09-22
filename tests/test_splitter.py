@@ -1,11 +1,13 @@
-from lmk.splitter import OutputSplitter
+from lmk.splitter import Markers, OutputSplitter
 
 START, END = "<tool_call>", "</tool_call>"
+QWEN = Markers(START, END, "<think>", "</think>")
+GEMMA = Markers("<|tool_call>", "<tool_call|>", "<|channel>thought\n", "<channel|>")
 
 
-def run(fragments, starts_in_reasoning):
+def run(fragments, starts_in_reasoning, markers=QWEN):
     events = []
-    s = OutputSplitter(START, END, starts_in_reasoning,
+    s = OutputSplitter(markers, starts_in_reasoning,
                        on_reasoning=lambda t: events.append(("r", t)),
                        on_text=lambda t: events.append(("t", t)),
                        on_tool_block=lambda b: events.append(("tool", b)))
@@ -66,7 +68,7 @@ def test_stream_ends_inside_a_tool_block():
 
 def test_what_the_model_is_writing_right_now_is_read_off_the_markers():
     """`lmk status` shows this next to `decode`. The engine cannot tell: to it, it is all tokens."""
-    s = OutputSplitter("<tool_call>", "</tool_call>", True, lambda t: None, lambda t: None, lambda b: None)
+    s = OutputSplitter(QWEN, True, lambda t: None, lambda t: None, lambda b: None)
     assert s.part == "thinking"
     s.write("let me see</think>\n\nThe answer")
     assert s.part == "answering"
@@ -74,3 +76,16 @@ def test_what_the_model_is_writing_right_now_is_read_off_the_markers():
     assert s.part == "tool call"
     s.write("</function>\n</tool_call>")
     assert s.part == "answering"
+
+
+def test_gemma_markers_thought_channel_then_answer_then_tool_call():
+    # Gemma 4 opens its own thought channel (the prompt does not); the tool call is a single block
+    out = run(["<|chan", "nel>thought\nplan it\n<channel|>\n\nDone. ",
+               "<|tool_call>call:file_read{path:<|\"|>notes.md<|\"|>}<tool_call|>"], starts_in_reasoning=False, markers=GEMMA)
+    assert out == [("r", "plan it\n"), ("t", "Done. "), ("tool", 'call:file_read{path:<|"|>notes.md<|"|>}')]
+
+
+def test_a_family_without_thinking_treats_everything_as_text_or_tool():
+    plain = Markers(START, END, None, None)
+    assert run(["<think>not a marker here</think> hi"], starts_in_reasoning=False, markers=plain) == \
+        [("t", "<think>not a marker here</think> hi")]

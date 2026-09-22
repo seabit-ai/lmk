@@ -1,23 +1,32 @@
 """Streaming three-way split of raw model output: reasoning / answer text /
 tool-call blocks. The engine emits plain text (research LMS-014); which markers
-delimit a tool call is the model family's business and arrives from outside
-(design §4) — this file knows only `</think>`.
+delimit a tool call or a thought is the model family's business and arrives from
+outside (design §4, lmk.chatformat.Dialect) — this file knows no marker of its own.
 """
+from dataclasses import dataclass
 
-THINK_OPEN = "<think>"
-THINK_CLOSE = "</think>"
 _WS = " \t\r\n"
 
 
+@dataclass(frozen=True)
+class Markers:
+    tool_call_start: str | None
+    tool_call_end: str | None
+    think_open: str | None      # None: this family has no thinking block; everything is text or tool
+    think_close: str | None
+
+
 class OutputSplitter:
-    def __init__(self, tool_call_start, tool_call_end, starts_in_reasoning, on_reasoning, on_text, on_tool_block):
-        self._tool_start = tool_call_start
-        self._tool_end = tool_call_end
+    def __init__(self, markers: Markers, starts_in_reasoning, on_reasoning, on_text, on_tool_block):
+        self._tool_start = markers.tool_call_start
+        self._tool_end = markers.tool_call_end
+        self._think_open = markers.think_open
+        self._think_close = markers.think_close
         self._on_reasoning = on_reasoning
         self._on_text = on_text
         self._on_tool_block = on_tool_block
         # "leading": nothing decided yet (the model may or may not open a think block itself)
-        self._phase = "reasoning" if starts_in_reasoning else "leading"
+        self._phase = "reasoning" if starts_in_reasoning else ("leading" if self._think_open else "text")
         self._pending = ""
 
     @property
@@ -44,15 +53,15 @@ class OutputSplitter:
             trimmed = p.lstrip(_WS)
             if not trimmed:
                 return False
-            if trimmed.startswith(THINK_OPEN):
-                self._pending, self._phase = trimmed[len(THINK_OPEN):], "reasoning"
+            if trimmed.startswith(self._think_open):
+                self._pending, self._phase = trimmed[len(self._think_open):], "reasoning"
                 return True
-            if THINK_OPEN.startswith(trimmed):
+            if self._think_open.startswith(trimmed):
                 return False
             self._phase = "text"
             return True
         if self._phase == "reasoning":
-            return self._until(THINK_CLOSE, self._on_reasoning, "gap")
+            return self._until(self._think_close, self._on_reasoning, "gap")
         if self._phase == "gap":
             self._pending = p.lstrip(_WS)
             if not self._pending:
