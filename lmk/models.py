@@ -30,6 +30,11 @@ TESTED_MODELS: dict[str, TestedModel] = {
         repo="lmstudio-community/Qwen3.8-27B-MLX-8bit", size_gb=29.5,
         note="The same model at 8-bit: less quantization loss, about 30 GB of memory for the weights, "
              "~23 tokens/s on an M3 Ultra. Prompt reading is as fast as 4-bit."),
+    "qwen3.5-122b-a10b-4bit": TestedModel(
+        repo="mlx-community/Qwen3.5-122B-A10B-4bit", size_gb=69.6,
+        note="Mixture of experts, 10B active: ~60 tokens/s and reads prompts at ~750 tokens/s on an M3 Ultra, "
+             "but needs about 70 GB for the weights (a 96 GB Mac fits a 165k context). With thinking on it can "
+             "think for thousands of tokens on a small task; consider `thinking: false`."),
 }
 DEFAULT_MODEL_NAME = "qwen3.8-27b-4bit"
 

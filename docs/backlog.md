@@ -20,9 +20,6 @@
 - 没做（单独一题）：`response_format` / `json_schema`（引擎有 `json_schema` 参数）。
 
 ## 已裁但还没做的
-- **思考力度是 server 级常量**（裁于 kitten repo 的 `docs/design/2026-09-19-llm-call-flow-control.md` §6.2）：配置里加
-  `model.reasoning_effort` / `model.enable_thinking`，启动时读一次、对所有请求一致。依据：模型模板把它渲染在 prompt 第 0 块，
-  中途换档 = 整段对话冷算（`research/2026-09-19-lmk-spike` LMK-008）。原裁决写的配置位置是 `~/.kitten/lmk.yaml`，现应落在 `~/.lmk/config.yaml`。
 - **kitten 发 `X-Lmk-Purpose` / `X-Lmk-Ref-Id`**：2026-09-20 已在 kitten repo 的分支 `llm-call-identity` 上实现并验证
   （用途 `turn` / `compaction` / `groom`；refId = `<sessionId>/<actionRef>`，groom = `groom/<project>/<startMs>`；未声明的不发头）。
   kitten 的集成测试从本服务的 `/lmk/v1/status` 读回了名字。待 owner 合并、装新 kitten 并重启 kittend 后，他的会话在看板上才有名字。

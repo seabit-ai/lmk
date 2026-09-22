@@ -26,6 +26,9 @@ def _seed_text() -> str:
       #                                          # `lmk pull` downloads it; whether it works, we have not checked)
       # path: /Users/me/models/Some-Model-MLX    # a model folder already on this Mac (nothing to download)
       # context_length: 131072               # default: the model's own maximum, lowered if memory is short
+      # thinking: false                      # answer without thinking (default: the template's own — on for Qwen)
+      # reasoning_effort: low                # low / medium / high where the model's template knows it; server-wide,
+      #                                      # never per request (it sits at the start of every prompt)
 
     listen:
       host: {DEFAULT_HOST}
@@ -59,6 +62,9 @@ _TEMPLATE = f"""\
 #
 #   context_length: 131072     # default: the model's own maximum. If this Mac is short of
 #                              # memory lmk lowers it; `lmk status` shows the value in use.
+#   thinking: false            # answer without thinking (default: the template's own — on for Qwen)
+#   reasoning_effort: low      # low / medium / high where the model's template knows it; a server-wide
+#                              # constant, never per request: it sits at the start of every prompt
 #
 # listen:
 #   host: {DEFAULT_HOST}
