@@ -11,7 +11,7 @@ from pathlib import Path
 
 from lmk.config import (DEFAULT_CACHE_MAX_SIZE, lmk_home, DEFAULT_HOST, DEFAULT_MAX_PARALLEL, DEFAULT_MAX_QUEUE,
                         DEFAULT_MAX_WAIT_SECONDS, DEFAULT_PORT)
-from lmk.models import DEFAULT_MODEL_NAME, TESTED_MODELS
+from lmk.models import DEFAULT_MODEL_NAME, TESTED_MODELS, smallest_mac_gb
 
 def _seed_text() -> str:
     home = _home_for_humans()
@@ -101,9 +101,16 @@ def _model_list() -> str:
     lines = ["#", "# Tested models (model.name). We ran each one with a real agent: tool calls, thinking, images,",
              "# and the on-disk prompt cache all work. `lmk pull` downloads the one you configured into the",
              "# shared HuggingFace cache (~/.cache/huggingface/hub), where other tools can use it too."]
+    lines.append("# Grouped by the smallest Mac each should run on (expected from memory measured on a 96 GB Mac).")
+    tiers: dict[int, list[str]] = {}
     for name, m in TESTED_MODELS.items():
-        lines.append(f"#   {name:<14} {m.size_gb:>5.1f} GB   {m.repo}")
-        lines.append(f"#   {'':<14}            {m.note}")
+        tiers.setdefault(smallest_mac_gb(m), []).append(name)
+    for gb in sorted(tiers):
+        lines.append(f"#   -- needs at least {gb} GB --")
+        for name in tiers[gb]:
+            m = TESTED_MODELS[name]
+            lines.append(f"#   {name:<24} {m.size_gb:>5.1f} GB download, {m.loaded_gib:.0f} GiB loaded   {m.repo}")
+            lines.append(f"#   {'':<24} {m.note}")
     return "\n".join(lines) + "\n"
 
 

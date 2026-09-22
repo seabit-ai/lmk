@@ -15,7 +15,9 @@ class TestedModel:
     __test__ = False  # not a pytest class
 
     repo: str
-    size_gb: float
+    size_gb: float       # the download
+    loaded_gib: float    # GPU memory right after loading, before any conversation: the engine's
+                         # context-fit "baseline", read off the log on an M3 Ultra 96 GB
     note: str
 
 
@@ -23,25 +25,25 @@ class TestedModel:
 # list, so `note` is written for someone choosing a model, not for us.
 TESTED_MODELS: dict[str, TestedModel] = {
     "qwen3.8-27b-4bit": TestedModel(
-        repo="lmstudio-community/Qwen3.8-27B-MLX-4bit", size_gb=16.1,
+        repo="lmstudio-community/Qwen3.8-27B-MLX-4bit", size_gb=16.1, loaded_gib=14.95,
         note="Text and images in; tool calls and thinking. About 16 GB of memory for the weights. "
              "~39 tokens/s on an M3 Ultra (~33 on long agent conversations)."),
     "qwen3.8-27b-8bit": TestedModel(
-        repo="lmstudio-community/Qwen3.8-27B-MLX-8bit", size_gb=29.5,
+        repo="lmstudio-community/Qwen3.8-27B-MLX-8bit", size_gb=29.5, loaded_gib=27.48,
         note="The same model at 8-bit: less quantization loss, about 30 GB of memory for the weights, "
              "~23 tokens/s on an M3 Ultra. Prompt reading is as fast as 4-bit."),
     "qwen3.5-122b-a10b-4bit": TestedModel(
-        repo="mlx-community/Qwen3.5-122B-A10B-4bit", size_gb=69.6,
+        repo="mlx-community/Qwen3.5-122B-A10B-4bit", size_gb=69.6, loaded_gib=64.82,
         note="Mixture of experts, 10B active: ~60 tokens/s and reads prompts at ~750 tokens/s on an M3 Ultra, "
              "but needs about 70 GB for the weights (a 96 GB Mac fits a 165k context). With thinking on it can "
              "think for thousands of tokens on a small task; with `thinking: false` it calls tools correctly in a few dozen tokens."),
     "qwen3.5-122b-a10b-48gb": TestedModel(
-        repo="baa-ai/Qwen3.5-122B-A10B-RAM-48GB-MLX", size_gb=47.2,
+        repo="baa-ai/Qwen3.5-122B-A10B-RAM-48GB-MLX", size_gb=47.2, loaded_gib=43.92,
         note="The same 122B with its experts squeezed to 2–3 bits (attention stays at 5–8) to fit in less memory: "
              "about 44 GB for the weights, the full 262k context on a 96 GB Mac. A community quantization, not the "
              "model authors'. ~54 tokens/s on an M3 Ultra — slower than the 4-bit, not faster. Same thinking caveat."),
     "gemma-4-26b-a4b-4bit": TestedModel(
-        repo="mlx-community/gemma-4-26b-a4b-it-4bit", size_gb=15.6,
+        repo="mlx-community/gemma-4-26b-a4b-it-4bit", size_gb=15.6, loaded_gib=14.29,
         note="Google's Gemma 4, a mixture of experts with 4B active: the fastest model here (~120 tokens/s, reads "
              "prompts at ~1,800 tokens/s on an M3 Ultra) in 16 GB. Text and images in, tool calls. Thinking is off "
              "unless you turn it on, and even off it sometimes thinks briefly."),
@@ -54,15 +56,50 @@ def model_page_url(name: str) -> str:
     return f"https://github.com/seabit-ai/lmk/blob/main/docs/models/{name}.md"
 
 
+# Apple gives the GPU about this share of unified memory (macOS's default wired limit): on the
+# M3 Ultra 96 GB the engine reports a 77.76 GiB working set = 0.81. Other sizes are assumed alike.
+GPU_SHARE_OF_MEMORY = 0.81
+ENGINE_RESERVE_GIB = 3.0            # what the engine keeps back on top of the loaded model (context_fit reserve)
+# A model that loads with almost nothing left is no use to an agent. 4 GiB is 64k tokens of KV on
+# the Qwen3.8-27B (64 KB per token, the engine's own figure) or ~170k on Gemma 4 (24 KB per token).
+MIN_ROOM_FOR_CONVERSATIONS_GIB = 4.0
+MAC_MEMORY_SIZES_GB = (16, 24, 32, 36, 48, 64, 96, 128, 192, 256, 512)
+
+
+def smallest_mac_gb(m: TestedModel) -> int:
+    """The smallest Mac this model is worth running on: the engine's load rule (loaded weights plus
+    its reserve within the GPU's share of memory) with at least MIN_ROOM_FOR_CONVERSATIONS_GIB to
+    spare. Expected, not measured: we have run everything on one 96 GB Mac."""
+    for gb in MAC_MEMORY_SIZES_GB:
+        if room_for_conversations_gib(m, gb) >= MIN_ROOM_FOR_CONVERSATIONS_GIB:
+            return gb
+    return MAC_MEMORY_SIZES_GB[-1]
+
+
+def room_for_conversations_gib(m: TestedModel, mac_gb: int) -> float:
+    return mac_gb * GPU_SHARE_OF_MEMORY - m.loaded_gib - ENGINE_RESERVE_GIB
+
+
 def tested_models_markdown() -> str:
-    """The table in README.md under "Models". A unit test holds the README to it,
-    and another holds every row to a page under docs/models/."""
-    rows = ["| `model.name` (click for its page) | HuggingFace repo | weights | notes |", "|---|---|---|---|"]
+    """The "Models" section of README.md: one table per Mac size, smallest first. A unit test
+    holds the README to it, and another holds every row to a page under docs/models/."""
+    tiers: dict[int, list[str]] = {}
     for name, m in TESTED_MODELS.items():
-        default = " (default)" if name == DEFAULT_MODEL_NAME else ""
-        rows.append(f"| [`{name}`](docs/models/{name}.md){default} | [{m.repo}](https://huggingface.co/{m.repo}) | "
-                    f"{m.size_gb:.1f} GB | {m.note} |")
-    return "\n".join(rows)
+        tiers.setdefault(smallest_mac_gb(m), []).append(name)
+    out = []
+    for gb in sorted(tiers):
+        out.append(f"### Needs at least {gb} GB")
+        out.append("")
+        out.append("| `model.name` (click for its page) | HuggingFace repo | download | memory when loaded | "
+                   f"left for conversations on {gb} GB | notes |")
+        out.append("|---|---|---|---|---|---|")
+        for name in tiers[gb]:
+            m = TESTED_MODELS[name]
+            default = " (default)" if name == DEFAULT_MODEL_NAME else ""
+            out.append(f"| [`{name}`](docs/models/{name}.md){default} | [{m.repo}](https://huggingface.co/{m.repo}) | "
+                       f"{m.size_gb:.1f} GB | {m.loaded_gib:.0f} GiB | {room_for_conversations_gib(m, gb):.0f} GiB | {m.note} |")
+        out.append("")
+    return "\n".join(out).rstrip("\n")
 
 
 class ModelNotDownloaded(Exception):

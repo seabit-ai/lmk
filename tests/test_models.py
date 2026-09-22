@@ -113,3 +113,16 @@ def test_every_tested_model_has_its_own_page():
         text = page.read_text()
         for heading in ("## Fits", "## Speed", "## Recommended configuration", "## Thinking", "## Tested", "## Not tested"):
             assert heading in text, f"{page.name} lacks '{heading}'"
+        from lmk.models import smallest_mac_gb
+        assert f"| needs at least (expected, not tested) | {smallest_mac_gb(TESTED_MODELS[name])} GB" in text, \
+            f"{page.name}: the smallest-Mac row disagrees with smallest_mac_gb()"
+
+
+def test_models_are_grouped_by_the_smallest_mac_that_leaves_room_for_conversations():
+    from lmk.models import TESTED_MODELS, room_for_conversations_gib, smallest_mac_gb, tested_models_markdown
+
+    assert smallest_mac_gb(TESTED_MODELS["qwen3.8-27b-4bit"]) == 32       # loads on 24 GB, but with 1.5 GiB to talk in
+    assert smallest_mac_gb(TESTED_MODELS["qwen3.5-122b-a10b-4bit"]) == 96
+    assert room_for_conversations_gib(TESTED_MODELS["qwen3.5-122b-a10b-4bit"], 96) == pytest.approx(9.9, abs=0.1)
+    md = tested_models_markdown()
+    assert md.index("### Needs at least 32 GB") < md.index("### Needs at least 48 GB") < md.index("### Needs at least 96 GB")

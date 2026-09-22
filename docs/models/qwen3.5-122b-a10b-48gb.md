@@ -14,10 +14,10 @@ LM Studio / mlx-community, and 2-bit experts are an aggressive setting — read 
 | | |
 |---|---|
 | weights in memory | 44 GB |
+| memory when loaded | 44 GiB (measured on the M3 Ultra) |
+| needs at least (expected, not tested) | 64 GB — leaves about 5 GiB for conversations |
 | context on a 96 GB Mac | 262,144 (its maximum), with room for two long conversations at once |
 | download | 47.2 GB, `lmk pull` |
-
-By the numbers it should load on a 64 GB Mac (44 GB of weights plus conversation memory); we have not tried one.
 
 ## Speed (M3 Ultra, 96 GB — [`docs/benchmarks.md`](../benchmarks.md))
 

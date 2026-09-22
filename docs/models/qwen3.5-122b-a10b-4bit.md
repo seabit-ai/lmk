@@ -10,6 +10,8 @@ Qwen3.5-122B-A10B: a mixture-of-experts model, 122B parameters of which 10B are 
 | | |
 |---|---|
 | weights in memory | 70 GB |
+| memory when loaded | 65 GiB (measured on the M3 Ultra) |
+| needs at least (expected, not tested) | 96 GB — leaves about 10 GiB for conversations |
 | context on a 96 GB Mac | 165,888 — lowered from 262,144 to fit; about 10 GB is left for conversations |
 | download | 69.6 GB, `lmk pull` |
 

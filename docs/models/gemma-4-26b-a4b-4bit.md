@@ -12,11 +12,10 @@ The fastest model here, and the smallest of the tested ones: 16 GB of weights.
 | | |
 |---|---|
 | weights in memory | 16 GB |
+| memory when loaded | 14 GiB (measured on the M3 Ultra) |
+| needs at least (expected, not tested) | 32 GB — leaves about 9 GiB for conversations |
 | context on a 96 GB Mac | 262,144 (its maximum) |
 | download | 15.6 GB, `lmk pull` |
-
-By the numbers it should run on a 32 GB Mac with a long context and on a 24 GB one with a shorter
-one; we have not tried either.
 
 ## Speed (M3 Ultra, 96 GB — [`docs/benchmarks.md`](../benchmarks.md))
 
