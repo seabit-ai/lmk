@@ -30,3 +30,13 @@
 1–4 全部命中。5：MDL-004 的"想太多"复现了，触发点是题目里的数量约束（250 词），与 THK-003（手点 128 项清单）同一模式；
 Qwen3.5 的模板只有 `enable_thinking` 开关、没有力度档位（27B 的 Qwen3.8 模板才有 `reasoning_effort`）。关掉思考后 122B 又快又听话。
 思考关时工具调用没测（集成测试是思考开的）。
+
+### 追加（owner 问："题目说 250 词"——该不该说"大约 250 词"？）
+同模型、思考开、temp 0、max_tokens 6000（raw/122b-story-about.json、raw/122b-story-noc.json）：
+| 题 | 思考 | 结果 |
+|---|---|---|
+| "Write a 250-word story…" | 逐词点数 | 6000 撞上限 |
+| "Write a short story of **about** 250 words…" | **仍逐词点数** | 6000 撞上限 |
+| "Write a short story about a lighthouse keeper."（无字数） | 3,416 字符，不点数 | 1,844 token，704 词，完成 |
+"大约"救不了：只要题目里有数量，它就去核对（思考里自己写的就是 "Approximately 250 words"，照数不误）。去掉数量才不数。
+⇒ 对这个模型，数量约束 + 思考开 = 高风险组合；bench 的 decode 探针（250 词故事，max_tokens 400）只量速度不看内容，不受影响。
