@@ -1,15 +1,47 @@
 """The two config files lmk writes (design OOBE §C, the same scheme as kitten's):
 
-  config.yaml          seeded once, ALL COMMENTS, then never touched — it is the user's.
+  config.yaml          seeded once as a REAL config — every value written out, nothing
+                       commented away (owner, 2026-09-22) — then never touched: it is the user's.
   config.yaml.example  ours: rewritten whenever its content differs, so it is always
                        the current full reference, including the tested-model list.
 """
 import os
+import textwrap
 from pathlib import Path
 
-from lmk.config import (DEFAULT_CACHE_MAX_SIZE, DEFAULT_HOST, DEFAULT_MAX_PARALLEL, DEFAULT_MAX_QUEUE,
+from lmk.config import (DEFAULT_CACHE_MAX_SIZE, lmk_home, DEFAULT_HOST, DEFAULT_MAX_PARALLEL, DEFAULT_MAX_QUEUE,
                         DEFAULT_MAX_WAIT_SECONDS, DEFAULT_PORT)
 from lmk.models import DEFAULT_MODEL_NAME, TESTED_MODELS
+
+def _seed_text() -> str:
+    home = _home_for_humans()
+    return textwrap.dedent(f"""\
+    # lmk configuration — these are the values in use. After a change: `lmk up` (it restarts the service).
+    # The full reference, with every option and the tested models, is config.yaml.example next to this file.
+
+    model:
+      name: {DEFAULT_MODEL_NAME}       # a tested model; the list is in config.yaml.example
+      # repo: some-org/Some-Model-MLX-4bit   # instead of name: any MLX model on HuggingFace, untested by us
+      # path: /path/to/a/model/dir           # instead of name: a directory already on this disk
+      # context_length: 131072               # default: the model's own maximum, lowered if memory is short
+
+    listen:
+      host: {DEFAULT_HOST}
+      port: {DEFAULT_PORT}
+
+    cache:                        # prompts already processed, kept on disk: a conversation continues
+      dir: {home}/cache           # in about a second — also after a reboot
+      max_size: {DEFAULT_CACHE_MAX_SIZE}              # when full, what was used longest ago is dropped first
+
+    requests:
+      max_parallel: {DEFAULT_MAX_PARALLEL}             # answered at the same time (see config.yaml.example for what it gains)
+      max_queue: {DEFAULT_MAX_QUEUE}               # waiting for their turn; one more is refused at once
+      max_wait_seconds: {DEFAULT_MAX_WAIT_SECONDS}       # a request that could not start by then is refused, and told why
+
+    log:
+      dir: {home}/logs
+    """)
+
 
 _TEMPLATE = f"""\
 # lmk configuration. Everything is optional: with nothing uncommented, lmk serves
@@ -20,9 +52,8 @@ _TEMPLATE = f"""\
 #   name: {DEFAULT_MODEL_NAME}              # a tested model — the list is in config.yaml.example
 #   repo: some-org/Some-Model-MLX-4bit # any MLX model on HuggingFace; untested by us
 #   path: /path/to/a/model/dir         # a directory already on this disk; `lmk pull` is not needed
+#   # Clients send that name as "model" (for repo / path: the last part, in lower case).
 #
-#   id: my-model               # what clients send as "model". Default: the name, or the
-#                              # repo / directory name in lower case.
 #   context_length: 131072     # default: the model's own maximum. If this Mac is short of
 #                              # memory lmk lowers it; `lmk status` shows the value in use.
 #
@@ -78,11 +109,17 @@ def _write_atomically(path: Path, text: str) -> None:
     os.replace(tmp, path)
 
 
+def _home_for_humans() -> str:
+    """`~/.lmk` when it is the default home, else the real path (a test or trial install)."""
+    home = lmk_home()
+    return "~/.lmk" if home == Path.home() / ".lmk" else str(home)
+
+
 def seed_config(path: Path) -> bool:
     """Returns True when the file was created."""
     if path.exists():
         return False
-    _write_atomically(path, _TEMPLATE)
+    _write_atomically(path, _seed_text())
     return True
 
 

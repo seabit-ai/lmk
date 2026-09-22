@@ -56,7 +56,7 @@ class ModelSource:
 
 @dataclass(frozen=True)
 class ModelConfig:
-    id: str  # the name clients put in "model"
+    id: str  # what clients put in "model": the tested name, or the repo / directory name in lower case
     source: ModelSource
     context_length: Optional[int]  # None: the model's own maximum
 
@@ -141,8 +141,11 @@ def load_config(path: Optional[Path] = None) -> LmkConfig:
         context_length = int(context_length)
         if context_length <= 0:
             raise ConfigError("model.context_length must be positive")
+    if "id" in model:
+        raise ConfigError("model.id is gone (2026-09-22): the name clients use is always the model's name — "
+                          f"here that is {_default_model_id(source)!r}. Remove the id: line")
     return LmkConfig(
-        model=ModelConfig(id=str(model.get("id") or _default_model_id(source)), source=source,
+        model=ModelConfig(id=_default_model_id(source), source=source,
                           context_length=context_length),
         host=str(listen.get("host") or DEFAULT_HOST),
         port=int(listen.get("port") or DEFAULT_PORT),

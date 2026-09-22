@@ -139,7 +139,7 @@ picked a model and want your agent to be fast on it every day, that is what lmk 
 
 ## Configuration
 
-There is nothing you have to configure. `~/.lmk/config.yaml` starts out as comments only;
+There is nothing you have to configure. `~/.lmk/config.yaml` is written at install with every value in use, so what you see is what runs;
 `~/.lmk/config.yaml.example` next to it is the full, always-current reference — including the
 list of models we have tested. The settings, with their defaults:
 
@@ -147,7 +147,7 @@ list of models we have tested. The settings, with their defaults:
 model:
   name: qwen3.8-27b-4bit          # a tested model; or  repo: <any MLX model on HuggingFace>
                              #                 or  path: <a directory on this disk>
-  # id: what clients send as "model"            (default: the name)
+                             # clients send that name as "model" (repo / path: its last part, lower case)
   # context_length:                             (default: the model's maximum; lmk lowers it if
                              #                   memory is short, and `lmk status` shows the value in use)
 listen: {host: 127.0.0.1, port: 1235}
