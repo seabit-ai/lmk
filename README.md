@@ -55,6 +55,7 @@ on a smaller/larger Mac is something you may want to leave feedback to let us kn
 git clone https://github.com/seabit-ai/lmk && cd lmk && ./install.sh
 lmk pull
 lmk up
+lmk bench
 ```
 
 `./install.sh` takes about 20 seconds and puts everything under `~/.lmk`. `lmk pull` downloads
@@ -140,7 +141,14 @@ measured is how smart each model is; the default is the one we have used most.
 | model | good for | ctx size on 32 GB / 36 GB / 48 GB / 64 GB / 96 GB | images | tok/s: cache hit / miss / decode |
 |---|---|---|---|---|
 | [`qwen3.8-27b-4bit`](docs/models/qwen3.8-27b-4bit.md) (default) | the default; lmk was built and measured on it | 85k / 119k / 223k / 262k / 262k tokens | yes | 53k / 323 / 40 |
+| [`qwen3.8-27b-5bit`](docs/models/qwen3.8-27b-5bit.md) | the 27B between 4- and 8-bit: 19 GB, 20% slower decode than 4-bit | 51k / 86k / 190k / 262k / 262k tokens | yes | 57k / 315 / 32 |
 | [`gemma-4-31b-4bit`](docs/models/gemma-4-31b-4bit.md) | Gemma at the 27B's size; slower, shorter ctx | 39k / 67k / 150k / 261k / 262k tokens | yes | 26k / 252 / 33 |
+
+### Needs at least 36 GB
+
+| model | good for | ctx size on 36 GB / 48 GB / 64 GB | images | tok/s: cache hit / miss / decode |
+|---|---|---|---|---|
+| [`qwen3.8-27b-6bit`](docs/models/qwen3.8-27b-6bit.md) | the 27B at 6-bit: 23 GB, 30% slower decode than 4-bit | 52k / 156k / 262k tokens | yes | 53k / 315 / 28 |
 
 ### Needs at least 48 GB
 

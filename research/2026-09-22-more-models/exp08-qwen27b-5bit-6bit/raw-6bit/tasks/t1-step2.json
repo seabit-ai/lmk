@@ -1,0 +1,35 @@
+{
+ "id": "chatcmpl-f689e8c7ee2c4fb2829ae183",
+ "created": 1790124406,
+ "model": "qwen3.8-27b-6bit",
+ "object": "chat.completion",
+ "usage": {
+  "prompt_tokens": 506,
+  "completion_tokens": 88,
+  "total_tokens": 594,
+  "prompt_tokens_details": {
+   "cached_tokens": 256
+  }
+ },
+ "choices": [
+  {
+   "index": 0,
+   "message": {
+    "role": "assistant",
+    "content": null,
+    "reasoning_content": "The user wants to change the milk item to \"buy almond milk.\" Currently, it's \"buy oat milk.\" Let's edit it.\n",
+    "tool_calls": [
+     {
+      "id": "call_8977954876464600",
+      "type": "function",
+      "function": {
+       "name": "file_edit",
+       "arguments": "{\"path\": \"notes.md\", \"old_text\": \"- buy oat milk\", \"new_text\": \"- buy almond milk\"}"
+      }
+     }
+    ]
+   },
+   "finish_reason": "tool_calls"
+  }
+ ]
+}

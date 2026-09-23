@@ -1,0 +1,25 @@
+{
+ "id": "chatcmpl-5d55060290b94c3a8fe6ad5a",
+ "created": 1790123742,
+ "model": "qwen3.8-27b-5bit",
+ "object": "chat.completion",
+ "usage": {
+  "prompt_tokens": 440,
+  "completion_tokens": 58,
+  "total_tokens": 498,
+  "prompt_tokens_details": {
+   "cached_tokens": 256
+  }
+ },
+ "choices": [
+  {
+   "index": 0,
+   "message": {
+    "role": "assistant",
+    "content": "An operation is idempotent if applying it multiple times has the same effect as applying it just once.",
+    "reasoning_content": "The user is asking what \"idempotent\" means in one sentence. This is a simple question that doesn't require any tools. I'll just answer directly.\n"
+   },
+   "finish_reason": "stop"
+  }
+ ]
+}

@@ -64,6 +64,14 @@ TESTED_MODELS: dict[str, TestedModel] = {
         thinking="same as the 4-bit",
         good_for="the 27B with less quantization loss, 40% slower decode",
         fit=MemoryFit(27.48, 65536, 10240, 48), speed=Speed(319, 44_000, 23.1)),
+    "qwen3.8-27b-5bit": TestedModel(
+        repo="lmstudio-community/Qwen3.8-27B-MLX-5bit", size_gb=19.4, max_context=262_144, images=True,
+        thinking="same as the 4-bit", good_for="the 27B between 4- and 8-bit: 19 GB, 20% slower decode than 4-bit",
+        fit=MemoryFit(18.08, 65536, 10240, 48), speed=Speed(315, 57_000, 31.6)),
+    "qwen3.8-27b-6bit": TestedModel(
+        repo="lmstudio-community/Qwen3.8-27B-MLX-6bit", size_gb=22.8, max_context=262_144, images=True,
+        thinking="same as the 4-bit", good_for="the 27B at 6-bit: 23 GB, 30% slower decode than 4-bit",
+        fit=MemoryFit(21.22, 65536, 10240, 48), speed=Speed(315, 53_000, 28.1)),
     "qwen3.5-122b-a10b-4bit": TestedModel(
         repo="mlx-community/Qwen3.5-122B-A10B-4bit", size_gb=69.6, max_context=262_144, images=True,
         thinking="on/off only; **use `thinking: false`** — on, it can think for thousands of tokens on a small task",

@@ -64,3 +64,5 @@
   图片、思考、三个速度、一句"适合什么"。每个模型页加 "Known issues" 节（owner 提议）。
 - **MDL-015 Gemma 4 31B（exp07）**：owner 纠偏"模型不是按尺寸计价的商品"后实测。集成测试开关各 5/5；agent 任务 9/9；decode 33 / prefill 252 /
   cached 26k（KV 80 KB/token，列表最大）；32 GB 组。进表：同尺寸档的第二个家族选择，速度与 cache 不如 27B，质量未比。
+- **MDL-016 Qwen3.8-27B 5bit/6bit（exp08）**：都进表（32 GB / 36 GB 组）。decode 31.6 / 28.1，与权重字节反比；agent 9/9 各。5bit 思考开时图片题一位数字读错（确定性）。
+  Qwen3.8 官方只有 27B / Flash-Next / 2.4T-A95B，Mac 上能跑的就 27B 一个模型四个量化。

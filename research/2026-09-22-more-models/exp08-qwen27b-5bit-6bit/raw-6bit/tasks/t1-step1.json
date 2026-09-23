@@ -1,0 +1,35 @@
+{
+ "id": "chatcmpl-2df7c3e9b918435382654445",
+ "created": 1790124404,
+ "model": "qwen3.8-27b-6bit",
+ "object": "chat.completion",
+ "usage": {
+  "prompt_tokens": 447,
+  "completion_tokens": 57,
+  "total_tokens": 504,
+  "prompt_tokens_details": {
+   "cached_tokens": 256
+  }
+ },
+ "choices": [
+  {
+   "index": 0,
+   "message": {
+    "role": "assistant",
+    "content": null,
+    "reasoning_content": "The user is asking to modify notes.md so that the milk item displays as \"buy almond milk\". First, I'll read the file.\n",
+    "tool_calls": [
+     {
+      "id": "call_5dbb3235407a478d",
+      "type": "function",
+      "function": {
+       "name": "file_read",
+       "arguments": "{\"path\": \"notes.md\"}"
+      }
+     }
+    ]
+   },
+   "finish_reason": "tool_calls"
+  }
+ ]
+}

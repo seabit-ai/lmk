@@ -1,0 +1,25 @@
+{
+ "id": "chatcmpl-ffb295aad3c645b1b743bcca",
+ "created": 1790124411,
+ "model": "qwen3.8-27b-6bit",
+ "object": "chat.completion",
+ "usage": {
+  "prompt_tokens": 440,
+  "completion_tokens": 128,
+  "total_tokens": 568,
+  "prompt_tokens_details": {
+   "cached_tokens": 256
+  }
+ },
+ "choices": [
+  {
+   "index": 0,
+   "message": {
+    "role": "assistant",
+    "content": "Idempotent means that applying an operation multiple times has the same effect as applying it just once \u2014 repeating it produces no additional change.",
+    "reasoning_content": "The user is asking a simple definition question: \"In one sentence, what does 'idempotent' mean?\" This is a straightforward conceptual question. No tools needed.\n\nIdempotent means that applying an operation multiple times has the same effect as applying it once \u2014 repeating it does not change the result beyond the initial application.\n\nOne sentence: \"Idempotent means that performing an operation multiple times has the same effect as performing it once \u2014 repeating it produces no additional change.\"\n"
+   },
+   "finish_reason": "stop"
+  }
+ ]
+}
