@@ -128,4 +128,4 @@ def test_models_are_grouped_by_the_smallest_mac_with_a_useful_context():
     assert context_on(m27, 96) == 262_144 and context_on(m27, 24) < 32_768 and smallest_mac_gb(m27) == 32
     md = tested_models_markdown()
     assert md.index("### Needs at least 32 GB") < md.index("### Needs at least 48 GB") < md.index("### Needs at least 96 GB")
-    assert "| context on 32 GB |" in md and "165k of 262k" in md
+    assert "| conversation up to (on 32 GB) |" in md and "| 165k tokens |" in md

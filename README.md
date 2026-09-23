@@ -114,48 +114,51 @@ M3 Ultra with 96 GB. **Each model has its own page** with what fits, how fast, t
 configuration and what to know before using it. Put the name under `model.name` in `~/.lmk/config.yaml`;
 `lmk pull` downloads it.
 
-The groups say which Mac a model should run on, and the context column what fits there. Both are
-computed with the runtime's own memory formula from what each model took on our 96 GB Mac (Apple
-gives the GPU about 81% of unified memory), not measured on those Macs — if you run one, `lmk bench`
-and an issue with the row would tell everyone. Speeds are from the M3 Ultra ([`docs/benchmarks.md`](docs/benchmarks.md)).
+The groups say which Mac a model runs on, and "conversation up to" how long a conversation fits in
+that Mac's memory (1k tokens is about 750 words of English; an agent's system prompt alone is often
+10k). Both come from the runtime's own memory formula and what each model took on our 96 GB Mac, not
+from running on those Macs — if you have one, `lmk bench` and an issue with its row would tell
+everyone. Speeds are tokens per second on the M3 Ultra ([`docs/benchmarks.md`](docs/benchmarks.md)):
+reading a prompt that is in the cache, reading a new one, and writing the answer. What we have not
+measured is how smart each model is; the default is the one we have used most.
 
 <!-- models-table -->
 ### Needs at least 16 GB
 
-| model | good for | context on 16 GB | images | thinking | tok/s: cache hit / miss / decode |
-|---|---|---|---|---|---|
-| [`gemma-4-e4b-4bit`](docs/models/gemma-4-e4b-4bit.md) | the small one: 7 GB, runs on a 16 GB Mac, and still got every agent task right in our tests | 75k of 131k | yes | off by default; same as the 26B-A4B | 183k / 2,199 / 94 |
+| model | good for | conversation up to (on 16 GB) | images | tok/s: cache hit / miss / decode |
+|---|---|---|---|---|
+| [`gemma-4-e4b-4bit`](docs/models/gemma-4-e4b-4bit.md) | the small one: 7 GB, runs on a 16 GB Mac, and still got every agent task right in our tests | 75k tokens | yes | 183k / 2,199 / 94 |
 
 ### Needs at least 24 GB
 
-| model | good for | context on 24 GB | images | thinking | tok/s: cache hit / miss / decode |
-|---|---|---|---|---|---|
-| [`gemma-4-26b-a4b-4bit`](docs/models/gemma-4-26b-a4b-4bit.md) | the fastest model here by far (4B active of 26B), in 16 GB | 46k of 262k | yes | off by default; `thinking: true` lets the model decide per turn, and even off it sometimes thinks briefly | 83k / 1,833 / 120 |
+| model | good for | conversation up to (on 24 GB) | images | tok/s: cache hit / miss / decode |
+|---|---|---|---|---|
+| [`gemma-4-26b-a4b-4bit`](docs/models/gemma-4-26b-a4b-4bit.md) | the fastest model here by far (4B active of 26B), in 16 GB | 46k tokens | yes | 83k / 1,833 / 120 |
 
 ### Needs at least 32 GB
 
-| model | good for | context on 32 GB | images | thinking | tok/s: cache hit / miss / decode |
-|---|---|---|---|---|---|
-| [`qwen3.8-27b-4bit`](docs/models/qwen3.8-27b-4bit.md) (default) | the default: the model lmk was built and measured against, a safe first choice | 85k of 262k | yes | on by default at the top level; `reasoning_effort: low` or `medium` to think less | 53k / 323 / 40 |
-| [`gemma-4-31b-4bit`](docs/models/gemma-4-31b-4bit.md) | the other family at the 27B's size: Google's dense 31B, no thinking unless asked; slower than the Qwen and its cache costs more per token | 39k of 262k | yes | off by default; same as the 26B-A4B | 26k / 252 / 33 |
+| model | good for | conversation up to (on 32 GB) | images | tok/s: cache hit / miss / decode |
+|---|---|---|---|---|
+| [`qwen3.8-27b-4bit`](docs/models/qwen3.8-27b-4bit.md) (default) | the default: the model lmk was built and measured against, a safe first choice | 85k tokens | yes | 53k / 323 / 40 |
+| [`gemma-4-31b-4bit`](docs/models/gemma-4-31b-4bit.md) | the other family at the 27B's size: Google's dense 31B, no thinking unless asked; slower than the Qwen and its cache costs more per token | 39k tokens | yes | 26k / 252 / 33 |
 
 ### Needs at least 48 GB
 
-| model | good for | context on 48 GB | images | thinking | tok/s: cache hit / miss / decode |
-|---|---|---|---|---|---|
-| [`qwen3.8-27b-8bit`](docs/models/qwen3.8-27b-8bit.md) | the same model with less quantization loss; reads prompts as fast, writes 40% slower | 89k of 262k | yes | same as the 4-bit | 44k / 319 / 23 |
+| model | good for | conversation up to (on 48 GB) | images | tok/s: cache hit / miss / decode |
+|---|---|---|---|---|
+| [`qwen3.8-27b-8bit`](docs/models/qwen3.8-27b-8bit.md) | the same model with less quantization loss; reads prompts as fast, writes 40% slower | 89k tokens | yes | 44k / 319 / 23 |
 
 ### Needs at least 64 GB
 
-| model | good for | context on 64 GB | images | thinking | tok/s: cache hit / miss / decode |
-|---|---|---|---|---|---|
-| [`qwen3.5-122b-a10b-48gb`](docs/models/qwen3.5-122b-a10b-48gb.md) | the 122B squeezed to fit a 64 GB Mac (experts at 2–3 bits; a community quantization); slower than the 4-bit, not faster | 83k of 262k | yes | same as the 4-bit: use `thinking: false` | 89k / 746 / 54 |
+| model | good for | conversation up to (on 64 GB) | images | tok/s: cache hit / miss / decode |
+|---|---|---|---|---|
+| [`qwen3.5-122b-a10b-48gb`](docs/models/qwen3.5-122b-a10b-48gb.md) | the 122B squeezed to fit a 64 GB Mac (experts at 2–3 bits; a community quantization); slower than the 4-bit, not faster | 83k tokens | yes | 89k / 746 / 54 |
 
 ### Needs at least 96 GB
 
-| model | good for | context on 96 GB | images | thinking | tok/s: cache hit / miss / decode |
-|---|---|---|---|---|---|
-| [`qwen3.5-122b-a10b-4bit`](docs/models/qwen3.5-122b-a10b-4bit.md) | the biggest model here, and faster than the 27B (10B active of 122B); needs the whole GPU of a 96 GB Mac | 165k of 262k | yes | on/off only; **use `thinking: false`** — on, it can think for thousands of tokens on a small task | 89k / 753 / 60 |
+| model | good for | conversation up to (on 96 GB) | images | tok/s: cache hit / miss / decode |
+|---|---|---|---|---|
+| [`qwen3.5-122b-a10b-4bit`](docs/models/qwen3.5-122b-a10b-4bit.md) | the biggest model here, and faster than the 27B (10B active of 122B); needs the whole GPU of a 96 GB Mac | 165k tokens | yes | 89k / 753 / 60 |
 <!-- /models-table -->
 
 Any other MLX model on HuggingFace loads through `model.repo` (see Configuration), untested by us.
