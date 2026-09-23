@@ -1,0 +1,35 @@
+{
+ "id": "chatcmpl-e0e3c38ac7254abe84a60364",
+ "created": 1790123745,
+ "model": "qwen3.8-27b-5bit",
+ "object": "chat.completion",
+ "usage": {
+  "prompt_tokens": 438,
+  "completion_tokens": 60,
+  "total_tokens": 498,
+  "prompt_tokens_details": {
+   "cached_tokens": 256
+  }
+ },
+ "choices": [
+  {
+   "index": 0,
+   "message": {
+    "role": "assistant",
+    "content": null,
+    "reasoning_content": "The user is asking for the first 5 lines of notes.md. Let's read it.\n",
+    "tool_calls": [
+     {
+      "id": "call_9cf177dc7e1a482a",
+      "type": "function",
+      "function": {
+       "name": "file_read",
+       "arguments": "{\"path\": \"notes.md\", \"max_lines\": 5}"
+      }
+     }
+    ]
+   },
+   "finish_reason": "tool_calls"
+  }
+ ]
+}

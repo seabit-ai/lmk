@@ -1,0 +1,35 @@
+{
+ "id": "chatcmpl-c053a4b5b89e400bb5d36698",
+ "created": 1790123738,
+ "model": "qwen3.8-27b-5bit",
+ "object": "chat.completion",
+ "usage": {
+  "prompt_tokens": 506,
+  "completion_tokens": 97,
+  "total_tokens": 603,
+  "prompt_tokens_details": {
+   "cached_tokens": 256
+  }
+ },
+ "choices": [
+  {
+   "index": 0,
+   "message": {
+    "role": "assistant",
+    "content": null,
+    "reasoning_content": "The file contains \"- buy oat milk\". The user is asking to change the milk item to \"buy almond milk\". I'll replace \"- buy oat milk\" with \"- buy almond milk\".\n",
+    "tool_calls": [
+     {
+      "id": "call_c7ed82471e2943f6",
+      "type": "function",
+      "function": {
+       "name": "file_edit",
+       "arguments": "{\"path\": \"notes.md\", \"old_text\": \"- buy oat milk\", \"new_text\": \"- buy almond milk\"}"
+      }
+     }
+    ]
+   },
+   "finish_reason": "tool_calls"
+  }
+ ]
+}

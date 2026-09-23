@@ -1,0 +1,35 @@
+{
+ "id": "chatcmpl-fe3d8e32dde043ae9daf0d8a",
+ "created": 1790123735,
+ "model": "qwen3.8-27b-5bit",
+ "object": "chat.completion",
+ "usage": {
+  "prompt_tokens": 447,
+  "completion_tokens": 54,
+  "total_tokens": 501,
+  "prompt_tokens_details": {
+   "cached_tokens": 256
+  }
+ },
+ "choices": [
+  {
+   "index": 0,
+   "message": {
+    "role": "assistant",
+    "content": null,
+    "reasoning_content": "The user wants me to modify notes.md. First, in order to be able to make edits, I'll read it.\n",
+    "tool_calls": [
+     {
+      "id": "call_e0bc74d8ec244a5a",
+      "type": "function",
+      "function": {
+       "name": "file_read",
+       "arguments": "{\"path\": \"notes.md\"}"
+      }
+     }
+    ]
+   },
+   "finish_reason": "tool_calls"
+  }
+ ]
+}

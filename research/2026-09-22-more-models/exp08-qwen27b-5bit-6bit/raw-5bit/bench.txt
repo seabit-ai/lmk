@@ -1,0 +1,7 @@
+qwen3.8-27b-5bit on Apple M3 Ultra 96 GB — measuring, about a minute
+  prefill              315 tokens/s
+  cached prefill       57k tokens/s   (3,840 of 4,074 from disk; first token 1.04 s incl. the last partial block)
+  decode              31.6 tokens/s
+
+  seed 873182   ·   row for docs/benchmarks.md:
+| Apple M3 Ultra | 96 GB | qwen3.8-27b-5bit | 262,144 | 315 tok/s (4,074 tokens) | 57k tok/s (3,840 cached; first token 1.04 s) | 31.6 tok/s | dev | 08f0c07 | 2026-09-22 |
