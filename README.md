@@ -122,40 +122,40 @@ and an issue with the row would tell everyone. Speeds are from the M3 Ultra ([`d
 <!-- models-table -->
 ### Needs at least 16 GB
 
-| model | good for | context on 16 GB | images | thinking | prefill (new prompt) | prefill (cached) | decode |
-|---|---|---|---|---|---|---|---|
-| [`gemma-4-e4b-4bit`](docs/models/gemma-4-e4b-4bit.md) | the small one: 7 GB, runs on a 16 GB Mac, and still got every agent task right in our tests | 75k of 131k | yes | off by default; same as the 26B-A4B | 2,199 tok/s | 183k tok/s | 94 tok/s |
+| model | good for | context on 16 GB | images | thinking | tok/s: cache hit / miss / decode |
+|---|---|---|---|---|---|
+| [`gemma-4-e4b-4bit`](docs/models/gemma-4-e4b-4bit.md) | the small one: 7 GB, runs on a 16 GB Mac, and still got every agent task right in our tests | 75k of 131k | yes | off by default; same as the 26B-A4B | 183k / 2,199 / 94 |
 
 ### Needs at least 24 GB
 
-| model | good for | context on 24 GB | images | thinking | prefill (new prompt) | prefill (cached) | decode |
-|---|---|---|---|---|---|---|---|
-| [`gemma-4-26b-a4b-4bit`](docs/models/gemma-4-26b-a4b-4bit.md) | the fastest model here by far (4B active of 26B), in 16 GB | 46k of 262k | yes | off by default; `thinking: true` lets the model decide per turn, and even off it sometimes thinks briefly | 1,833 tok/s | 83k tok/s | 120 tok/s |
+| model | good for | context on 24 GB | images | thinking | tok/s: cache hit / miss / decode |
+|---|---|---|---|---|---|
+| [`gemma-4-26b-a4b-4bit`](docs/models/gemma-4-26b-a4b-4bit.md) | the fastest model here by far (4B active of 26B), in 16 GB | 46k of 262k | yes | off by default; `thinking: true` lets the model decide per turn, and even off it sometimes thinks briefly | 83k / 1,833 / 120 |
 
 ### Needs at least 32 GB
 
-| model | good for | context on 32 GB | images | thinking | prefill (new prompt) | prefill (cached) | decode |
-|---|---|---|---|---|---|---|---|
-| [`qwen3.8-27b-4bit`](docs/models/qwen3.8-27b-4bit.md) (default) | the default: the model lmk was built and measured against, a safe first choice | 85k of 262k | yes | on by default at the top level; `reasoning_effort: low` or `medium` to think less | 323 tok/s | 53k tok/s | 40 tok/s |
-| [`gemma-4-31b-4bit`](docs/models/gemma-4-31b-4bit.md) | the other family at the 27B's size: Google's dense 31B, no thinking unless asked; slower than the Qwen and its cache costs more per token | 39k of 262k | yes | off by default; same as the 26B-A4B | 252 tok/s | 26k tok/s | 33 tok/s |
+| model | good for | context on 32 GB | images | thinking | tok/s: cache hit / miss / decode |
+|---|---|---|---|---|---|
+| [`qwen3.8-27b-4bit`](docs/models/qwen3.8-27b-4bit.md) (default) | the default: the model lmk was built and measured against, a safe first choice | 85k of 262k | yes | on by default at the top level; `reasoning_effort: low` or `medium` to think less | 53k / 323 / 40 |
+| [`gemma-4-31b-4bit`](docs/models/gemma-4-31b-4bit.md) | the other family at the 27B's size: Google's dense 31B, no thinking unless asked; slower than the Qwen and its cache costs more per token | 39k of 262k | yes | off by default; same as the 26B-A4B | 26k / 252 / 33 |
 
 ### Needs at least 48 GB
 
-| model | good for | context on 48 GB | images | thinking | prefill (new prompt) | prefill (cached) | decode |
-|---|---|---|---|---|---|---|---|
-| [`qwen3.8-27b-8bit`](docs/models/qwen3.8-27b-8bit.md) | the same model with less quantization loss; reads prompts as fast, writes 40% slower | 89k of 262k | yes | same as the 4-bit | 319 tok/s | 44k tok/s | 23 tok/s |
+| model | good for | context on 48 GB | images | thinking | tok/s: cache hit / miss / decode |
+|---|---|---|---|---|---|
+| [`qwen3.8-27b-8bit`](docs/models/qwen3.8-27b-8bit.md) | the same model with less quantization loss; reads prompts as fast, writes 40% slower | 89k of 262k | yes | same as the 4-bit | 44k / 319 / 23 |
 
 ### Needs at least 64 GB
 
-| model | good for | context on 64 GB | images | thinking | prefill (new prompt) | prefill (cached) | decode |
-|---|---|---|---|---|---|---|---|
-| [`qwen3.5-122b-a10b-48gb`](docs/models/qwen3.5-122b-a10b-48gb.md) | the 122B squeezed to fit a 64 GB Mac (experts at 2–3 bits; a community quantization); slower than the 4-bit, not faster | 83k of 262k | yes | same as the 4-bit: use `thinking: false` | 746 tok/s | 89k tok/s | 54 tok/s |
+| model | good for | context on 64 GB | images | thinking | tok/s: cache hit / miss / decode |
+|---|---|---|---|---|---|
+| [`qwen3.5-122b-a10b-48gb`](docs/models/qwen3.5-122b-a10b-48gb.md) | the 122B squeezed to fit a 64 GB Mac (experts at 2–3 bits; a community quantization); slower than the 4-bit, not faster | 83k of 262k | yes | same as the 4-bit: use `thinking: false` | 89k / 746 / 54 |
 
 ### Needs at least 96 GB
 
-| model | good for | context on 96 GB | images | thinking | prefill (new prompt) | prefill (cached) | decode |
-|---|---|---|---|---|---|---|---|
-| [`qwen3.5-122b-a10b-4bit`](docs/models/qwen3.5-122b-a10b-4bit.md) | the biggest model here, and faster than the 27B (10B active of 122B); needs the whole GPU of a 96 GB Mac | 165k of 262k | yes | on/off only; **use `thinking: false`** — on, it can think for thousands of tokens on a small task | 753 tok/s | 89k tok/s | 60 tok/s |
+| model | good for | context on 96 GB | images | thinking | tok/s: cache hit / miss / decode |
+|---|---|---|---|---|---|
+| [`qwen3.5-122b-a10b-4bit`](docs/models/qwen3.5-122b-a10b-4bit.md) | the biggest model here, and faster than the 27B (10B active of 122B); needs the whole GPU of a 96 GB Mac | 165k of 262k | yes | on/off only; **use `thinking: false`** — on, it can think for thousands of tokens on a small task | 89k / 753 / 60 |
 <!-- /models-table -->
 
 Any other MLX model on HuggingFace loads through `model.repo` (see Configuration), untested by us.

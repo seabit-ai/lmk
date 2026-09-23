@@ -154,16 +154,16 @@ def tested_models_markdown() -> str:
     out = []
     for gb in sorted(tiers):
         out += [f"### Needs at least {gb} GB", "",
-                f"| model | good for | context on {gb} GB | images | thinking | prefill (new prompt) | prefill (cached) | decode |",
-                "|---|---|---|---|---|---|---|---|"]
+                f"| model | good for | context on {gb} GB | images | thinking | tok/s: cache hit / miss / decode |",
+                "|---|---|---|---|---|---|"]
         for name in tiers[gb]:
             m = TESTED_MODELS[name]
             default = " (default)" if name == DEFAULT_MODEL_NAME else ""
             ctx = context_on(m, gb)
             ctx_cell = _k(ctx) if ctx >= m.max_context else f"{_k(ctx)} of {_k(m.max_context)}"
             out.append(f"| [`{name}`](docs/models/{name}.md){default} | {m.good_for} | {ctx_cell} | "
-                       f"{'yes' if m.images else 'no'} | {m.thinking} | {m.speed.prefill_tok_s:,} tok/s | "
-                       f"{_k(m.speed.cached_prefill_tok_s)} tok/s | {m.speed.decode_tok_s:.0f} tok/s |")
+                       f"{'yes' if m.images else 'no'} | {m.thinking} | "
+                       f"{_k(m.speed.cached_prefill_tok_s)} / {m.speed.prefill_tok_s:,} / {m.speed.decode_tok_s:.0f} |")
         out.append("")
     return "\n".join(out).rstrip("\n")
 
