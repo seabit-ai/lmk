@@ -9,7 +9,7 @@ three quarters of its size. Text and images in, tool calls, thinking.
 |---|---|
 | weights in memory | 23 GB |
 | memory when loaded | 21 GiB (measured on the M3 Ultra) |
-| needs at least (expected, not tested) | 36 GB — about 53k of context there; the full 262k from 64 GB up |
+| needs at least (expected, not tested) | 48 GB — about 157k of context there; the full 262k from 64 GB up |
 | context on a 96 GB Mac | 262,144 (its maximum) |
 | download | 22.8 GB, `lmk pull` |
 

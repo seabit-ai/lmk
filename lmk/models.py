@@ -116,7 +116,7 @@ ENGINE_ALLOCATION_STEP = 256
 SMALLEST_PREFILL_STEP = 512              # the engine keeps the largest context its smallest step allows
 # A model that loads with room for only a few thousand tokens is no use to an agent.
 MIN_USEFUL_CONTEXT = 32_768
-MAC_MEMORY_SIZES_GB = (16, 24, 32, 36, 48, 64, 96, 128, 192, 256, 512)
+MAC_MEMORY_SIZES_GB = (16, 24, 32, 48, 64, 96, 128, 192, 256, 512)
 
 
 def context_on(m: TestedModel, mac_gb: int) -> int:
