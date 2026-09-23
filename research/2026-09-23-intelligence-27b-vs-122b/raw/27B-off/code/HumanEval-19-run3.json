@@ -1,0 +1,13 @@
+{
+ "content": "```python\nfrom typing import List\n\n\ndef sort_numbers(numbers: str) -> str:\n    \"\"\" Input is a space-delimited string of numberals from 'zero' to 'nine'.\n    Valid choices are 'zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight' and 'nine'.\n    Return the string with numbers sorted from smallest to largest\n    >>> sort_numbers('three one five')\n    'one three five'\n    \"\"\"\n    word_to_num = {\n        'zero': 0,\n        'one': 1,\n        'two': 2,\n        'three': 3,\n        'four': 4,\n        'five': 5,\n        'six': 6,\n        'seven': 7,\n        'eight': 8,\n        'nine': 9\n    }\n    num_to_word = {v: k for k, v in word_to_num.items()}\n    \n    if not numbers.strip():\n        return \"\"\n    \n    words = numbers.split()\n    numbers_list = [word_to_num[w] for w in words]\n    numbers_list.sort()\n    result = [num_to_word[n] for n in numbers_list]\n    return ' '.join(result)\n```",
+ "reasoning": "",
+ "tool_calls": [],
+ "finish": "stop",
+ "tokens": 285,
+ "ms": 10178,
+ "raw_message": {
+  "role": "assistant",
+  "content": "```python\nfrom typing import List\n\n\ndef sort_numbers(numbers: str) -> str:\n    \"\"\" Input is a space-delimited string of numberals from 'zero' to 'nine'.\n    Valid choices are 'zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight' and 'nine'.\n    Return the string with numbers sorted from smallest to largest\n    >>> sort_numbers('three one five')\n    'one three five'\n    \"\"\"\n    word_to_num = {\n        'zero': 0,\n        'one': 1,\n        'two': 2,\n        'three': 3,\n        'four': 4,\n        'five': 5,\n        'six': 6,\n        'seven': 7,\n        'eight': 8,\n        'nine': 9\n    }\n    num_to_word = {v: k for k, v in word_to_num.items()}\n    \n    if not numbers.strip():\n        return \"\"\n    \n    words = numbers.split()\n    numbers_list = [word_to_num[w] for w in words]\n    numbers_list.sort()\n    result = [num_to_word[n] for n in numbers_list]\n    return ' '.join(result)\n```"
+ },
+ "pass": true
+}

@@ -1,0 +1,14 @@
+{
+ "content": "MOUNTAINS ARE TOWERING NATURAL FORMATIONS THAT RISE ABOVE THE SURROUNDING LANDSCAPE.",
+ "reasoning": "The user wants a single sentence about mountains, and it must be written entirely in capital letters. Let me think of a simple sentence about mountains and write it in all caps.\n\n\"Mountains are towering natural formations that rise above the surrounding landscape.\"\n\nThat works as one sentence, and I'll write it in all capitals.\n",
+ "tool_calls": [],
+ "finish": "stop",
+ "tokens": 93,
+ "ms": 3436,
+ "raw_message": {
+  "role": "assistant",
+  "content": "MOUNTAINS ARE TOWERING NATURAL FORMATIONS THAT RISE ABOVE THE SURROUNDING LANDSCAPE.",
+  "reasoning_content": "The user wants a single sentence about mountains, and it must be written entirely in capital letters. Let me think of a simple sentence about mountains and write it in all caps.\n\n\"Mountains are towering natural formations that rise above the surrounding landscape.\"\n\nThat works as one sentence, and I'll write it in all capitals.\n"
+ },
+ "pass": true
+}

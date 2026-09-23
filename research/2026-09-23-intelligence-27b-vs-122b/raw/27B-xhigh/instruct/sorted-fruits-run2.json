@@ -1,0 +1,14 @@
+{
+ "content": "apple\nbanana\ncherry\ngrape",
+ "reasoning": "We need answer user's request: \"List four fruits in alphabetical order, one per line, all lowercase, no numbering or bullets, nothing else.\"\n Need final only four fruits, lowercase, one per line, alphabetical. Choose apple, banana, cherry, grape? Alphabetical: apple, banana, cherry, grape. Ensure nothing else.\n",
+ "tool_calls": [],
+ "finish": "stop",
+ "tokens": 82,
+ "ms": 2969,
+ "raw_message": {
+  "role": "assistant",
+  "content": "apple\nbanana\ncherry\ngrape",
+  "reasoning_content": "We need answer user's request: \"List four fruits in alphabetical order, one per line, all lowercase, no numbering or bullets, nothing else.\"\n Need final only four fruits, lowercase, one per line, alphabetical. Choose apple, banana, cherry, grape? Alphabetical: apple, banana, cherry, grape. Ensure nothing else.\n"
+ },
+ "pass": true
+}

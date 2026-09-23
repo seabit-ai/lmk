@@ -1,0 +1,13 @@
+{
+ "content": "yes",
+ "reasoning": "",
+ "tool_calls": [],
+ "finish": "stop",
+ "tokens": 2,
+ "ms": 432,
+ "raw_message": {
+  "role": "assistant",
+  "content": "yes"
+ },
+ "pass": false
+}

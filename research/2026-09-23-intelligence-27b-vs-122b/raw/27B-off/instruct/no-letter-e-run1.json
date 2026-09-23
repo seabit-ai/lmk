@@ -1,0 +1,13 @@
+{
+ "content": "Salty blue water sways with vast waves.\nBright sunlights shine atop this cool, liquid world.",
+ "reasoning": "",
+ "tool_calls": [],
+ "finish": "stop",
+ "tokens": 23,
+ "ms": 1124,
+ "raw_message": {
+  "role": "assistant",
+  "content": "Salty blue water sways with vast waves.\nBright sunlights shine atop this cool, liquid world."
+ },
+ "pass": false
+}

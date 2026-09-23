@@ -1,0 +1,14 @@
+{
+ "content": "MOUNTAINS ARE IMPOSSIBLE STRUCTURES THAT RISE MAGNIFICENTLY ABOVE THE EARTH'S SURFACE.",
+ "reasoning": "The user wants a single sentence about mountains, written entirely in capital letters. Let me craft a simple sentence and make sure every letter is capitalized.\n",
+ "tool_calls": [],
+ "finish": "stop",
+ "tokens": 60,
+ "ms": 2379,
+ "raw_message": {
+  "role": "assistant",
+  "content": "MOUNTAINS ARE IMPOSSIBLE STRUCTURES THAT RISE MAGNIFICENTLY ABOVE THE EARTH'S SURFACE.",
+  "reasoning_content": "The user wants a single sentence about mountains, written entirely in capital letters. Let me craft a simple sentence and make sure every letter is capitalized.\n"
+ },
+ "pass": true
+}

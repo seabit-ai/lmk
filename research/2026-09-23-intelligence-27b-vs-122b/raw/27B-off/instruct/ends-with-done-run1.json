@@ -1,0 +1,13 @@
+{
+ "content": "Maintain a consistent sleep schedule and keep your bedroom cool and dark. Done.",
+ "reasoning": "",
+ "tool_calls": [],
+ "finish": "stop",
+ "tokens": 17,
+ "ms": 888,
+ "raw_message": {
+  "role": "assistant",
+  "content": "Maintain a consistent sleep schedule and keep your bedroom cool and dark. Done."
+ },
+ "pass": true
+}

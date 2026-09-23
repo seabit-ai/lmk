@@ -1,0 +1,14 @@
+{
+ "content": "<result>Canberra</result>",
+ "reasoning": "We need to respond to user: \"What is the capital of Australia? Put your answer inside <result></result> tags and output nothing outside the tags.\"\n\nNeed output only <result>Canberra</result> maybe no newline? final only tags. Ensure nothing outside. Capital is Canberra.\n",
+ "tool_calls": [],
+ "finish": "stop",
+ "tokens": 72,
+ "ms": 2706,
+ "raw_message": {
+  "role": "assistant",
+  "content": "<result>Canberra</result>",
+  "reasoning_content": "We need to respond to user: \"What is the capital of Australia? Put your answer inside <result></result> tags and output nothing outside the tags.\"\n\nNeed output only <result>Canberra</result> maybe no newline? final only tags. Ensure nothing outside. Capital is Canberra.\n"
+ },
+ "pass": true
+}

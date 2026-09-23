@@ -1,0 +1,16 @@
+{
+ "content": "Norman High School enrolls 4000 students.\n\nButler High School enrolls 3/4 as many students as Norman:\n\n\\[\n\\frac{3}{4} \\times 4000 = 3000\n\\]\n\nSo the difference in average enrollment is:\n\n\\[\n4000 - 3000 = 1000\n\\]\n\nAnswer: 1000",
+ "reasoning": "We need answer math. Need think step by step, final line exact. Problem: Norman 4000. Butler 3/4 as many as Norman = 3000. Difference = 1000. Need provide step by step. Final: Answer: 1000. Ensure nothing after number.\n",
+ "tool_calls": [],
+ "finish": "stop",
+ "tokens": 168,
+ "ms": 5911,
+ "raw_message": {
+  "role": "assistant",
+  "content": "Norman High School enrolls 4000 students.\n\nButler High School enrolls 3/4 as many students as Norman:\n\n\\[\n\\frac{3}{4} \\times 4000 = 3000\n\\]\n\nSo the difference in average enrollment is:\n\n\\[\n4000 - 3000 = 1000\n\\]\n\nAnswer: 1000",
+  "reasoning_content": "We need answer math. Need think step by step, final line exact. Problem: Norman 4000. Butler 3/4 as many as Norman = 3000. Difference = 1000. Need provide step by step. Final: Answer: 1000. Ensure nothing after number.\n"
+ },
+ "pass": true,
+ "got": "1000",
+ "want": "1000"
+}

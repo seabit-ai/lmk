@@ -1,0 +1,14 @@
+{
+ "content": "```python\nfrom typing import List\n\n\ndef filter_by_substring(strings: List[str], substring: str) -> List[str]:\n    \"\"\" Filter an input list of strings only for ones that contain given substring\n    >>> filter_by_substring([], 'a')\n    []\n    >>> filter_by_substring(['abc', 'bacd', 'cde', 'array'], 'a')\n    ['abc', 'bacd', 'array']\n    \"\"\"\n    return [string for string in strings if substring in string]\n```",
+ "reasoning": "We need answer with complete function in single python code block only. User asks complete function signature and body plus imports it needs. Need think. Function simple: from typing import List already in snippet? They want complete function. Need likely include import. Return [s for s in strings if substring in s]. Ensure no extra. Final only code block.\n",
+ "tool_calls": [],
+ "finish": "stop",
+ "tokens": 185,
+ "ms": 7167,
+ "raw_message": {
+  "role": "assistant",
+  "content": "```python\nfrom typing import List\n\n\ndef filter_by_substring(strings: List[str], substring: str) -> List[str]:\n    \"\"\" Filter an input list of strings only for ones that contain given substring\n    >>> filter_by_substring([], 'a')\n    []\n    >>> filter_by_substring(['abc', 'bacd', 'cde', 'array'], 'a')\n    ['abc', 'bacd', 'array']\n    \"\"\"\n    return [string for string in strings if substring in string]\n```",
+  "reasoning_content": "We need answer with complete function in single python code block only. User asks complete function signature and body plus imports it needs. Need think. Function simple: from typing import List already in snippet? They want complete function. Need likely include import. Return [s for s in strings if substring in s]. Ensure no extra. Final only code block.\n"
+ },
+ "pass": true
+}

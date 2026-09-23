@@ -1,0 +1,13 @@
+{
+ "content": "```python\ndef search(lst):\n    '''\n    You are given a non-empty list of positive integers. Return the greatest integer that is greater than \n    zero, and has a frequency greater than or equal to the value of the integer itself. \n    The frequency of an integer is the number of times it appears in the list.\n    If no such a value exist, return -1.\n    Examples:\n        search([4, 1, 2, 2, 3, 1]) == 2\n        search([1, 2, 2, 3, 3, 3, 4, 4, 4]) == 3\n        search([5, 5, 4, 4, 4]) == -1\n    '''\n    from collections import Counter\n    freq = Counter(lst)\n    result = -1\n    for val, count in freq.items():\n        if val > 0 and count >= val:\n            if val > result:\n                result = val\n    return result\n```",
+ "reasoning": "",
+ "tool_calls": [],
+ "finish": "stop",
+ "tokens": 227,
+ "ms": 8810,
+ "raw_message": {
+  "role": "assistant",
+  "content": "```python\ndef search(lst):\n    '''\n    You are given a non-empty list of positive integers. Return the greatest integer that is greater than \n    zero, and has a frequency greater than or equal to the value of the integer itself. \n    The frequency of an integer is the number of times it appears in the list.\n    If no such a value exist, return -1.\n    Examples:\n        search([4, 1, 2, 2, 3, 1]) == 2\n        search([1, 2, 2, 3, 3, 3, 4, 4, 4]) == 3\n        search([5, 5, 4, 4, 4]) == -1\n    '''\n    from collections import Counter\n    freq = Counter(lst)\n    result = -1\n    for val, count in freq.items():\n        if val > 0 and count >= val:\n            if val > result:\n                result = val\n    return result\n```"
+ },
+ "pass": true
+}

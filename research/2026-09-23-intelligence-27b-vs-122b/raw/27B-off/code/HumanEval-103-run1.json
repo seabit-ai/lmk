@@ -1,0 +1,13 @@
+{
+ "content": "```python\ndef rounded_avg(n, m):\n    if n > m:\n        return -1\n    total = sum(range(n, m + 1))\n    count = m - n + 1\n    avg = total / count\n    rounded = round(avg)\n    return bin(rounded)\n```",
+ "reasoning": "",
+ "tool_calls": [],
+ "finish": "stop",
+ "tokens": 69,
+ "ms": 3783,
+ "raw_message": {
+  "role": "assistant",
+  "content": "```python\ndef rounded_avg(n, m):\n    if n > m:\n        return -1\n    total = sum(range(n, m + 1))\n    count = m - n + 1\n    avg = total / count\n    rounded = round(avg)\n    return bin(rounded)\n```"
+ },
+ "pass": true
+}

@@ -1,0 +1,16 @@
+{
+ "content": "## Step-by-Step Solution\n\n**Define the variables:**\n\nLet the first person's share be **x**.\n\n- First person: x\n- Second person: x + 80 (took $80 more than the first)\n- Third person: 2(x + 80) (took twice what the second took)\n\n**Set up the equation:**\n\n$$x + (x + 80) + 2(x + 80) = 1920$$\n\n**Solve:**\n\n$$x + x + 80 + 2x + 160 = 1920$$\n\n$$4x + 240 = 1920$$\n\n$$4x = 1680$$\n\n$$x = 420$$\n\n**Verify:**\n- First: $420\n- Second: $500\n- Third: $1,000\n- Total: $420 + $500 + $1,000 = $1,920 ✓\n\nAnswer: 420",
+ "reasoning": "Let me define the shares:\n- Let the first person's share be x\n- The second person took $80 more than the first: x + 80\n- The third person took twice what the second took: 2(x + 80)\n\nThe total is $1920:\nx + (x + 80) + 2(x + 80) = 1920\n\nLet me solve:\nx + x + 80 + 2x + 160 = 1920\n4x + 240 = 1920\n4x = 1680\nx = 420\n\nLet me verify:\n- First: $420\n- Second: $500\n- Third: $1000\n- Total: 420 + 500 + 1000 = 1920 ✓\n",
+ "tool_calls": [],
+ "finish": "stop",
+ "tokens": 443,
+ "ms": 14760,
+ "raw_message": {
+  "role": "assistant",
+  "content": "## Step-by-Step Solution\n\n**Define the variables:**\n\nLet the first person's share be **x**.\n\n- First person: x\n- Second person: x + 80 (took $80 more than the first)\n- Third person: 2(x + 80) (took twice what the second took)\n\n**Set up the equation:**\n\n$$x + (x + 80) + 2(x + 80) = 1920$$\n\n**Solve:**\n\n$$x + x + 80 + 2x + 160 = 1920$$\n\n$$4x + 240 = 1920$$\n\n$$4x = 1680$$\n\n$$x = 420$$\n\n**Verify:**\n- First: $420\n- Second: $500\n- Third: $1,000\n- Total: $420 + $500 + $1,000 = $1,920 ✓\n\nAnswer: 420",
+  "reasoning_content": "Let me define the shares:\n- Let the first person's share be x\n- The second person took $80 more than the first: x + 80\n- The third person took twice what the second took: 2(x + 80)\n\nThe total is $1920:\nx + (x + 80) + 2(x + 80) = 1920\n\nLet me solve:\nx + x + 80 + 2x + 160 = 1920\n4x + 240 = 1920\n4x = 1680\nx = 420\n\nLet me verify:\n- First: $420\n- Second: $500\n- Third: $1000\n- Total: 420 + 500 + 1000 = 1920 ✓\n"
+ },
+ "pass": true,
+ "got": "420",
+ "want": "420"
+}

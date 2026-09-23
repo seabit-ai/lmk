@@ -1,0 +1,16 @@
+{
+ "content": "**Step 1:** Find Charmaine's current age.\n\nIf she will be 16 in 12 years, then her current age is:\n16 − 12 = **4 years old**\n\n**Step 2:** Find her age 4 years from now.\n\n4 + 4 = **8 years old**\n\nAnswer: 8",
+ "reasoning": "Let me solve this step by step.\n\n1. Charmaine will be 16 years old in 12 years.\n   So her current age = 16 - 12 = 4 years old.\n\n2. How old will she be 4 years from now?\n   4 + 4 = 8 years old.\n",
+ "tool_calls": [],
+ "finish": "stop",
+ "tokens": 153,
+ "ms": 5219,
+ "raw_message": {
+  "role": "assistant",
+  "content": "**Step 1:** Find Charmaine's current age.\n\nIf she will be 16 in 12 years, then her current age is:\n16 − 12 = **4 years old**\n\n**Step 2:** Find her age 4 years from now.\n\n4 + 4 = **8 years old**\n\nAnswer: 8",
+  "reasoning_content": "Let me solve this step by step.\n\n1. Charmaine will be 16 years old in 12 years.\n   So her current age = 16 - 12 = 4 years old.\n\n2. How old will she be 4 years from now?\n   4 + 4 = 8 years old.\n"
+ },
+ "pass": true,
+ "got": "8",
+ "want": "8"
+}

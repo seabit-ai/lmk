@@ -1,0 +1,13 @@
+{
+ "content": "Salt water forms a vast, blue expanse. Tides push against sand. Fish swim in its depth.",
+ "reasoning": "",
+ "tool_calls": [],
+ "finish": "stop",
+ "tokens": 23,
+ "ms": 1446,
+ "raw_message": {
+  "role": "assistant",
+  "content": "Salt water forms a vast, blue expanse. Tides push against sand. Fish swim in its depth."
+ },
+ "pass": false
+}

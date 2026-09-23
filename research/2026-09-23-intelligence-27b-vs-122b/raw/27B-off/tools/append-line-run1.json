@@ -1,0 +1,88 @@
+{
+ "pass": true,
+ "steps": [
+  {
+   "content": "",
+   "reasoning": "",
+   "tool_calls": [
+    {
+     "id": "call_8f0e7ee3e97d4fc6",
+     "type": "function",
+     "function": {
+      "name": "file_list",
+      "arguments": "{}"
+     }
+    }
+   ],
+   "finish": "tool_calls",
+   "tokens": 14,
+   "ms": 2474
+  },
+  {
+   "content": "",
+   "reasoning": "",
+   "tool_calls": [
+    {
+     "id": "call_90a7111c664d4ece",
+     "type": "function",
+     "function": {
+      "name": "file_read",
+      "arguments": "{\"path\": \"todo.md\"}"
+     }
+    }
+   ],
+   "finish": "tool_calls",
+   "tokens": 26,
+   "ms": 2012
+  },
+  {
+   "content": "",
+   "reasoning": "",
+   "tool_calls": [
+    {
+     "id": "call_58cc1e4530624122",
+     "type": "function",
+     "function": {
+      "name": "file_edit",
+      "arguments": "{\"path\": \"todo.md\", \"old_text\": \"- pay rent\", \"new_text\": \"- pay rent\\n- call the dentist\"}"
+     }
+    }
+   ],
+   "finish": "tool_calls",
+   "tokens": 60,
+   "ms": 3072
+  },
+  {
+   "content": "",
+   "reasoning": "",
+   "tool_calls": [
+    {
+     "id": "call_efb13b87617a4265",
+     "type": "function",
+     "function": {
+      "name": "file_read",
+      "arguments": "{\"path\": \"todo.md\"}"
+     }
+    }
+   ],
+   "finish": "tool_calls",
+   "tokens": 26,
+   "ms": 2402
+  },
+  {
+   "content": "Added `- call the dentist` to todo.md; the existing items are preserved.",
+   "reasoning": "",
+   "tool_calls": [],
+   "finish": "stop",
+   "tokens": 17,
+   "ms": 1632
+  }
+ ],
+ "tokens": 143,
+ "ms": 11592,
+ "finish": "stop",
+ "final_files": {
+  "todo.md": "- water plants\n- pay rent\n- call the dentist\n"
+ },
+ "content": "Added `- call the dentist` to todo.md; the existing items are preserved."
+}

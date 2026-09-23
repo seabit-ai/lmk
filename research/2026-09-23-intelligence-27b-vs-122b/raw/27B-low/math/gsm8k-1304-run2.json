@@ -1,0 +1,16 @@
+{
+ "content": "**Step 1:** Find the enrollment at Butler High School.\n\nButler High School enrolls 3/4 as many students as Norman High School:\n$$\\frac{3}{4} \\times 4000 = 3000$$\n\n**Step 2:** Find the difference in enrollment.\n\n$$4000 - 3000 = 1000$$\n\nNorman High School has 1000 more students than Butler High School.\n\nAnswer: 1000",
+ "reasoning": "Let me solve this step by step.\n\n1. Norman High School enrolls an average of 4000 students every year.\n2. Butler High School enrolls an average of 3/4 as many students as Norman High School.\n3. So Butler High School enrolls 3/4 × 4000 = 3000 students.\n4. The difference is 4000 - 3000 = 1000.\n\nSo Norman High School has 1000 more students than Butler High School.\n",
+ "tool_calls": [],
+ "finish": "stop",
+ "tokens": 236,
+ "ms": 8509,
+ "raw_message": {
+  "role": "assistant",
+  "content": "**Step 1:** Find the enrollment at Butler High School.\n\nButler High School enrolls 3/4 as many students as Norman High School:\n$$\\frac{3}{4} \\times 4000 = 3000$$\n\n**Step 2:** Find the difference in enrollment.\n\n$$4000 - 3000 = 1000$$\n\nNorman High School has 1000 more students than Butler High School.\n\nAnswer: 1000",
+  "reasoning_content": "Let me solve this step by step.\n\n1. Norman High School enrolls an average of 4000 students every year.\n2. Butler High School enrolls an average of 3/4 as many students as Norman High School.\n3. So Butler High School enrolls 3/4 × 4000 = 3000 students.\n4. The difference is 4000 - 3000 = 1000.\n\nSo Norman High School has 1000 more students than Butler High School.\n"
+ },
+ "pass": true,
+ "got": "1000",
+ "want": "1000"
+}

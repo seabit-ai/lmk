@@ -1,0 +1,14 @@
+{
+ "content": "- Permanent data loss due to hardware failure, disk corruption, or software crashes with no way to restore.\n- Inability to recover from human error, such as accidental deletion of records or a failed schema migration.\n- No recovery path in the event of a ransomware attack or malicious data destruction.",
+ "reasoning": "The user wants exactly three bullet points, each starting with '- ', about risks of running a database without backups. No intro, no outro, just the three bullet points.\n\nLet me think of three distinct risks:\n1. Data loss from hardware failure or corruption\n2. Inability to recover from human error (accidental deletion, bad updates)\n3. Vulnerability to ransomware or cyberattacks with no recovery path\n\nI'll keep each point concise and clear.\n",
+ "tool_calls": [],
+ "finish": "stop",
+ "tokens": 161,
+ "ms": 5785,
+ "raw_message": {
+  "role": "assistant",
+  "content": "- Permanent data loss due to hardware failure, disk corruption, or software crashes with no way to restore.\n- Inability to recover from human error, such as accidental deletion of records or a failed schema migration.\n- No recovery path in the event of a ransomware attack or malicious data destruction.",
+  "reasoning_content": "The user wants exactly three bullet points, each starting with '- ', about risks of running a database without backups. No intro, no outro, just the three bullet points.\n\nLet me think of three distinct risks:\n1. Data loss from hardware failure or corruption\n2. Inability to recover from human error (accidental deletion, bad updates)\n3. Vulnerability to ransomware or cyberattacks with no recovery path\n\nI'll keep each point concise and clear.\n"
+ },
+ "pass": true
+}

@@ -1,0 +1,13 @@
+{
+ "content": "```python\ndef solution(lst):\n    return sum(lst[i] for i in range(0, len(lst), 2) if lst[i] % 2 != 0)\n```",
+ "reasoning": "",
+ "tool_calls": [],
+ "finish": "stop",
+ "tokens": 41,
+ "ms": 2498,
+ "raw_message": {
+  "role": "assistant",
+  "content": "```python\ndef solution(lst):\n    return sum(lst[i] for i in range(0, len(lst), 2) if lst[i] % 2 != 0)\n```"
+ },
+ "pass": true
+}

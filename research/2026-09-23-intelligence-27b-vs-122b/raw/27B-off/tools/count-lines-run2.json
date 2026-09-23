@@ -1,0 +1,63 @@
+{
+ "pass": true,
+ "steps": [
+  {
+   "content": "",
+   "reasoning": "",
+   "tool_calls": [
+    {
+     "id": "call_567d02894cfe476d",
+     "type": "function",
+     "function": {
+      "name": "file_list",
+      "arguments": "{}"
+     }
+    }
+   ],
+   "finish": "tool_calls",
+   "tokens": 14,
+   "ms": 1582
+  },
+  {
+   "content": "",
+   "reasoning": "",
+   "tool_calls": [
+    {
+     "id": "call_16540ddb9cc64ec6",
+     "type": "function",
+     "function": {
+      "name": "file_read",
+      "arguments": "{\"path\": \"x.txt\"}"
+     }
+    },
+    {
+     "id": "call_f84dd986aa284c5e",
+     "type": "function",
+     "function": {
+      "name": "file_read",
+      "arguments": "{\"path\": \"y.txt\"}"
+     }
+    }
+   ],
+   "finish": "tool_calls",
+   "tokens": 52,
+   "ms": 2800
+  },
+  {
+   "content": "7",
+   "reasoning": "",
+   "tool_calls": [],
+   "finish": "stop",
+   "tokens": 2,
+   "ms": 773
+  }
+ ],
+ "tokens": 68,
+ "ms": 5155,
+ "finish": "stop",
+ "final_files": {
+  "x.txt": "one\ntwo\nthree\n",
+  "y.txt": "four\nfive\nsix\nseven\n"
+ },
+ "content": "7"
+}

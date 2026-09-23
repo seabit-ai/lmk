@@ -1,0 +1,13 @@
+{
+ "content": "MOUNTAINS ARE MIGHTY NATURAL LANDFORMS THAT DOMINATE THE HORIZON.",
+ "reasoning": "",
+ "tool_calls": [],
+ "finish": "stop",
+ "tokens": 22,
+ "ms": 1365,
+ "raw_message": {
+  "role": "assistant",
+  "content": "MOUNTAINS ARE MIGHTY NATURAL LANDFORMS THAT DOMINATE THE HORIZON."
+ },
+ "pass": true
+}

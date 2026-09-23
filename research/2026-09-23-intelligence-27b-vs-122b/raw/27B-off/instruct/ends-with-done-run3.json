@@ -1,0 +1,13 @@
+{
+ "content": "Maintain a consistent sleep schedule to regulate your body's internal clock. Additionally, create a cool, dark, and quiet environment to optimize sleep quality. Done.",
+ "reasoning": "",
+ "tool_calls": [],
+ "finish": "stop",
+ "tokens": 33,
+ "ms": 1600,
+ "raw_message": {
+  "role": "assistant",
+  "content": "Maintain a consistent sleep schedule to regulate your body's internal clock. Additionally, create a cool, dark, and quiet environment to optimize sleep quality. Done."
+ },
+ "pass": true
+}

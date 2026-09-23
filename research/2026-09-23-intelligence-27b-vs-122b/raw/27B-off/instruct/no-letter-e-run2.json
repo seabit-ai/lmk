@@ -1,0 +1,13 @@
+{
+ "content": "Salt water fills vast global basins. Tides push against distant shores.",
+ "reasoning": "",
+ "tool_calls": [],
+ "finish": "stop",
+ "tokens": 16,
+ "ms": 725,
+ "raw_message": {
+  "role": "assistant",
+  "content": "Salt water fills vast global basins. Tides push against distant shores."
+ },
+ "pass": false
+}

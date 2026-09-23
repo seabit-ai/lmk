@@ -1,0 +1,16 @@
+{
+ "content": "Let me define the shares:\n\n- First person: **x**\n- Second person: **x + 80**\n- Third person: **2(x + 80)**\n\nSince the total is $1920:\n\n$$x + (x + 80) + 2(x + 80) = 1920$$\n\nExpanding:\n\n$$x + x + 80 + 2x + 160 = 1920$$\n\n$$4x + 240 = 1920$$\n\n$$4x = 1680$$\n\n$$x = 420$$\n\n**Verification:**\n- First: $420\n- Second: $500\n- Third: $1000\n- Total: $420 + $500 + $1000 = $1920 ✓\n\nAnswer: 420",
+ "reasoning": "Let me solve this step by step.\n\nLet the first person's share be x.\n\nThe second person took $80 more than the first: x + 80\nThe third person took twice what the second took: 2(x + 80)\n\nThe total is $1920, so:\nx + (x + 80) + 2(x + 80) = 1920\n\nLet me expand:\nx + x + 80 + 2x + 160 = 1920\n4x + 240 = 1920\n4x = 1680\nx = 420\n\nLet me verify:\n- First: $420\n- Second: $420 + $80 = $500\n- Third: 2 × $500 = $1000\n- Total: $420 + $500 + $1000 = $1920 ✓\n",
+ "tool_calls": [],
+ "finish": "stop",
+ "tokens": 431,
+ "ms": 14281,
+ "raw_message": {
+  "role": "assistant",
+  "content": "Let me define the shares:\n\n- First person: **x**\n- Second person: **x + 80**\n- Third person: **2(x + 80)**\n\nSince the total is $1920:\n\n$$x + (x + 80) + 2(x + 80) = 1920$$\n\nExpanding:\n\n$$x + x + 80 + 2x + 160 = 1920$$\n\n$$4x + 240 = 1920$$\n\n$$4x = 1680$$\n\n$$x = 420$$\n\n**Verification:**\n- First: $420\n- Second: $500\n- Third: $1000\n- Total: $420 + $500 + $1000 = $1920 ✓\n\nAnswer: 420",
+  "reasoning_content": "Let me solve this step by step.\n\nLet the first person's share be x.\n\nThe second person took $80 more than the first: x + 80\nThe third person took twice what the second took: 2(x + 80)\n\nThe total is $1920, so:\nx + (x + 80) + 2(x + 80) = 1920\n\nLet me expand:\nx + x + 80 + 2x + 160 = 1920\n4x + 240 = 1920\n4x = 1680\nx = 420\n\nLet me verify:\n- First: $420\n- Second: $420 + $80 = $500\n- Third: 2 × $500 = $1000\n- Total: $420 + $500 + $1000 = $1920 ✓\n"
+ },
+ "pass": true,
+ "got": "420",
+ "want": "420"
+}

@@ -1,0 +1,13 @@
+{
+ "content": "```python\ndef even_odd_count(num):\n    \"\"\"Given an integer. return a tuple that has the number of even and odd digits respectively.\n\n     Example:\n        even_odd_count(-12) ==> (1, 1)\n        even_odd_count(123) ==> (1, 2)\n    \"\"\"\n    s = str(abs(num))\n    even_count = 0\n    odd_count = 0\n    for ch in s:\n        d = int(ch)\n        if d % 2 == 0:\n            even_count += 1\n        else:\n            odd_count += 1\n    return (even_count, odd_count)\n```",
+ "reasoning": "",
+ "tool_calls": [],
+ "finish": "stop",
+ "tokens": 148,
+ "ms": 5071,
+ "raw_message": {
+  "role": "assistant",
+  "content": "```python\ndef even_odd_count(num):\n    \"\"\"Given an integer. return a tuple that has the number of even and odd digits respectively.\n\n     Example:\n        even_odd_count(-12) ==> (1, 1)\n        even_odd_count(123) ==> (1, 2)\n    \"\"\"\n    s = str(abs(num))\n    even_count = 0\n    odd_count = 0\n    for ch in s:\n        d = int(ch)\n        if d % 2 == 0:\n            even_count += 1\n        else:\n            odd_count += 1\n    return (even_count, odd_count)\n```"
+ },
+ "pass": true
+}
