@@ -154,7 +154,7 @@ def tested_models_markdown() -> str:
     out = []
     for gb in sorted(tiers):
         out += [f"### Needs at least {gb} GB", "",
-                f"| model | good for | context on {gb} GB | images | thinking | reads a new prompt | reads a cached one | writes |",
+                f"| model | good for | context on {gb} GB | images | thinking | prefill (new prompt) | prefill (cached) | decode |",
                 "|---|---|---|---|---|---|---|---|"]
         for name in tiers[gb]:
             m = TESTED_MODELS[name]
