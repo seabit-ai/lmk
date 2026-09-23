@@ -159,7 +159,7 @@ def tested_models_markdown() -> str:
                         len(sizes) - 1) for n in tiers[gb])
         sizes = sizes[:last + 1]
         out += [f"### Needs at least {gb} GB", "",
-                f"| model | good for | conversation up to, on {' / '.join(f'{g} GB' for g in sizes)} | images | tok/s: cache hit / miss / decode |",
+                f"| model | good for | ctx size on {' / '.join(f'{g} GB' for g in sizes)} | images | tok/s: cache hit / miss / decode |",
                 "|---|---|---|---|---|"]
         for name in tiers[gb]:
             m = TESTED_MODELS[name]
