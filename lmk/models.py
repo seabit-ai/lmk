@@ -57,37 +57,37 @@ TESTED_MODELS: dict[str, TestedModel] = {
     "qwen3.8-27b-4bit": TestedModel(
         repo="lmstudio-community/Qwen3.8-27B-MLX-4bit", size_gb=16.1, max_context=262_144, images=True,
         thinking="on by default at the top level; `reasoning_effort: low` or `medium` to think less",
-        good_for="the default: the model lmk was built and measured against, a safe first choice",
+        good_for="the default; lmk was built and measured on it",
         fit=MemoryFit(14.95, 65536, 10240, 48), speed=Speed(323, 53_000, 39.5)),
     "qwen3.8-27b-8bit": TestedModel(
         repo="lmstudio-community/Qwen3.8-27B-MLX-8bit", size_gb=29.5, max_context=262_144, images=True,
         thinking="same as the 4-bit",
-        good_for="the same model with less quantization loss; reads prompts as fast, writes 40% slower",
+        good_for="the 27B with less quantization loss, 40% slower decode",
         fit=MemoryFit(27.48, 65536, 10240, 48), speed=Speed(319, 44_000, 23.1)),
     "qwen3.5-122b-a10b-4bit": TestedModel(
         repo="mlx-community/Qwen3.5-122B-A10B-4bit", size_gb=69.6, max_context=262_144, images=True,
         thinking="on/off only; **use `thinking: false`** — on, it can think for thousands of tokens on a small task",
-        good_for="the biggest model here, and faster than the 27B (10B active of 122B); needs the whole GPU of a 96 GB Mac",
+        good_for="the biggest here; MoE, faster than the 27B",
         fit=MemoryFit(64.82, 24576, 6144, 64, measured_context_on_96gb=165_888), speed=Speed(753, 89_000, 60.5)),
     "qwen3.5-122b-a10b-48gb": TestedModel(
         repo="baa-ai/Qwen3.5-122B-A10B-RAM-48GB-MLX", size_gb=47.2, max_context=262_144, images=True,
         thinking="same as the 4-bit: use `thinking: false`",
-        good_for="the 122B squeezed to fit a 64 GB Mac (experts at 2–3 bits; a community quantization); slower than the 4-bit, not faster",
+        good_for="the 122B for 64 GB Macs (2–3 bit experts, community quant)",
         fit=MemoryFit(43.92, 24576, 6144, 64), speed=Speed(746, 89_000, 53.7)),
     "gemma-4-26b-a4b-4bit": TestedModel(
         repo="mlx-community/gemma-4-26b-a4b-it-4bit", size_gb=15.6, max_context=262_144, images=True,
         thinking="off by default; `thinking: true` lets the model decide per turn, and even off it sometimes thinks briefly",
-        good_for="the fastest model here by far (4B active of 26B), in 16 GB",
+        good_for="fastest here by far; MoE, 4B active",
         fit=MemoryFit(14.29, 20480, 5632, 32, 0.20, 204800), speed=Speed(1_833, 83_000, 119.5)),
     "gemma-4-e4b-4bit": TestedModel(
         repo="lmstudio-community/gemma-4-E4B-it-MLX-4bit", size_gb=6.8, max_context=131_072, images=True,
         thinking="off by default; same as the 26B-A4B",
-        good_for="the small one: 7 GB, runs on a 16 GB Mac, and still got every agent task right in our tests",
+        good_for="the small one; 7 GB",
         fit=MemoryFit(6.33, 16384, 26624, 16, 0.02, 40960), speed=Speed(2_199, 183_000, 93.5)),
     "gemma-4-31b-4bit": TestedModel(
         repo="lmstudio-community/gemma-4-31B-it-MLX-4bit", size_gb=18.4, max_context=262_144, images=True,
         thinking="off by default; same as the 26B-A4B",
-        good_for="the other family at the 27B's size: Google's dense 31B, no thinking unless asked; slower than the Qwen and its cache costs more per token",
+        good_for="Gemma at the 27B's size; slower, shorter ctx",
         fit=MemoryFit(17.15, 81920, 10752, 64, 0.78, 819200), speed=Speed(252, 26_000, 33.0)),
 }
 DEFAULT_MODEL_NAME = "qwen3.8-27b-4bit"
