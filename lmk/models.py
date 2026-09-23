@@ -153,13 +153,19 @@ def tested_models_markdown() -> str:
         tiers.setdefault(smallest_mac_gb(m), []).append(name)
     out = []
     for gb in sorted(tiers):
+        # Mac sizes from this group's minimum up to where every model in it reaches its maximum context
+        sizes = [g for g in MAC_MEMORY_SIZES_GB if g >= gb]
+        last = max(next((i for i, g in enumerate(sizes) if context_on(TESTED_MODELS[n], g) >= TESTED_MODELS[n].max_context),
+                        len(sizes) - 1) for n in tiers[gb])
+        sizes = sizes[:last + 1]
         out += [f"### Needs at least {gb} GB", "",
-                f"| model | good for | conversation up to (on {gb} GB) | images | tok/s: cache hit / miss / decode |",
+                f"| model | good for | conversation up to, on {' / '.join(f'{g} GB' for g in sizes)} | images | tok/s: cache hit / miss / decode |",
                 "|---|---|---|---|---|"]
         for name in tiers[gb]:
             m = TESTED_MODELS[name]
             default = " (default)" if name == DEFAULT_MODEL_NAME else ""
-            out.append(f"| [`{name}`](docs/models/{name}.md){default} | {m.good_for} | {_k(context_on(m, gb))} tokens | "
+            ctx = " / ".join(_k(context_on(m, g)) for g in sizes)
+            out.append(f"| [`{name}`](docs/models/{name}.md){default} | {m.good_for} | {ctx} tokens | "
                        f"{'yes' if m.images else 'no'} | "
                        f"{_k(m.speed.cached_prefill_tok_s)} / {m.speed.prefill_tok_s:,} / {m.speed.decode_tok_s:.0f} |")
         out.append("")
