@@ -85,6 +85,7 @@ Known issues）、启动时校验会炸的配置值。加模型的工作量大�
 | `lmk/bench.py` | `lmk bench`：预热 + 冷 prefill / cache 命中 / decode 三探针，出 `docs/benchmarks.md` 的一行 |
 | `lmk/sampling.py` `stopmatch.py` | OpenAI 采样参数 → 引擎名字、校验、模型的 generation_config 缺省；stop 只截回答段（设计 2026-09-21-sampling） |
 | `lmk/engine.py` | **与 mlx-engine 之间唯一的接缝**（`Engine` 协议、`MlxEngine`、`FakeEngine`） |
+| `.engine/mlx-engine`（fork `seabit-ai/mlx-engine`，分支 `lmk`） | 上游钉住的 commit + 我们的补丁，**按功能一个 commit**（第一个：批处理路径 KV 量化，`model_kit/batched_vision/kv_quant.py` + records/context_fit 的量化分支）。改引擎 = 在 fork 分支上提交 → owner push fork → `ENGINE_COMMIT` 指向新 hash → lmk 再 push（install.sh 按 hash 下 fork 的 tarball，顺序反了 CI 会挂） |
 | `lmk/persistcache.py` | 持久化前缀 cache：身份、上限、跨重启恢复 |
 | `lmk/config.py` `configfiles.py` `models.py` `modelfit.py` `memory.py` | 配置与缺省值、两份配置文件、模型清单与 HF 解析、装不装得下、内存读数 |
 | `install.sh` | 用户与 `make install` 共用的安装器（uv，全部落在 `~/.lmk`） |
@@ -95,6 +96,9 @@ Known issues）、启动时校验会炸的配置值。加模型的工作量大�
   （`models._hf_snapshot_dir`）；`lmk pull` 那条路径上不得 import 引擎。
 - **`python -m lmk` 会把 cwd 放在 import 路径最前。** 命令和 launchd 都用 `python -P`，否则在本 repo 的 clone 里敲 `lmk` 跑的是工作树的代码。
 - 引擎的 cache store **不是线程安全的**（归它的 cache I/O 线程）。我们从 HTTP 线程只读它的索引（`engine.preflight`），读失败按"未知 = 长"处理。
+- 引擎自己的单测靠 monkeypatch **模块级**的 `make_prompt_cache`（batch_generator / context_fit）；改引擎别把那个 import 删了，
+  新 helper 要把它作为参数接进来（KV 量化接线时挂过 47 个测试）。跑引擎单测：`cd .engine/mlx-engine && PYTHONPATH=. ../../.venv/bin/python -m pytest -q tests --ignore=tests/server`，
+  基线本来就有 60 个失败（要模型/网络/stdin），比对失败集而不是看总数。
 - 引擎自带的磁盘预算（一个满窗口 / 空闲盘的四分之一）是为它的**临时** cache 设计的，已在 `persistcache.cache_budget` 里覆盖；别"顺手"改回去。
 - cache 身份**不含引擎 commit**（升级不该赔掉用户 100GB 的 cache）。升级引擎的规程：`make cache-fixture` → 换 `ENGINE_COMMIT` 与 requirements →
   `make clean venv` → `make cache-compat` + `make itest`；不过就 `CACHE_FORMAT_VERSION` +1。

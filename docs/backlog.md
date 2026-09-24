@@ -24,7 +24,12 @@
 - 09-23 量了（`research/2026-09-23-speculative-decoding/exp02`）：mlx-lm 路径对 Qwen3.8 不可用；用自带 MTP 头经 mlx-vlm 量得
   散文 1.22× / 代码 1.59× / 复述 1.70×，灰区。新事实：mlx-vlm 已实现投机解码和 KV 量化，fork 只需接线。
 - 09-23 SAD 已裁：KV 量化先；fork = `seabit-ai/mlx-engine` 的 `lmk` 分支按功能一 commit 随上游 rebase；验收四条（长上下文评测臂、探针实测 ctx、
-  cache 身份带位宽、bench 只记录）；用户面 `model.kv_cache_bits` 16/8/4 默认 16、推荐按模型页、表显示推荐配置的数。**待开工令。**
+  cache 身份带位宽、bench 只记录）；用户面 `model.kv_cache_bits` 16/8/4 默认 16、推荐按模型页、表显示推荐配置的数。
+- 09-23 开工，KV 量化接线**已落**（`research/2026-09-23-kv-cache-quant/`）：fork 分支 `lmk` d3650db（引擎 +111 行、10 单测）；
+  lmk 分支 `kv-cache-bits`（配置项、cache 身份、状态行、install/Makefile 指向 fork、`LMK_ITEST_KV_BITS`）。27B-4bit 8 位：itest 开关各 4/4 +
+  重启还原；探针 34,816 B/token；bench 三数进表。**还差验收第 1 条**（长上下文评测臂，含 k8v4 变体）才能写进模型页推荐；
+  之后是 Gemma 31B / 122B 的探针数与 README 表"推荐配置下的数"（`TestedModel.kv_cache_bits` 字段）。
+  已知未优化：8 位下 cache 命中还原慢 19%（首 token 只差 0.02 s）；Qwen3.8 磁盘 cache 大头是 linear attention 检查点，量化只省 18%。
 - 智能评测 `research/2026-09-23-intelligence-27b-vs-122b/`：三个 27B 臂已完（xhigh 最差、low 最好），122B-off 臂在跑；
   跑完要写四臂汇总 + "共同错的题"节，模型页据此更新（27B 的推荐配置可能改成 `reasoning_effort: low`）。
 
