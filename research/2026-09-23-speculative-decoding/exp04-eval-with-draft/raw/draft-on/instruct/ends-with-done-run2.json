@@ -1,0 +1,14 @@
+{
+ "content": "1. **Keep a consistent sleep schedule.** Go to bed and wake up at the same time every day, even on weekends. This helps regulate your body's internal clock and makes falling asleep easier over time.\n\n2. **Create a cool, dark, and quiet environment.** Lower your room temperature to around 65–68°F (18–20°C), use blackout curtains or an eye mask, and eliminate noise with earplugs or a white noise machine to signal your brain that it's time to rest.\n\nDone.",
+ "reasoning": "The user wants two tips for sleeping better, and the answer must end with the single word \"Done.\" as the last word. Let me think of two solid, practical tips and make sure the very last word is \"Done.\"\n",
+ "tool_calls": [],
+ "finish": "stop",
+ "tokens": 161,
+ "ms": 6760,
+ "raw_message": {
+  "role": "assistant",
+  "content": "1. **Keep a consistent sleep schedule.** Go to bed and wake up at the same time every day, even on weekends. This helps regulate your body's internal clock and makes falling asleep easier over time.\n\n2. **Create a cool, dark, and quiet environment.** Lower your room temperature to around 65–68°F (18–20°C), use blackout curtains or an eye mask, and eliminate noise with earplugs or a white noise machine to signal your brain that it's time to rest.\n\nDone.",
+  "reasoning_content": "The user wants two tips for sleeping better, and the answer must end with the single word \"Done.\" as the last word. Let me think of two solid, practical tips and make sure the very last word is \"Done.\"\n"
+ },
+ "pass": true
+}

@@ -8,7 +8,8 @@ from tasks import INSTRUCT, TOOL_TASKS, TOOLS_SPEC, run_tool
 
 ROOT = Path(__file__).resolve().parent.parent; DATA = ROOT / "data"
 RAW = Path(os.environ["EVAL_RAW_DIR"]) if os.environ.get("EVAL_RAW_DIR") else ROOT / "raw"   # another experiment's results live elsewhere
-RUNS, MAX_TOKENS, PARALLEL, MAX_TOOL_STEPS = int(os.environ.get("EVAL_RUNS", 3)), 8000, 2, 8
+RUNS, MAX_TOKENS, MAX_TOOL_STEPS = int(os.environ.get("EVAL_RUNS", 3)), 8000, 8
+PARALLEL = int(os.environ.get("EVAL_PARALLEL", 2))   # 1 = one request at a time (speculative decoding only runs then)
 LIMIT = int(os.environ.get("EVAL_LIMIT", 0))   # smoke test: at most this many items per category
 # EVAL_PREFIX_FILE: real text put in front of every conversation as reference material (long-context arms,
 # research/2026-09-23-kv-cache-quant/exp02); merged into an existing system message so the template sees one

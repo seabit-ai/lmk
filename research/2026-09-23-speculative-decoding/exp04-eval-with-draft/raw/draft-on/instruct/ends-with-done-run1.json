@@ -1,0 +1,14 @@
+{
+ "content": "Here are two tips for sleeping better:\n\n1. **Keep a consistent sleep schedule.** Go to bed and wake up at the same time every day, even on weekends. This regulates your body's internal clock and makes it easier to fall asleep and wake up naturally.\n\n2. **Avoid screens and blue light before bed.** Try to stop using phones, computers, and TVs at least an hour before your intended bedtime. The blue light emitted by these devices suppresses melatonin production, which can delay your ability to fall asleep.\n\nDone.",
+ "reasoning": "The user wants two tips for sleeping better, and my answer must end with the single word \"Done.\" as the last word. Let me think of two solid, practical tips and make sure the response ends with \"Done.\"\n\nTip 1: Keep a consistent sleep schedule.\nTip 2: Avoid screens before bed.\n\nLet me write this out and make sure the very last word is \"Done.\"\n",
+ "tool_calls": [],
+ "finish": "stop",
+ "tokens": 197,
+ "ms": 7960,
+ "raw_message": {
+  "role": "assistant",
+  "content": "Here are two tips for sleeping better:\n\n1. **Keep a consistent sleep schedule.** Go to bed and wake up at the same time every day, even on weekends. This regulates your body's internal clock and makes it easier to fall asleep and wake up naturally.\n\n2. **Avoid screens and blue light before bed.** Try to stop using phones, computers, and TVs at least an hour before your intended bedtime. The blue light emitted by these devices suppresses melatonin production, which can delay your ability to fall asleep.\n\nDone.",
+  "reasoning_content": "The user wants two tips for sleeping better, and my answer must end with the single word \"Done.\" as the last word. Let me think of two solid, practical tips and make sure the response ends with \"Done.\"\n\nTip 1: Keep a consistent sleep schedule.\nTip 2: Avoid screens before bed.\n\nLet me write this out and make sure the very last word is \"Done.\"\n"
+ },
+ "pass": true
+}
