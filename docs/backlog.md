@@ -105,7 +105,9 @@
 - 做了：fork `lmk-vlm616`（bc9588e，从 `lmk` e1239e1 起，可 ff）；补丁重挂；量化校验钩子挂到新名字；验收全过（cache 兼容、itest 5/5、三题逐字节一致）。
   代价：exact verifier 一次校验 60 ms 对 43，27B 代码 58.6 → 49.6 tok/s，散文 37.3（比不开草稿慢 4%）；owner 裁 ①（要一致性）。记录 `research/2026-09-24-engine-upgrade-vlm616/`。
   已装 owner 机器，bench 行与模型页已更新。**待 owner 授权合并**；合并后 `git -C .engine/mlx-engine branch -f lmk bc9588e`（ff）再 push 引擎。
-- 下一步 B：DFlash2 作为第二种草稿器接进批处理路径（`model.draft: mtp | dflash2`，缺省按模型页）。
+- **校验改普通前向**（own-engine.md 补记三；SPD-012、exp10、exp11）：fork `lmk` 25d1c38；MTP 头 code 1.53×（60.6 tok/s）且一致，kv8 同。
+  分支 `dflash2`（研究 + `ENGINE_COMMIT` + 文档数）待 owner 合并；owner 机器已装、bench 60.1 code / 45.0 prose。
+- 下一步 B：DFlash2 作为第二种草稿器接进批处理路径（`model.draft: mtp | dflash2`，缺省按模型页），走同一条校验；exp09 定了草稿器只用本次 prefill 的尾巴。
 
 ## 已裁但还没做的
 - **kitten 发 `X-Lmk-Purpose` / `X-Lmk-Ref-Id`**：2026-09-20 已在 kitten repo 的分支 `llm-call-identity` 上实现并验证

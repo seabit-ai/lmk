@@ -18,11 +18,11 @@ Text and images in, tool calls, thinking. This is the model lmk itself was built
 | | prefill | cached prefill | decode, prose | decode, code |
 |---|---|---|---|---|
 | defaults (16-bit KV cache, no draft) | 323 tok/s | 53k tok/s | 39 tok/s (about 33 on long agent conversations) | — |
-| the recommended configuration below | 322 tok/s | 48k tok/s | 37.3 tok/s | 49.6 tok/s (88% of drafted tokens accepted) |
+| the recommended configuration below | 322 tok/s | 49k tok/s | 45.0 tok/s | 60.1 tok/s (88% of drafted tokens accepted) |
 
-With the draft on, prose comes out a little slower than plain decoding (37 against 39 tok/s) and code 27% faster;
-the answer is the one plain decoding would give, token for token (checked on three prompts). Before the engine
-moved to mlx-vlm 0.6.16 (2026-09-24) the draft gave 44.5 prose / 58.6 code but prose could differ.
+With the draft on, code and copy-editing come out 1.5x faster and token for token the same as plain decoding;
+prose 15% faster, and there the answer can differ from plain decoding's after a few dozen tokens (greedy is
+exact up to floating-point ties, not bit-exact). See "Tested" for how this was measured.
 
 ## Recommended configuration
 
@@ -32,8 +32,8 @@ model:
   reasoning_effort: low       # its template knows low / medium / xhigh; the default (xhigh) scored worse on every test
   kv_cache_bits: 8            # halves what each token of context costs: 122k tokens on a 32 GB Mac instead of 85k.
                               # Scored the same as 16-bit with 60k tokens of context in front of every task (below)
-  speculative_decoding: true  # the model's own draft head (lmk up fetches it): the same answers as without, code
-                              # 1.27x faster when one request is being answered (prose about 4% slower); scored the same (below)
+  speculative_decoding: true  # the model's own draft head (lmk up fetches it): code 1.5x faster when one request is
+                              # being answered, the same answer token for token; prose 1.15x; scored the same (below)
 ```
 
 ## Thinking
@@ -90,10 +90,12 @@ makes every cached conversation cold once.
   on and off pass with the draft loaded. With the draft on and the model's default sampling, one request at a time
   (`research/2026-09-23-speculative-decoding/exp04-eval-with-draft/`): code 40/40, instruct 20/20, tools 10/10 —
   the same as without; 86% of drafted tokens accepted, 7 s per answer instead of 9.
-- **Engine on mlx-vlm 0.6.16** (2026-09-24, `research/2026-09-24-engine-upgrade-vlm616/`): with the draft on, greedy output is
-  byte-identical to plain decoding on all three probe prompts (story, code, copy-editing); the verify pass costs 60 ms instead of
-  43, hence 49.6 tok/s on code where 0.6.12 gave 58.6. Integration tests 5/5 with `kv_cache_bits: 8` and the draft; the on-disk
-  cache written by the previous engine restores.
+- **Engine on mlx-vlm 0.6.16, verify pass as one plain forward** (2026-09-24, `research/2026-09-24-engine-upgrade-vlm616/`,
+  `research/2026-09-23-speculative-decoding/exp11-plain-verify/`): the draft gives code 60.6 tok/s (1.53x) and copy-editing
+  1.51x with output identical to plain decoding, at 16 and at 8 bits; a story diverges after a few dozen tokens (as with
+  every engine version before). mlx-vlm's own bit-exact verifier was measured at 109 ms per 8-token block against 47 for a
+  plain forward and is not used. Integration tests 5/5 with `kv_cache_bits: 8` and the draft; the on-disk cache written by
+  the previous engine restores.
 - **Both together — `kv_cache_bits: 8` with `speculative_decoding: true`, the configuration recommended above** (2026-09-24,
   `research/2026-09-23-speculative-decoding/exp05-kv8-with-draft/`): the first request crashed on the engine as shipped
   (its verify step could not read a quantized cache; fixed in our engine fork). After the fix: greedy code and copy-editing
