@@ -41,7 +41,10 @@ lmk 的引擎路线图归自己：**投机解码与磁盘 cache 同时有，KV �
 详见 `research/2026-09-23-speculative-decoding/exp02-27b-native-mtp/results.md`。
 
 ## 4. 待裁的点（SAD 续场）
-- fork 放哪：`seabit-ai/mlx-engine` 还是 lmk 仓库内 vendor；补丁如何跟上游（rebase 队列 vs 长期分支）。
+- **fork 放哪——已裁（09-23，owner：A）**：GitHub fork `seabit-ai/mlx-engine`，在 08f0c07 上开 `lmk` 分支。lmk 只换 install.sh 的 tarball URL 和
+  Makefile 的 clone URL，ENGINE_COMMIT 仍是 commit 号，cache-fixture/cache-compat 升级流程不变。补丁按功能一个 commit（KV 量化一个、投机解码一个），
+  上游一动就 rebase 到新的上游 commit，冲突在 rebase 时解；上游已一个月零提交，此成本目前接近零，上游大改再议长期分支。
+  否决 B（vendor 进 lmk 仓库）：它把"能否跟上游"从 git 操作变成人工 diff，而跟上游正是选 fork 不选重写的全部价值；且 13k 行引擎会盖过几千行的产品代码。
 - 先做哪个：§3 的数落在灰区，且两件都是接线。我的倾向：**KV 量化先**——收益确定（32 GB 档同内存两到四倍上下文，直接改
   README 那张表的 ctx 列），无输出差异问题；投机解码 1.2–1.7× 且散文输出会变，还要先解决"lmk pull 怎么带草稿器"（MLX 转换里
   没有，要自己拆或自己发布一份）。待 owner 裁。
