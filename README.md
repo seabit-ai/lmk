@@ -9,7 +9,7 @@
 * A step answers in `about a second` on a small cache miss — also after lmk has been restarted, because the cache is on disk, not in memory.
 * Good visibility: `lmk status` shows every request in flight and where it is — starting, prefilling, decoding, waiting for its turn.
 * Parallel requests, configurable, if you have the memory.
-* `Speculative decoding` with the model's own draft head: Qwen3.8-27B writes code 1.5x faster (39 → 58 tokens/s) with the
+* `Speculative decoding` with the model's own draft head: Qwen3.8-27B writes code 1.27x faster (39 → 50 tokens/s) with the
   answer token for token the same, one line in the config. The draft head is in the original weights but not in any MLX
   conversion; `lmk up` fetches the one we split out and verified.
 * `KV cache at 8 bits`, one line in the config: the 27B fits 122k tokens of context on a 32 GB Mac instead of 85k, and scored

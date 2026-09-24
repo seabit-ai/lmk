@@ -101,6 +101,12 @@
   这条线留给 Gemma 4（无 MTP 头）；低带宽 Mac 上要重新量。
 - Splash 评论稿在会话里（#130），等 owner 用 bruce-claw 登 `gh` 后贴。
 
+## 2026-09-24 引擎升级 mlx-vlm 0.6.16（分支 `engine-vlm616`；own-engine.md 09-24 补记 A）
+- 做了：fork `lmk-vlm616`（bc9588e，从 `lmk` e1239e1 起，可 ff）；补丁重挂；量化校验钩子挂到新名字；验收全过（cache 兼容、itest 5/5、三题逐字节一致）。
+  代价：exact verifier 一次校验 60 ms 对 43，27B 代码 58.6 → 49.6 tok/s，散文 37.3（比不开草稿慢 4%）；owner 裁 ①（要一致性）。记录 `research/2026-09-24-engine-upgrade-vlm616/`。
+  已装 owner 机器，bench 行与模型页已更新。**待 owner 授权合并**；合并后 `git -C .engine/mlx-engine branch -f lmk bc9588e`（ff）再 push 引擎。
+- 下一步 B：DFlash2 作为第二种草稿器接进批处理路径（`model.draft: mtp | dflash2`，缺省按模型页）。
+
 ## 已裁但还没做的
 - **kitten 发 `X-Lmk-Purpose` / `X-Lmk-Ref-Id`**：2026-09-20 已在 kitten repo 的分支 `llm-call-identity` 上实现并验证
   （用途 `turn` / `compaction` / `groom`；refId = `<sessionId>/<actionRef>`，groom = `groom/<project>/<startMs>`；未声明的不发头）。
