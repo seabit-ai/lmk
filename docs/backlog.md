@@ -84,6 +84,15 @@
   **没进 lmk**（models.py 未接 draft_repo），模型页不动。
 - Splash：对手主张已记成 SPL-001..006，未验证。owner 定要不要同机实测（brew 装、约一小时、跑时要停常驻）。
 
+## 2026-09-24 `lmk bench` 金丝雀 + `lmk report`（分支 `bench-canary-report`，3 个 commit，已在 owner 机器上跑过）
+- 起因 SPL-008：Splash 在 owner 机器上 bench 出一行漂亮的乱码；我们的客户会在我们没跑过的 Mac 上跑 lmk，`lmk bench` 以前只量速度不看内容。
+- 做了：bench 先跑固定 prompt 的金丝雀（答案含 "1, 2, … 20"，不依赖每模型参考，`repo:`/`path:` 的模型也能查）、印两个 decode 回答的开头；
+  不匹配时行里标 **wrong output** 并提示跑 `lmk report`。`lmk report` 一块 Markdown：机器（芯片、GPU 核数、内存、型号、macOS）、构建、引擎、
+  配置、`lmk status` 原样、金丝雀答案、最近事件、引擎行与 traceback；不自动外发。README 的 Benchmarks 与命令表已改。待 owner 授权合并。
+- **顺手发现、未查**：引擎 stderr 里有 4 条 `[coordinator][WARNING]: Skipping prompt cache save for chunk [0, 256) at snapshot 256: quantized kv cache
+  snapshot covers [0, 255), not [0, 256)`（261 个请求里）。像是 kv 量化快照与投机轮步长（一轮前进多个 token）的交互：块边界被跨过一个 token，
+  那一块就不存。后果是少数会话的 cache 块丢失（命中率下降，不影响答案）。要查：只在 kv8 + 投机同开时出现？出现条件？itest 的 cache 还原是过的。
+
 ## 已裁但还没做的
 - **kitten 发 `X-Lmk-Purpose` / `X-Lmk-Ref-Id`**：2026-09-20 已在 kitten repo 的分支 `llm-call-identity` 上实现并验证
   （用途 `turn` / `compaction` / `groom`；refId = `<sessionId>/<actionRef>`，groom = `groom/<project>/<startMs>`；未声明的不发头）。

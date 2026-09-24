@@ -32,7 +32,10 @@ reboot is not measured yet.
 
 `lmk bench` measures the same things on your Mac — prefill, cache hit, decode on prose and on code — says which
 switches were on, and prints a row for [`docs/benchmarks.md`](docs/benchmarks.md); other machines and models
-are what that table is missing.
+are what that table is missing. It starts with a canary: a fixed prompt whose answer it checks, because an engine
+that produces wrong text on some Mac would otherwise bench beautifully. If anything looks off, `lmk report` prints
+one Markdown block — this Mac, build, configuration, status, the canary answer, the last events and traceback —
+to paste into an [issue](https://github.com/seabit-ai/lmk/issues/new). Nothing is sent anywhere by itself.
 
 ### Why not the server you already have?
 
@@ -112,7 +115,8 @@ Everything lmk installs lives in `~/.lmk`. The model goes to the shared HuggingF
 | `lmk status` | Is it up, what is it doing right now, how full is the cache. |
 | `lmk logs` | Recent events. `-f` to follow, `--raw` for the model runtime's own output. |
 | `lmk down` | Stop it, and don't start it at login. Model, cache and config are kept. |
-| `lmk bench` | Prefill, cache-hit and decode speed (prose and code) on this Mac, with the switches in effect, as a row for [`docs/benchmarks.md`](docs/benchmarks.md). |
+| `lmk bench` | A canary answer check, then prefill, cache-hit and decode speed (prose and code) on this Mac, with the switches in effect, as a row for [`docs/benchmarks.md`](docs/benchmarks.md). |
+| `lmk report` | One Markdown block for a GitHub issue: this Mac, build, configuration, status, the canary answer, the last events and traceback. |
 
 When a request seems stuck, `lmk status` shows what it is doing:
 
