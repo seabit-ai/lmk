@@ -85,6 +85,7 @@ Known issues）、启动时校验会炸的配置值。加模型的工作量大�
 | `lmk/bench.py` | `lmk bench`：预热 + 冷 prefill / cache 命中 / decode 三探针，出 `docs/benchmarks.md` 的一行 |
 | `lmk/sampling.py` `stopmatch.py` | OpenAI 采样参数 → 引擎名字、校验、模型的 generation_config 缺省；stop 只截回答段（设计 2026-09-21-sampling） |
 | `lmk/engine.py` | **与 mlx-engine 之间唯一的接缝**（`Engine` 协议、`MlxEngine`、`FakeEngine`） |
+| `.engine/mlx-engine-spec` | 引擎的第二个 worktree（分支 `lmk-spec`）：评测或常驻在用 `.engine/mlx-engine` 时改引擎在这里，跑单测 `PYTHONPATH=. ../../.venv/bin/python -m pytest -q tests --ignore=tests/server`；合回 `lmk` 用 ff |
 | `.engine/mlx-engine`（fork `seabit-ai/mlx-engine`，分支 `lmk`） | 上游钉住的 commit + 我们的补丁，**按功能一个 commit**（第一个：批处理路径 KV 量化，`model_kit/batched_vision/kv_quant.py` + records/context_fit 的量化分支）。改引擎 = 在 fork 分支上提交 → owner push fork → `ENGINE_COMMIT` 指向新 hash → lmk 再 push（install.sh 按 hash 下 fork 的 tarball，顺序反了 CI 会挂） |
 | `lmk/persistcache.py` | 持久化前缀 cache：身份、上限、跨重启恢复 |
 | `lmk/config.py` `configfiles.py` `models.py` `modelfit.py` `memory.py` | 配置与缺省值、两份配置文件、模型清单与 HF 解析、装不装得下、内存读数 |

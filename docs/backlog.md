@@ -30,6 +30,13 @@
   重启还原；探针 34,816 B/token；bench 三数进表。**还差验收第 1 条**（长上下文评测臂，含 k8v4 变体）才能写进模型页推荐；
   之后是 Gemma 31B / 122B 的探针数与 README 表"推荐配置下的数"（`TestedModel.kv_cache_bits` 字段）。
   已知未优化：8 位下 cache 命中还原慢 19%（首 token 只差 0.02 s）；Qwen3.8 磁盘 cache 大头是 linear attention 检查点，量化只省 18%。
+- 09-23 投机解码接线**已写、未上真机**：引擎 worktree `.engine/mlx-engine-spec` 分支 `lmk-spec`（b58a72e = `lmk` + 1，
+  `batched_vision/speculative.py`，8 单测）；lmk 分支 `speculative-decoding`（e9a721d：`model.speculative_decoding` / `draft_tokens`、
+  27B 四档指向 `seabit-ai/Qwen3.8-27B-MTP-draft`、`lmk pull` 顺带下草稿、无草稿即启动报错、状态与 usage 的接受数）。
+  待办顺序：真机冒烟（`research/2026-09-23-speculative-decoding/exp03-engine-wiring/smoke.py`：贪心逐 token 一致、B=2、采样）→ itest
+  `LMK_ITEST_DRAFT` → 引擎 `lmk` 分支 ff 到 lmk-spec、ENGINE_COMMIT 指过去 → owner 建 HF 组织后上传草稿器（模型卡与校验和已在
+  `~/.cache/lmk-research/qwen3.8-27b-mtp-draft/`）→ 27B 模型页写推荐。本地测试用的草稿器已按 HF cache 目录结构摆在
+  `models--seabit-ai--Qwen3.8-27B-MTP-draft/`（软链）。
 - 智能评测 `research/2026-09-23-intelligence-27b-vs-122b/`：三个 27B 臂已完（xhigh 最差、low 最好），122B-off 臂在跑；
   跑完要写四臂汇总 + "共同错的题"节，模型页据此更新（27B 的推荐配置可能改成 `reasoning_effort: low`）。
 
