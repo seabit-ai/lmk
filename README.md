@@ -198,6 +198,11 @@ model:
                              # clients send that name as "model" (repo / path: its last part, lower case)
   # thinking: false           # the model answers without thinking (default: the template's own, on for Qwen)
   # reasoning_effort: low     # for templates that know it (Qwen3.8: low / medium / xhigh); a server-wide constant
+  # kv_cache_bits: 8          # 8 halves what each token of context costs in memory (about twice the context on the
+                             # same Mac); the model page says whether we tested it. Default 16, the model's own precision
+  # speculative_decoding: true  # the model's own draft head guesses tokens, the model checks them: same answers on
+                             # code, faster while one request is being answered. Needs the draft `lmk pull` fetches;
+                             # the model page says whether there is one. Default false
   # context_length:                             (default: the model's maximum; lmk lowers it if
                              #                   memory is short, and `lmk status` shows the value in use)
 listen: {host: 127.0.0.1, port: 1235}
