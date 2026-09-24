@@ -9,7 +9,13 @@
 * A step answers in `about a second` on a small cache miss — also after lmk has been restarted, because the cache is on disk, not in memory.
 * Good visibility: `lmk status` shows every request in flight and where it is — starting, prefilling, decoding, waiting for its turn.
 * Parallel requests, configurable, if you have the memory.
-* Five tested models today: Qwen3.8-27B at 4-bit and 8-bit, the Qwen3.5-122B mixture of experts in two sizes, and Gemma 4 26B-A4B; any MLX model on HuggingFace can be configured, untested by us. `Wish list` items are welcome.
+* `Speculative decoding` with the model's own draft head: Qwen3.8-27B writes code 1.5x faster (39 → 58 tokens/s) with the
+  answer token for token the same, one line in the config. The draft head is in the original weights but not in any MLX
+  conversion; `lmk pull` fetches the one we split out and verified.
+* `KV cache at 8 bits`, one line in the config: the 27B fits 122k tokens of context on a 32 GB Mac instead of 85k, and scored
+  the same as 16-bit with 60k tokens of files in front of every task.
+* Nine tested models today: Qwen3.8-27B at 4/5/6/8-bit, the Qwen3.5-122B mixture of experts in two sizes, and Gemma 4 in three
+  sizes; any MLX model on HuggingFace can be configured, untested by us. `Wish list` items are welcome.
 * Built on [mlx-engine](https://github.com/lmstudio-ai/mlx-engine). Huge thanks to the LM Studio and MLX teams.
 
 Measured on an M3 Ultra (96 GB) with Qwen3.8-27B-MLX-4bit, one request at a time, from lmk's own
@@ -140,7 +146,7 @@ measured is how smart each model is; the default is the one we have used most.
 
 | model | good for | ctx size on 32 GB / 48 GB / 64 GB / 96 GB | images | tok/s: cache hit / miss / decode |
 |---|---|---|---|---|
-| [`qwen3.8-27b-4bit`](docs/models/qwen3.8-27b-4bit.md) (default) | the default; best-tested with `reasoning_effort: low` | 122k / 262k / 262k / 262k tokens with `kv_cache_bits: 8` | yes | 53k / 323 / 40 |
+| [`qwen3.8-27b-4bit`](docs/models/qwen3.8-27b-4bit.md) (default) | the default; best-tested with `reasoning_effort: low` | 122k (85k at 16-bit) / 262k (223k at 16-bit) / 262k / 262k tokens | yes | 53k / 323 / 40 |
 | [`qwen3.8-27b-5bit`](docs/models/qwen3.8-27b-5bit.md) | the 27B between 4- and 8-bit: 19 GB, 20% slower decode than 4-bit | 51k / 190k / 262k / 262k tokens | yes | 57k / 315 / 32 |
 | [`gemma-4-31b-4bit`](docs/models/gemma-4-31b-4bit.md) | Gemma at the 27B's size; slower, shorter ctx | 39k / 150k / 261k / 262k tokens | yes | 26k / 252 / 33 |
 
@@ -162,6 +168,8 @@ measured is how smart each model is; the default is the one we have used most.
 | model | good for | ctx size on 96 GB / 128 GB | images | tok/s: cache hit / miss / decode |
 |---|---|---|---|---|
 | [`qwen3.5-122b-a10b-4bit`](docs/models/qwen3.5-122b-a10b-4bit.md) | the biggest here; MoE, faster than the 27B but not smarter on our tests | 165k / 262k tokens | yes | 89k / 753 / 60 |
+
+Where a model's recommended `kv_cache_bits: 8` changes the number, the figure at the model's own 16-bit precision is in parentheses; its page says what the setting costs.
 <!-- /models-table -->
 
 Any other MLX model on HuggingFace loads through `model.repo` (see Configuration), untested by us.
@@ -293,10 +301,19 @@ before — the next step of a conversation, a new conversation with the same sys
 tools — skips straight to the new part. The store survives restarts and is shared across
 conversations.
 
+Writing the answer is the other half. With `speculative_decoding: true` a small draft — Qwen3.8's own
+multi-token-prediction head, which the original weights ship and the MLX conversions drop — guesses the
+next few tokens and the model checks them in one pass. Guesses it agrees with are free; with greedy
+decoding the answer is token for token the one it would have written alone. On the M3 Ultra the 27B
+goes from 39 to 58 tokens/s on code and copy-editing, 46 on prose, and 86% of its guesses were accepted
+across our agent tests. It runs while one request is being answered; several at once are decoded plainly.
+`lmk pull` fetches the draft for the models that have one; the model page says so.
+
 The model runtime is [mlx-engine](https://github.com/lmstudio-ai/mlx-engine), the open-source
 engine behind LM Studio, run from lmk's own fork ([seabit-ai/mlx-engine](https://github.com/seabit-ai/mlx-engine),
 branch `lmk`): the upstream code at a pinned commit plus a short list of patches, one commit each — so far, KV
-cache quantization on the batched path. How lmk compares with other servers on the same machine,
+cache quantization and speculative decoding on the batched path, the one with the on-disk prompt cache.
+How lmk compares with other servers on the same machine,
 with the raw numbers: [`research/2026-09-20-local-server-survey`](research/2026-09-20-local-server-survey/notes.md)
 (notes are in Chinese).
 

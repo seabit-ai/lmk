@@ -127,7 +127,7 @@ MIN_USEFUL_CONTEXT = 32_768
 MAC_MEMORY_SIZES_GB = (16, 24, 32, 48, 64, 96, 128, 192, 256, 512)
 
 
-def context_on(m: TestedModel, mac_gb: int) -> int:
+def context_on(m: TestedModel, mac_gb: int, kv_cache_bits: Optional[int] = None) -> int:
     """The context mlx-engine would fit on a Mac with this much memory: its own formula with this
     model's measured coefficients (one small term it does not log is left out; on the 122B this
     gives 168k where the engine fitted 165,888). 0 = does not load. Expected, not measured, except
@@ -142,8 +142,9 @@ def context_on(m: TestedModel, mac_gb: int) -> int:
     available = working_set - ENGINE_RESERVE_BYTES - fixed
     if available <= 0:
         return 0
+    bits = m.kv_cache_bits if kv_cache_bits is None else kv_cache_bits
     kv_bytes = f.full_kv_bytes_per_token
-    if m.kv_cache_bits == 8 and f.full_kv_bytes_per_token_8bit:
+    if bits == 8 and f.full_kv_bytes_per_token_8bit:
         kv_bytes = f.full_kv_bytes_per_token_8bit
     per_token = kv_bytes + f.prompt_input_bytes_per_token + f.attention_bytes_per_context_per_step * SMALLEST_PREFILL_STEP
     tokens = int(available // per_token) // ENGINE_ALLOCATION_STEP * ENGINE_ALLOCATION_STEP
@@ -171,6 +172,7 @@ def tested_models_markdown() -> str:
     for name, m in TESTED_MODELS.items():
         tiers.setdefault(smallest_mac_gb(m), []).append(name)
     out = []
+    footnote = [False]
     for gb in sorted(tiers):
         # Mac sizes from this group's minimum up to where every model in it reaches its maximum context
         sizes = [g for g in MAC_MEMORY_SIZES_GB if g >= gb]
@@ -183,13 +185,21 @@ def tested_models_markdown() -> str:
         for name in tiers[gb]:
             m = TESTED_MODELS[name]
             default = " (default)" if name == DEFAULT_MODEL_NAME else ""
-            ctx = " / ".join(_k(context_on(m, g)) for g in sizes) + " tokens"
-            if m.kv_cache_bits != 16:
-                ctx += f" with `kv_cache_bits: {m.kv_cache_bits}`"
+            cells = []
+            for g in sizes:
+                cell = _k(context_on(m, g))
+                if m.kv_cache_bits != 16 and context_on(m, g, 16) != context_on(m, g):
+                    cell += f" ({_k(context_on(m, g, 16))} at 16-bit)"
+                    footnote[0] = True
+                cells.append(cell)
+            ctx = " / ".join(cells) + " tokens"
             out.append(f"| [`{name}`](docs/models/{name}.md){default} | {m.good_for} | {ctx} | "
                        f"{'yes' if m.images else 'no'} | "
                        f"{_k(m.speed.cached_prefill_tok_s)} / {m.speed.prefill_tok_s:,} / {m.speed.decode_tok_s:.0f} |")
         out.append("")
+    if footnote[0]:
+        out.append("Where a model's recommended `kv_cache_bits: 8` changes the number, the figure at the model's own "
+                   "16-bit precision is in parentheses; its page says what the setting costs.")
     return "\n".join(out).rstrip("\n")
 
 
