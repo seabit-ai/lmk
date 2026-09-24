@@ -82,3 +82,38 @@ lmk 的引擎路线图归自己：**投机解码与磁盘 cache 同时有，KV �
      **只要可能就支持批量**（mlx-vlm 有 `_mtp_rounds_batch`），不做"并发就退回普通 decode"的第一版。
 - 草稿器的发行：lmk 的模型是 `lmk pull` 的那份下载；草稿器是我们从原版权重拆出来的，要么 lmk pull 顺手多下一个分片现场拆
   （3 GB 下载换 810 MB），要么 Seabit 在 HF 发一份拆好的。
+
+## 5. 投机解码接线方案（09-23，读完 mlx-vlm 与引擎解码循环后定；实现细节，不是 SAD 点）
+**事实**
+- mlx-vlm 的 `_mtp_rounds_batch` 是一个封闭的生成器：自己管一批行的整个生命周期（行结束就 filter），**不接受中途加行**。引擎的
+  `GenerationBatch` 是"一步一 token"的循环，靠 `append_prefilled_sequence` 在两步之间把新 prefill 完的行并进来（连续批处理）。
+  两者不能直接套；要把 mlx-vlm 的"一轮"拆出来当引擎的"一步"。
+- Qwen 的 MTP 草稿器（`Qwen3_5MTPDraftModel`）**不用** `shared_kv_states`（`set_shared_kv` 只记位置），自己有一层 KV cache，
+  靠 `accept_verified_tokens_batch` 用验证时的目标 hidden 逐 token 增长。B=1 路径还会用 `prefill_from_target_hidden` 把整个 prompt
+  过一遍草稿层（exp02 量的是这条）；批量路径不做这步，草稿器从空 cache 起步。引擎接批量路径的做法（prompt 分块 prefill、磁盘还原都
+  没有整段 prompt 的 hidden），接受率可能比 exp02 低——要量。
+- 目标模型（qwen3_5 language.py）有 `speculative_argmax_from_hidden`（贪心验证不算整张 logits）和 `rollback_speculative_cache`
+  （48 层 linear attention 的状态回滚靠验证时返回的 `gdn_states`）。
+- 引擎的 `_step` 是"先出上一步采的 token，再算下一步"（decode-ahead）；每行有自己的 sampler、logits processors、top_logprobs；
+  `next()` 每行每步恰好一个 `Response`。
+
+**做法：`SpeculativeGenerationBatch`（引擎新文件 `batched_vision/speculative.py`），一步 = 一轮**
+1. 起步：`_PromptPrefill.generate` 的最后一遍前向加 `return_hidden=True`，把最后一个 prompt token 的 hidden 存到批上（`_next_hidden`），
+   连同已采样的首 token（bonus）。
+2. 一步：草稿 `_mtp_draft_block_active` → 验证 `_mtp_verify_target`（贪心走 argmax-from-hidden）→ 逐行 walk（贪心 `_speculative_walk_batch`；
+   采样时按行各用自己的 sampler 做 deferred walk）→ **先按 stop / max_tokens 截断每行的新 token 列表**（截断后的接受数再喂回滚，cache
+   才不会多出没吐出的 token）→ 草稿器 `accept_verified_tokens_batch` → 目标 `rollback_speculative_cache` → 每行取接受位置的 hidden
+   作下一轮输入 → 位置 += 接受数 + 1 → `set_shared_kv({}, …)` 重绑位置。
+3. 出 token：每行每步 0..bs 个，`next()` 改为每行每步多个 `Response`（顺序、逐个过 stop 判定），首步前面带上 bonus。
+   logprob 不可得（验证不算 logits）：写 0.0 并在文档里说明；**要 top_logprobs 或带 logits processors（重复惩罚）的行进批时，整批这一步
+   退回普通 `_step`**——按步判定，不是按请求拒绝。带图片（`rope_deltas`）的批同样退回普通步（验证调用不带 mRoPE）。MVP 只做 Qwen3.5/3.8 家族文本。
+4. 加行：`append_prefilled_sequence` 时 hidden 与 bonus 拼接，**草稿器整体 `reset`**（它的 cache 只装生成过的 token，重来只损失几轮接受率）；
+   行结束用 `filter_batch`。不去拼草稿器的内部数组（那是 mlx-vlm 的私有布局）。
+5. 磁盘 cache 快照（`_emit_cache_save_snapshot`）每步每行调一次，按 `row.tokens` 长度判块边界，一步最多 bs 个 token，跨不过一个 256 块。
+6. 加载：`BatchedVisionModelKit.load_draft_model(path)` 用 mlx-vlm 的 `load_drafter`，`is_draft_model_compatible` = 草稿器 `model_type`
+   是 `qwen3_5_mtp` 且 `text_config.hidden_size` 等于目标；`generate(...)` 的 `speculative_decoding_toggle` / `num_draft_tokens` 照老路径的语义。
+7. 验证：引擎侧单测只测账目（多 token 出列、stop 截断、退回普通步的判定），用假的"一轮"函数；真正的验收在 27B 上：贪心代码逐 token 一致、
+   bench 的 decode 与接受率、采样默认值下的接受率、并发 2 的收益——都是 research 记录。
+
+**没解的**：每个草稿 token 0.4 步的开销（profile 后再说）；Gemma 家族（草稿器要 shared_kv，且 `_mtp_rounds_batch` 的 shared_kv 切片逻辑
+要搬过来）；外挂 DFlash 草稿器（122B）。
