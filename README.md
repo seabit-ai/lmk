@@ -9,7 +9,7 @@
 * A step answers in `about a second` on a small cache miss — also after lmk has been restarted, because the cache is on disk, not in memory.
 * Good visibility: `lmk status` shows every request in flight and where it is — starting, prefilling, decoding, waiting for its turn.
 * Parallel requests, configurable, if you have the memory.
-* `Speculative decoding` with the model's own draft head: Qwen3.8-27B writes code 1.5x faster (39 → 58 tokens/s) with the
+* `Speculative decoding` with the model's own draft head: Qwen3.8-27B writes code 1.27x faster (39 → 50 tokens/s) with the
   answer token for token the same, one line in the config. The draft head is in the original weights but not in any MLX
   conversion; `lmk up` fetches the one we split out and verified.
 * `KV cache at 8 bits`, one line in the config: the 27B fits 122k tokens of context on a 32 GB Mac instead of 85k, and scored
@@ -319,10 +319,11 @@ conversations.
 
 Writing the answer is the other half. With `speculative_decoding: true` a small draft — Qwen3.8's own
 multi-token-prediction head, which the original weights ship and the MLX conversions drop — guesses the
-next few tokens and the model checks them in one pass. Guesses it agrees with are free; with greedy
-decoding the answer is token for token the one it would have written alone. On the M3 Ultra the 27B
-goes from 39 to 58 tokens/s on code and copy-editing, 46 on prose, and 86% of its guesses were accepted
-across our agent tests. It runs while one request is being answered; several at once are decoded plainly.
+next few tokens and the model checks them in one pass. Guesses it agrees with are free, and the answer
+is token for token the one the model would have written alone (checked on prose, code and copy-editing).
+On the M3 Ultra the 27B goes from 39 to 50 tokens/s on code and copy-editing, with 86–88% of its guesses
+accepted across our agent tests; prose, where fewer guesses land, comes out about 4% slower than without.
+It runs while one request is being answered; several at once are decoded plainly.
 `lmk up` fetches the draft for the models that have one; the model page says so.
 
 The model runtime is [mlx-engine](https://github.com/lmstudio-ai/mlx-engine), the open-source

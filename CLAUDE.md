@@ -102,7 +102,9 @@ Known issues）、启动时校验会炸的配置值。加模型的工作量大�
   基线本来就有 60 个失败（要模型/网络/stdin），比对失败集而不是看总数。
 - 引擎自带的磁盘预算（一个满窗口 / 空闲盘的四分之一）是为它的**临时** cache 设计的，已在 `persistcache.cache_budget` 里覆盖；别"顺手"改回去。
 - cache 身份**不含引擎 commit**（升级不该赔掉用户 100GB 的 cache）。升级引擎的规程：`make cache-fixture` → 换 `ENGINE_COMMIT` 与 requirements →
-  `make clean venv` → `make cache-compat` + `make itest`；不过就 `CACHE_FORMAT_VERSION` +1。
+  **只重建 `.venv`**（`rm -rf .venv && ~/.local/bin/python3.11 -m venv .venv && .venv/bin/pip install -r requirements.txt`）→ `make cache-compat` + `make itest`；
+  不过就 `CACHE_FORMAT_VERSION` +1。**别 `make clean`：它 `rm -rf .engine`，fork 上没 push 的提交一起没**（2026-09-24 差点）。`make venv`/`make test` 还会把
+  `.engine/mlx-engine` checkout 到 `ENGINE_COMMIT`（见下一条），改引擎期间在 fork 分支上提交后先更新 `ENGINE_COMMIT` 再跑它们。
 - 引擎缺省是贪心（temp 0）且不读模型的 generation_config；引擎的 `stop_strings` 对思考段也生效；`seed` 在批处理路径被引擎忽略。
   三条都由 lmk 侧兜住（`sampling.py` / `stopmatch.py`），别把 stop 或 seed "顺手"直接传给引擎。
 - **进表的门槛**：集成测试开关各 5/5 **且** exp03 那三个 agent 任务在模型缺省采样下多轮全对；**模型页的 Recommended configuration 是一个组合，
