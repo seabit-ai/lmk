@@ -33,8 +33,9 @@ def _seed_text() -> str:
       #                                      # context on the same Mac, answers may differ slightly on very long
       #                                      # prompts. Default 16 (the model's own precision); 4 is accepted too
       # speculative_decoding: true           # a small draft guesses the next tokens, the model checks them: the same
-      #                                      # answers on code, about 1.5x faster; prose may differ slightly. Needs the
-      #                                      # draft `lmk pull` fetches — the model page says whether there is one
+      #                                      # answers on code, faster while one request is being answered (several at
+      #                                      # once are answered plainly); prose may differ slightly. Needs the draft
+      #                                      # `lmk pull` fetches — the model page says whether there is one
       # draft_tokens: 3                      # advanced: tokens the draft guesses per round (default: the draft's own)
 
     listen:
@@ -78,10 +79,11 @@ _TEMPLATE = f"""\
 #                              # Changing it starts the prompt cache empty for this model. Each model page
 #                              # says whether we tested it with 8.
 #   speculative_decoding: true # a small draft (the model's own draft head) guesses the next tokens and the model
-#                              # checks them: the same answers on code, about 1.5x faster; prose may differ
-#                              # slightly. Needs the draft `lmk pull` fetches for the model; with a model that
-#                              # has none, lmk refuses to start and says so. Default false; the model page says
-#                              # when to turn it on. `lmk status` shows how many drafted tokens were accepted.
+#                              # checks them: the same answers on code, faster while one request is being
+#                              # answered (when several are answered at once they are decoded plainly); prose
+#                              # may differ slightly. Needs the draft `lmk pull` fetches for the model; with a
+#                              # model that has none, lmk refuses to start and says so. Default false; the model
+#                              # page says when to turn it on. `lmk status` shows how many drafted tokens were accepted.
 #   draft_tokens: 3            # advanced: how many tokens the draft guesses per round (default: the draft's own)
 #
 # listen:
