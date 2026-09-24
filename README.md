@@ -224,9 +224,11 @@ model:
   # reasoning_effort: low     # for templates that know it (Qwen3.8: low / medium / xhigh); a server-wide constant
   # kv_cache_bits: 8          # 8 halves what each token of context costs in memory (about twice the context on the
                              # same Mac); the model page says whether we tested it. Default 16, the model's own precision
-  # speculative_decoding: true  # the model's own draft head guesses tokens, the model checks them: same answers on
-                             # code, faster while one request is being answered. Needs the draft `lmk pull` fetches;
-                             # the model page says whether there is one. Default false
+  # speculative_decoding: true  # a draft guesses tokens, the model checks them: same answers on code, faster while one
+                             # request is being answered. Needs the draft `lmk up` fetches; the model page says which
+                             # models have one. Default false
+  # draft: dflash2            # which drafter: mtp (the model's own head, default where it exists) or dflash2 (z-lab's,
+                             # guesses more per round; the model page has both measured). Only with speculative_decoding
   # context_length: 65536     # default: the model's maximum; lmk lowers it if memory is short, and `lmk status`
                              # shows the value in use
 listen: {host: 127.0.0.1, port: 1235}

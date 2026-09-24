@@ -107,7 +107,10 @@
   已装 owner 机器，bench 行与模型页已更新。**待 owner 授权合并**；合并后 `git -C .engine/mlx-engine branch -f lmk bc9588e`（ff）再 push 引擎。
 - **校验改普通前向**（own-engine.md 补记三；SPD-012、exp10、exp11）：fork `lmk` 25d1c38；MTP 头 code 1.53×（60.6 tok/s）且一致，kv8 同。
   分支 `dflash2`（研究 + `ENGINE_COMMIT` + 文档数）待 owner 合并；owner 机器已装、bench 60.1 code / 45.0 prose。
-- 下一步 B：DFlash2 作为第二种草稿器接进批处理路径（`model.draft: mtp | dflash2`，缺省按模型页），走同一条校验；exp09 定了草稿器只用本次 prefill 的尾巴。
+- **B 做了**（分支 `dflash2-wiring`，fork `lmk-dflash` 3b493b5，SPD-013）：DFlash2 接进批处理路径，`model.draft: mtp | dflash2`，27B 页两种草稿器的数并列，缺省仍 mtp
+  （M3 Ultra 上打平；M4 Pro 的数等用户的 bench 行）。待 owner 授权合并；合并后 fork `lmk` ff 到 3b493b5 再 push。
+- 没做：DFlash2 草稿器的 4 位版（1.1 GB 对 4 GB，速度不变，exp07）——要发布到 `seabit-ai` 的 HF 组织；`lmk up` 现在下的是 incoai 的 bf16。
+  多行投机（两条请求同时投机）仍关着（MAX_ROUND_ROWS = 1）；散文接受率低时自动退回普通解码（own-engine 补记三的附带规则）没做。
 
 ## 已裁但还没做的
 - **kitten 发 `X-Lmk-Purpose` / `X-Lmk-Ref-Id`**：2026-09-20 已在 kitten repo 的分支 `llm-call-identity` 上实现并验证

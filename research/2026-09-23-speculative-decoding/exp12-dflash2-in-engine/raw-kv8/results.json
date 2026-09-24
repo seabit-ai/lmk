@@ -1,0 +1,73 @@
+{
+ "kv_bits": 8,
+ "base": {
+  "story": {
+   "tokens": 400,
+   "text": "Elias had not spoken a word in three years. The silence of the North Cape lighthouse was not empty; it was heavy, a physical weight that pressed against his eardrums and settled in his bones. He was a man carved from the same granite as the cliff, weathered by salt and wind, his eyes the pale, washed-out blue of a winter sea.\n\nEvery evening, as the sun bled out over the horizon, Elias climbed the one hundred and twelve steps to the lantern room. His knees ached, a dull, persistent throb that served as a metronome for his existence. He lit the great Fresnel lens, a crystal heart that captured the flame and threw it into the dark, slicing the night into rhythmic, golden wedges. *Click. Hiss. Glow.* The ritual was his prayer, his penance, and his only connection to the world beyond the glass.\n\nThe storms came often here, violent and hungry. They battered the tower, shaking the very foundation, but Elias remained steady. He watched the waves crash against the rocks below, white foam exploding like shattered bone. In the eye of the gale, he would sometimes see a ship, a tiny, trembling speck of light struggling against the chaos. He would adjust the lens, focusing the beam with a precision that felt almost supernatural, guiding them safely past the jagged teeth of the reef.\n\nOne night, a young fisherman’s boat was caught in a sudden squall. The light from the lighthouse cut through the rain, a beacon of hope in the void. Elias watched, his heart hammering against his ribs, until the boat turned, its lights aligning with his beam. As it disappeared into the safety of the harbor, Elias felt a strange, quiet warmth spread through his chest. He didn’t smile, but the tension in his shoulders eased. He turned off the lamp, sat on the cold floor, and for the first",
+   "sha": "eb9ef544c2",
+   "ttft_ms": 181,
+   "decode_tok_s": 38.8
+  },
+  "code": {
+   "tokens": 400,
+   "text": "```python\nimport re\n\n\ndef parse_duration(s: str) -> int:\n    \"\"\"\n    Parse a duration string into total seconds.\n\n    Supported formats include combinations of hours (h), minutes (m), and seconds (s).\n    Examples:\n        '1h30m' -> 5400\n        '45s'   -> 45\n        '2h'    -> 7200\n        '1m30s' -> 90\n\n    Args:\n        s: A string representing a duration with optional h, m, s units.\n\n    Returns:\n        Total duration in seconds as an integer.\n\n    Raises:\n        ValueError: If the string is empty or contains invalid format.\n    \"\"\"\n    if not s:\n        raise ValueError(\"Duration string cannot be empty\")\n\n    pattern = r'(\\d+)([hms])'\n    matches = re.findall(pattern, s)\n\n    if not matches:\n        raise ValueError(f\"Invalid duration format: '{s}'\")\n\n    # Check if the entire string is consumed by valid tokens\n    reconstructed = ''.join(f\"{num}{unit}\" for num, unit in matches)\n    if reconstructed != s:\n        raise ValueError(f\"Invalid duration format: '{s}'\")\n\n    total_seconds = 0\n    for num, unit in matches:\n        value = int(num)\n        if unit == 'h':\n            total_seconds += value * 3600\n        elif unit == 'm':\n            total_seconds += value * 60\n        elif unit == 's':\n            total_seconds += value\n\n    return total_seconds\n\n\ndef test_parse_duration():\n    assert parse_duration('1h30m') == 5400\n    assert parse_duration('45s') == 45\n    assert parse",
+   "sha": "58b44530ab",
+   "ttft_ms": 393,
+   "decode_tok_s": 38.6
+  },
+  "copyedit": {
+   "tokens": 134,
+   "text": "The lighthouse keeper had lived on the rock for ninety-one years, or so he told the fishermen who brought his supplies every second Tuesday. Nobody believed him, of course, but nobody argued either; the sea has a way of making arguments feel small. Each evening he climbed the hundred and twelve steps, trimmed the wick that no longer needed trimming since the lamp went electric in 1974, and wrote one line in a ledger that had belonged to his father. The lines were never about the weather. They were about the ships he had not seen: the ones that passed in fog, the ones that turned back, the one that did not.",
+   "sha": "8fe1ef2be6",
+   "ttft_ms": 700,
+   "decode_tok_s": 38.5
+  }
+ },
+ "spec": {
+  "story": {
+   "tokens": 400,
+   "text": "Elias had not spoken a full sentence in three years. The silence of the North Cape lighthouse was not empty; it was heavy, a physical weight that pressed against his eardrums and settled into the marrow of his bones. He was a man carved from the same granite as the cliff, weathered by salt and solitude, his eyes the pale, washed-out blue of a winter sea.\n\nEvery evening, as the sun bled out over the horizon, Elias climbed the one hundred and twelve iron steps to the lantern room. The climb was a ritual, a penance. His knees ached, a dull, persistent throb that served as a metronome for his existence. At the top, he lit the great Fresnel lens. The glass prisms caught the flame, shattering the darkness into a sweeping, rhythmic beam that cut through the fog. *Click. Whir. Click. Whir.* The sound was the only heartbeat he knew.\n\nOne stormy night, the wind screamed like a dying animal, tearing at the tower’s skin. The sea below was a churning black void, indistinguishable from the sky. Elias watched the beam sweep, a lonely finger pointing into the abyss. Then, he saw it: a tiny, flickering orange light, struggling against the waves, a fishing trawler caught in the crosscurrent.\n\nFor the first time in years, Elias’s hands trembled. He didn’t just watch; he adjusted the lens, focusing the beam with a precision born of desperation. He grabbed the old brass horn, the one he hadn’t used since the radio was installed, and blew into it. The sound was raw, human, and desperate. It cut through the gale, a primal call to come home.\n\nThe trawler’s light steadied, then turned, angling away from the jagged rocks. Elias slumped against the glass, his breath fogging the cold pane.",
+   "sha": "5e727ec172",
+   "ttft_ms": 207,
+   "decode_tok_s": 38.1
+  },
+  "code": {
+   "tokens": 400,
+   "text": "```python\nimport re\n\n\ndef parse_duration(s: str) -> int:\n    \"\"\"\n    Parse a duration string into total seconds.\n\n    Supported formats include combinations of hours (h), minutes (m), and seconds (s).\n    Examples: '1h30m' -> 5400, '45s' -> 45, '2h' -> 7200, '1m30s' -> 90.\n\n    Args:\n        s: A string representing a duration with optional h, m, s units.\n\n    Returns:\n        Total duration in seconds as an integer.\n\n    Raises:\n        ValueError: If the string is empty or contains invalid format.\n    \"\"\"\n    if not s:\n        raise ValueError(\"Duration string cannot be empty\")\n\n    pattern = r'(\\d+)([hms])'\n    matches = re.findall(pattern, s)\n\n    if not matches:\n        raise ValueError(f\"Invalid duration format: '{s}'\")\n\n    # Check if the entire string is consumed by valid tokens\n    reconstructed = ''.join(f\"{num}{unit}\" for num, unit in matches)\n    if reconstructed != s:\n        raise ValueError(f\"Invalid duration format: '{s}'\")\n\n    total_seconds = 0\n    for num, unit in matches:\n        value = int(num)\n        if unit == 'h':\n            total_seconds += value * 3600\n        elif unit == 'm':\n            total_seconds += value * 60\n        elif unit == 's':\n            total_seconds += value\n\n    return total_seconds\n\n\ndef test_parse_duration():\n    assert parse_duration('1h30m') == 5400\n    assert parse_duration('45s') == 45\n    assert parse_duration('2h') ==",
+   "sha": "4590fb15b9",
+   "ttft_ms": 429,
+   "decode_tok_s": 59.6
+  },
+  "copyedit": {
+   "tokens": 134,
+   "text": "The lighthouse keeper had lived on the rock for ninety-one years, or so he told the fishermen who brought his supplies every second Tuesday. Nobody believed him, of course, but nobody argued either; the sea has a way of making arguments feel small. Each evening he climbed the hundred and twelve steps, trimmed the wick that no longer needed trimming since the lamp went electric in 1974, and wrote one line in a ledger that had belonged to his father. The lines were never about the weather. They were about the ships he had not seen: the ones that passed in fog, the ones that turned back, the one that did not.",
+   "sha": "8fe1ef2be6",
+   "ttft_ms": 740,
+   "decode_tok_s": 70.9
+  }
+ },
+ "sampled": {
+  "tokens": 400,
+  "text": "```python\nimport re\nimport pytest\n\n\ndef parse_duration(s: str) -> int:\n    \"\"\"\n    Parse a duration string into total seconds.\n\n    Supported formats:\n    - Units: 'h' (hours), 'm' (minutes), 's' (seconds)\n    - Examples: '1h30m' -> 5400, '45s' -> 45, '2h' -> 7200\n\n    Args:\n        s: A string representing duration with units (e.g., '1h30m', '45s')\n\n    Returns:\n        Total duration in seconds as an integer.\n\n    Raises:\n        ValueError: If the string cannot be parsed or contains invalid components.\n    \"\"\"\n    if not s or not isinstance(s, str):\n        raise ValueError(\"Input must be a non-empty string\")\n\n    # Match any number optionally followed by h, m, or s\n    pattern = r'(\\d+)([hms])?'\n    matches = re.findall(pattern, s)\n\n    if not matches:\n        raise ValueError(f\"Could not parse duration: '{s}'\")\n\n    total_seconds = 0\n    seen_unit = set()\n\n    for num_str, unit in matches:\n        num = int(num_str)\n        if unit:\n            if unit == 'h':\n                seconds = num * 3600\n                if 'h' in seen_unit:\n                    raise ValueError(f\"Duplicate hour unit in: '{s}'\")\n                seen_unit.add('h')\n            elif unit == 'm':\n                seconds = num * 60\n                if 'm' in seen_unit:\n                    raise ValueError(f\"Duplicate minute unit in: '{s}'\")\n                seen_unit.add('m')\n            elif unit == 's':\n               ",
+  "sha": "854668b3ef",
+  "ttft_ms": 434,
+  "decode_tok_s": 48.9
+ },
+ "pair": {
+  "story": {
+   "tokens": 400,
+   "text": "Elias had not spoken a full sentence in three years. The silence of the North Cape lighthouse was not empty; it was heavy, a physical weight that pressed against his eardrums and settled into the marrow of his bones. He was a man carved from the same granite as the cliff, weathered by salt and solitude, his eyes the pale, washed-out blue of a winter sea.\n\nEvery evening, as the sun bled out over the horizon, Elias climbed the one hundred and twelve iron steps to the lantern room. The climb was a ritual, a penance. His knees ached, a dull, persistent throb that served as a metronome for his existence. At the top, he polished the Fresnel lens until it gleamed like a captured star. The glass was cold, biting into his fingertips, but the light that emerged was warm, a golden promise to the dark.\n\nHe watched the beam sweep across the churning black water. It cut through the fog, a blade of hope for any ship that might be lost. He never saw them, of course. The ships were ghosts, silent and distant, their lights mere pinpricks in the vastness. But he knew they were there. He felt their presence in the rhythm of the waves, in the groan of the tower’s foundation.\n\nOne night, a storm broke with violent fury. Rain lashed the glass, and the wind screamed like a wounded animal. The light flickered, then died. Panic, a cold spike, pierced his chest. He scrambled to the generator, his hands shaking as he fumbled with the switches. Sparks flew. The hum of the engine sputtered, then roared to life. The beam returned, steady and strong, cutting through the chaos.\n\nIn that moment, Elias heard it. A faint, distant horn, low and mournful. A ship, struggling against the gale, was navigating by his light. He",
+   "sha": "b058517e64",
+   "ttft_ms": 210,
+   "decode_tok_s": 32.7
+  },
+  "code": {
+   "tokens": 400,
+   "text": "```python\nimport re\n\n\ndef parse_duration(s: str) -> int:\n    \"\"\"\n    Parse a duration string into total seconds.\n\n    Supported formats include combinations of hours (h), minutes (m), and seconds (s).\n    Examples:\n        '1h30m' -> 5400\n        '45s'   -> 45\n        '2h'    -> 7200\n        '1m30s' -> 90\n\n    Args:\n        s: A string representing a duration with optional h, m, s units.\n\n    Returns:\n        Total duration in seconds as an integer.\n\n    Raises:\n        ValueError: If the string is empty or contains invalid format.\n    \"\"\"\n    if not s:\n        raise ValueError(\"Duration string cannot be empty\")\n\n    pattern = r'(\\d+)([hms])'\n    matches = re.findall(pattern, s)\n\n    if not matches:\n        raise ValueError(f\"Invalid duration format: '{s}'\")\n\n    # Check if the entire string is consumed by valid tokens\n    reconstructed = ''.join(f\"{num}{unit}\" for num, unit in matches)\n    if reconstructed != s:\n        raise ValueError(f\"Invalid duration format: '{s}'\")\n\n    total_seconds = 0\n    for num, unit in matches:\n        value = int(num)\n        if unit == 'h':\n            total_seconds += value * 3600\n        elif unit == 'm':\n            total_seconds += value * 60\n        elif unit == 's':\n            total_seconds += value\n\n    return total_seconds\n\n\ndef test_parse_duration():\n    assert parse_duration('1h30m') == 5400\n    assert parse_duration('45s') == 45\n    assert parse",
+   "sha": "58b44530ab",
+   "ttft_ms": 688,
+   "decode_tok_s": 33.8
+  }
+ },
+ "pair_wall_s": 12.503147583978716
+}
