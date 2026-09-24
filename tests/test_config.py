@@ -142,3 +142,9 @@ def test_speculative_decoding_is_a_switch_with_an_optional_draft_size(tmp_path):
     for bad in ("0", "17", "true", "'3'"):
         with pytest.raises(ConfigError, match="draft_tokens must be a whole number from 1 to 16"):
             load_config(write(tmp_path, f"model: {{name: qwen3.8-27b-4bit, draft_tokens: {bad}}}"))
+
+
+def test_a_misspelled_model_setting_is_refused_not_ignored(tmp_path):
+    with pytest.raises(ConfigError) as e:
+        load_config(write(tmp_path, "model: {name: qwen3.8-27b-4bit, thnking: false}"))
+    assert "model: unknown setting thnking" in str(e.value) and "thinking" in str(e.value)

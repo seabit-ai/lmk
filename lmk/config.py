@@ -55,6 +55,8 @@ class ModelSource:
 
 
 KV_CACHE_BITS = (16, 8, 4)  # what the engine's batched path quantizes to; 16 means no quantization
+MODEL_KEYS = {"name", "repo", "path", "context_length", "thinking", "reasoning_effort", "kv_cache_bits",
+              "speculative_decoding", "draft_tokens", "id"}  # id: refused with its own message below
 
 
 @dataclass(frozen=True)
@@ -125,6 +127,10 @@ def _positive_int(section: dict, where: str, key: str, default: int) -> int:
 
 
 def _model_source(model: dict) -> ModelSource:
+    unknown = sorted(set(model) - MODEL_KEYS)
+    if unknown:
+        raise ConfigError(f"model: unknown setting {', '.join(unknown)} — the settings are {', '.join(sorted(MODEL_KEYS))} "
+                          "(a misspelling would otherwise be ignored silently)")
     named = [k for k in ("name", "repo", "path") if model.get(k)]
     if len(named) > 1:
         raise ConfigError(f"model: name, repo and path each say which model to load, so keep only one of them (found {', '.join(named)})")
