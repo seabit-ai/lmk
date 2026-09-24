@@ -1,0 +1,85 @@
+[disk_budget][INFO]: VLM prompt cache disk budget: stage=provisional cap_gib=30.00
+[cache_store][INFO]: VLM prompt cache disk store: lifetime=model_load storage=temporary cleanup=model_unload_or_process_exit
+[context_fit][INFO]: Model context auto-fit: family=qwen3_5 max=262,144 fitted=262,144 working_set=77.76GiB reserve=3.00GiB baseline=14.95GiB full_kv=34816B/token prompt_inputs=10240B/token attention_coefficient=48B/context/step rotating_constant=0.00GiB rotating_per_step=0B steps=2048:262,144,1024:262,144,512:262,144
+[cache_store][INFO]: VLM prompt cache context target: configured=32,768 fitted=262,144 effective=262,144
+[coordinator][INFO]: Prompt cache restore: cached_tokens=0 uncached_tokens=25 lifetime_efficiency=0.00%
+[model_kit][INFO]: Request prefill plan: prompt=26 cached=0 segments=2048:26
+[cache_store][INFO]: VLM prompt cache disk usage: used_mib=155.3 cap_mib=30720.0 lifetime_evicted_mib=0.0 records=2 lifetime=model_load
+[disk_budget][INFO]: VLM prompt cache disk budget: stage=final target_tokens=262,144 desired_gib=155.31 cap_gib=154.20 limiter=free_disk_space
+[coordinator][INFO]: Prompt cache restore: cached_tokens=0 uncached_tokens=25 lifetime_efficiency=0.00%
+[model_kit][INFO]: Request prefill plan: prompt=26 cached=0 segments=2048:26
+[coordinator][INFO]: Prompt cache restore: cached_tokens=0 uncached_tokens=68 lifetime_efficiency=0.00%
+[model_kit][INFO]: Request prefill plan: prompt=69 cached=0 segments=2048:69
+[coordinator][INFO]: Prompt cache restore: cached_tokens=0 uncached_tokens=171 lifetime_efficiency=0.00%
+[model_kit][INFO]: Request prefill plan: prompt=172 cached=0 segments=2048:172
+plain  story       38.4 tok/s  tokens 400  sha eb9ef544c2
+plain  code        38.3 tok/s  tokens 400  sha 58b44530ab
+plain  copyedit    38.2 tok/s  tokens 134  sha 8fe1ef2be6
+[model_kit][INFO]: Loading draft model from /Users/xinkai/.cache/lmk-research/qwen3.8-27b-mtp-draft...
+[model_kit][INFO]: Draft model loaded
+[coordinator][INFO]: Prompt cache restore: cached_tokens=0 uncached_tokens=25 lifetime_efficiency=0.00%
+[model_kit][INFO]: Request prefill plan: prompt=26 cached=0 segments=2048:26
+[model_kit][ERROR]: Encountered fatal exception in the backend generation thread: Traceback (most recent call last):
+  File "/Users/xinkai/src/lmk/.engine/mlx-engine/mlx_engine/model_kit/batched_vision/model_kit.py", line 442, in _generate_with_exception_handling
+    self._generate()
+  File "/Users/xinkai/src/lmk/.engine/mlx-engine/mlx_engine/model_kit/batched_vision/model_kit.py", line 741, in _generate
+    controller.step_generation()
+  File "/Users/xinkai/src/lmk/.engine/mlx-engine/mlx_engine/model_kit/batched_vision/request_lifecycle.py", line 217, in step_generation
+    prompt_responses, generation_responses = state.batch_generator.next()
+                                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/xinkai/src/lmk/.engine/mlx-engine/mlx_engine/model_kit/batched_vision/batch_generator.py", line 1277, in next
+    return self._next()
+           ^^^^^^^^^^^^
+  File "/Users/xinkai/src/lmk/.engine/mlx-engine/mlx_engine/model_kit/batched_vision/batch_generator.py", line 1305, in _next
+    generation_responses = self._generation_batch.next()
+                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/xinkai/src/lmk/.engine/mlx-engine/mlx_engine/model_kit/batched_vision/speculative.py", line 344, in next
+    responses.extend(self._round())
+                     ^^^^^^^^^^^^^
+  File "/Users/xinkai/src/lmk/.engine/mlx-engine/mlx_engine/model_kit/batched_vision/speculative.py", line 469, in _round
+    result = speculative_round(
+             ^^^^^^^^^^^^^^^^^^
+  File "/Users/xinkai/src/lmk/.engine/mlx-engine/mlx_engine/model_kit/batched_vision/speculative.py", line 224, in speculative_round
+    lm.rollback_speculative_cache(prompt_cache, verify.gdn_states, accepted, block_size)
+  File "/Users/xinkai/src/lmk/.venv/lib/python3.11/site-packages/mlx_vlm/models/qwen3_5/language.py", line 1519, in rollback_speculative_cache
+    if all(len(s) > 11 and s[11] is not None for s in gdn_states):
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+TypeError: 'NoneType' object is not iterable
+Traceback (most recent call last):
+  File "/Users/xinkai/src/lmk/research/2026-09-23-speculative-decoding/exp05-kv8-with-draft/smoke.py", line 71, in <module>
+    main()
+  File "/Users/xinkai/src/lmk/research/2026-09-23-speculative-decoding/exp05-kv8-with-draft/smoke.py", line 46, in main
+    run(kit, prompts["story"], "warm-spec")
+  File "/Users/xinkai/src/lmk/research/2026-09-23-speculative-decoding/exp05-kv8-with-draft/smoke.py", line 28, in run
+    for r in create_generator(kit, list(toks), max_tokens=MAX_TOKENS, temp=temp, request_id=request_id,
+  File "/Users/xinkai/src/lmk/.engine/mlx-engine/mlx_engine/generate.py", line 821, in _batched_generation
+    generation_result: BatchedGenerationResponse = next(stream)
+                                                   ^^^^^^^^^^^^
+  File "/Users/xinkai/src/lmk/.engine/mlx-engine/mlx_engine/model_kit/batched_vision/model_kit.py", line 375, in _inner
+    raise response
+Exception: Encountered fatal exception in the backend generation thread: Traceback (most recent call last):
+  File "/Users/xinkai/src/lmk/.engine/mlx-engine/mlx_engine/model_kit/batched_vision/model_kit.py", line 442, in _generate_with_exception_handling
+    self._generate()
+  File "/Users/xinkai/src/lmk/.engine/mlx-engine/mlx_engine/model_kit/batched_vision/model_kit.py", line 741, in _generate
+    controller.step_generation()
+  File "/Users/xinkai/src/lmk/.engine/mlx-engine/mlx_engine/model_kit/batched_vision/request_lifecycle.py", line 217, in step_generation
+    prompt_responses, generation_responses = state.batch_generator.next()
+                                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/xinkai/src/lmk/.engine/mlx-engine/mlx_engine/model_kit/batched_vision/batch_generator.py", line 1277, in next
+    return self._next()
+           ^^^^^^^^^^^^
+  File "/Users/xinkai/src/lmk/.engine/mlx-engine/mlx_engine/model_kit/batched_vision/batch_generator.py", line 1305, in _next
+    generation_responses = self._generation_batch.next()
+                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/xinkai/src/lmk/.engine/mlx-engine/mlx_engine/model_kit/batched_vision/speculative.py", line 344, in next
+    responses.extend(self._round())
+                     ^^^^^^^^^^^^^
+  File "/Users/xinkai/src/lmk/.engine/mlx-engine/mlx_engine/model_kit/batched_vision/speculative.py", line 469, in _round
+    result = speculative_round(
+             ^^^^^^^^^^^^^^^^^^
+  File "/Users/xinkai/src/lmk/.engine/mlx-engine/mlx_engine/model_kit/batched_vision/speculative.py", line 224, in speculative_round
+    lm.rollback_speculative_cache(prompt_cache, verify.gdn_states, accepted, block_size)
+  File "/Users/xinkai/src/lmk/.venv/lib/python3.11/site-packages/mlx_vlm/models/qwen3_5/language.py", line 1519, in rollback_speculative_cache
+    if all(len(s) > 11 and s[11] is not None for s in gdn_states):
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+TypeError: 'NoneType' object is not iterable
