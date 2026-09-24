@@ -63,6 +63,9 @@ class Engine(Protocol):
     def thinking_enabled(self) -> bool:
         """What every prompt says about thinking: the configured constant, else the family's default."""
         ...
+    def reasoning_effort(self) -> Optional[str]:
+        """The configured model.reasoning_effort, None when the template's own default applies."""
+        ...
     def preflight(self, prompt_text: str, images_b64: Optional[list[str]] = None) -> Preflight: ...
     def token_budget(self) -> Optional[int]: ...
     def gpu_memory_bytes(self) -> int: ...
@@ -119,6 +122,7 @@ class MlxEngine:
                                   speculative_decoding=draft_path is not None)
         self._format = TemplateChatFormat(self._kit.tokenizer, template_kwargs)
         self._thinking = bool((template_kwargs or {}).get("enable_thinking", self._format.dialect.thinking_default))
+        self._effort = (template_kwargs or {}).get("reasoning_effort")
         from lmk.sampling import model_defaults
         self._sampling_defaults = model_defaults(model_path)
 
@@ -130,6 +134,9 @@ class MlxEngine:
 
     def thinking_enabled(self) -> bool:
         return self._thinking
+
+    def reasoning_effort(self) -> Optional[str]:
+        return self._effort
 
     def chat_format(self) -> ChatFormat:
         return self._format
@@ -272,10 +279,13 @@ class FakeEngine:
                  script: Optional[list[str]] = None, stats: Optional[GenerationStats] = None,
                  prefill_steps: Optional[list[int]] = None, modalities: Optional[list[str]] = None,
                  cache: Optional[dict] = None, token_budget: Optional[int] = None, gpu_bytes: int = 0,
-                 sampling_defaults: Optional[dict] = None, thinking: bool = True):
+                 sampling_defaults: Optional[dict] = None, thinking: bool = True,
+                 reasoning_effort: Optional[str] = None, draft: Optional[dict] = None):
         self._model = model
         self._sampling_defaults = sampling_defaults or {}
         self._thinking = thinking
+        self._effort = reasoning_effort
+        self._draft = draft
         self._format = chat_format
         self._script = script or []
         self._stats = stats or GenerationStats()
@@ -310,6 +320,12 @@ class FakeEngine:
 
     def thinking_enabled(self) -> bool:
         return self._thinking
+
+    def reasoning_effort(self) -> Optional[str]:
+        return self._effort
+
+    def draft_stats(self) -> Optional[dict]:
+        return self._draft
 
     def chat_format(self) -> ChatFormat:
         return self._format

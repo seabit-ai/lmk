@@ -1,6 +1,8 @@
 import yaml
 
+from lmk.config import ModelSource, RequestsConfig, load_config
 from lmk.configfiles import _home_for_humans, example_text, refresh_example, seed_config
+from lmk.models import TESTED_MODELS
 
 
 def test_the_default_home_is_written_as_tilde_for_humans(monkeypatch):
@@ -24,13 +26,28 @@ def test_seed_is_a_real_config_with_every_value_written_out_and_is_never_overwri
     assert path.read_text() == "listen: {port: 9}\n"
 
 
-def test_example_lists_every_section_and_the_tested_models(tmp_path):
+def test_example_is_a_real_config_with_the_defaults_and_the_default_models_recommendation(tmp_path, monkeypatch):
+    """The example loads as it is (so a misspelt key would fail here, not on the user's Mac); its values are
+    the defaults, except the three the 27B page recommends (owner, 2026-09-24: "default + 27B")."""
+    monkeypatch.setenv("LMK_HOME", str(tmp_path))
+    example = tmp_path / "config.yaml.example"
+    example.write_text(example_text())
+    cfg = load_config(example)
+    assert cfg.model.source == ModelSource("name", "qwen3.8-27b-4bit")
+    assert (cfg.model.reasoning_effort, cfg.model.kv_cache_bits, cfg.model.speculative_decoding) == ("low", 8, True)
+    assert (cfg.model.thinking, cfg.model.context_length, cfg.model.draft_tokens) == (None, None, None)
+    assert (cfg.host, cfg.port) == ("127.0.0.1", 1235)
+    assert (cfg.cache_dir, cfg.cache_max_bytes, cfg.log_dir) == (tmp_path / "cache", 200 * 1024**3, tmp_path / "logs")
+    assert cfg.requests == RequestsConfig(2, 16, 600)
+
+
+def test_example_shows_every_tested_model_and_the_other_ways_of_naming_one_as_commented_lines():
     text = example_text()
-    for needle in ("model:", "listen:", "cache:", "log:", "requests:", "max_parallel: 2", "max_queue: 16",
-                   "max_wait_seconds: 600", "max_size: 200G", "port: 1235",
-                   "qwen3.8-27b", "lmstudio-community/Qwen3.8-27B-MLX-4bit", "16.1 GB"):
-        assert needle in text
-    assert yaml.safe_load(text) is None
+    for name in TESTED_MODELS:
+        assert f"  # name: {name}\n" in text, name          # the line alone: sizes and speeds live on the model page
+    for needle in ("# repo: ", "# path: ~/.lmstudio/models/", "# thinking: false", "# reasoning_effort: ", "# port: ",
+                   "# max_parallel: "):
+        assert needle in text, needle
 
 
 def test_example_is_rewritten_only_when_its_content_differs(tmp_path):
@@ -41,21 +58,3 @@ def test_example_is_rewritten_only_when_its_content_differs(tmp_path):
     example.write_text("# from an older lmk\n")
     assert refresh_example(cfg) is True
     assert example.read_text() == example_text()
-
-
-def test_every_uncommented_template_line_is_a_valid_config(tmp_path, monkeypatch):
-    """The template is the documentation of the schema: uncommenting it must load."""
-    from lmk.config import load_config
-    from lmk.configfiles import _TEMPLATE
-
-    monkeypatch.setenv("LMK_HOME", str(tmp_path))
-    body = "\n".join(line[2:] if line.startswith("# ") else line.lstrip("#") for line in _TEMPLATE.splitlines()[3:])
-    body = "\n".join(l for l in body.splitlines() if not l.strip().startswith(("repo:", "path:")))
-    cfg = load_config(_write(tmp_path / "c.yaml", body))
-    assert cfg.model.id == "qwen3.8-27b-4bit" and cfg.model.context_length == 131072 and cfg.port == 1235
-    assert cfg.requests.max_queue == 16
-
-
-def _write(path, text):
-    path.write_text(text)
-    return path

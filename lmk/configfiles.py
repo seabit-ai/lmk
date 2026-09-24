@@ -2,140 +2,127 @@
 
   config.yaml          seeded once as a REAL config — every value written out, nothing
                        commented away (owner, 2026-09-22) — then never touched: it is the user's.
-  config.yaml.example  ours: rewritten whenever its content differs, so it is always
-                       the current full reference, including the tested-model list.
+  config.yaml.example  ours: rewritten whenever its content differs, so it is always the current
+                       full reference. A REAL config too (owner, 2026-09-24): the defaults plus the
+                       default model's recommended settings, every other choice as a commented line.
 """
 import os
-import textwrap
 from pathlib import Path
 
 from lmk.config import (DEFAULT_CACHE_MAX_SIZE, lmk_home, DEFAULT_HOST, DEFAULT_MAX_PARALLEL, DEFAULT_MAX_QUEUE,
                         DEFAULT_MAX_WAIT_SECONDS, DEFAULT_PORT)
 from lmk.models import DEFAULT_MODEL_NAME, TESTED_MODELS, smallest_mac_gb
 
+# One line per setting, shared by the seed and the example so the two never say different things.
+# What each setting does and what we measured lives in README "Configuration" and the model pages, not here.
+_WHAT = {
+    "repo": "instead of name: any MLX model on HuggingFace (address after huggingface.co/); untested by us",
+    "path": "instead of name: an MLX model folder already on this Mac — here, one LM Studio downloaded",
+    "reasoning_effort": "Qwen3.8: low / medium / xhigh (other models: their page); server-wide",
+    "kv_cache_bits": "16 = the model's own precision; 8 = about twice the context on the same Mac",
+    "speculative_decoding": "the model's own draft head guesses tokens, the model checks them (`lmk pull` fetches it)",
+    "thinking": "answer without thinking; default: the template's own (on for Qwen, off for Gemma)",
+    "context_length": "default: the model's maximum, lowered if memory is short; `lmk status` shows the value in use",
+    "draft_tokens": "advanced: tokens the draft guesses per round (default: the draft's own)",
+    "cache_dir": "processed prompts kept on disk: a conversation continues in about a second, also after a reboot",
+    "max_size": "when full, what was used longest ago is dropped first",
+    "max_parallel": "answered at the same time (README: what it gains, measured)",
+    "max_queue": "waiting for their turn; one more is refused at once",
+    "max_wait_seconds": "a request that could not start by then is refused, and told why",
+}
+
+
 def _seed_text() -> str:
     home = _home_for_humans()
-    return textwrap.dedent(f"""\
-    # lmk configuration — these are the values in use. After a change: `lmk up` (it restarts the service).
-    # The full reference, with every option and the tested models, is config.yaml.example next to this file.
+    return f"""\
+# lmk configuration — these are the values in use. After a change: `lmk up` (it restarts the service).
+# Every setting, with the tested models as lines to uncomment: config.yaml.example next to this file.
 
-    model:
-      name: {DEFAULT_MODEL_NAME}       # a tested model; the list is in config.yaml.example
-      # For a model that is not in the tested list, replace the name: line with ONE of these:
-      # repo: mlx-community/Qwen3-30B-A3B-4bit   # its HuggingFace address after huggingface.co/ (any MLX model;
-      #                                          # `lmk pull` downloads it; whether it works, we have not checked)
-      # path: /Users/me/models/Some-Model-MLX    # a model folder already on this Mac (nothing to download)
-      # context_length: 131072               # default: the model's own maximum, lowered if memory is short
-      # thinking: false                      # answer without thinking (default: the template's own — on for Qwen)
-      # reasoning_effort: low                # low / medium / xhigh where the model's template knows it; server-wide,
-      #                                      # never per request (it sits at the start of every prompt)
-      # kv_cache_bits: 8                     # 8 halves what each token of context costs in memory: about twice the
-      #                                      # context on the same Mac, answers may differ slightly on very long
-      #                                      # prompts. Default 16 (the model's own precision); 4 is accepted too
-      # speculative_decoding: true           # a small draft guesses the next tokens, the model checks them: the same
-      #                                      # answers on code, faster while one request is being answered (several at
-      #                                      # once are answered plainly); prose may differ slightly. Needs the draft
-      #                                      # `lmk pull` fetches — the model page says whether there is one
-      # draft_tokens: 3                      # advanced: tokens the draft guesses per round (default: the draft's own)
+model:
+  name: {DEFAULT_MODEL_NAME:<24} # a tested model; the list is in config.yaml.example
+  # repo: mlx-community/Qwen3-30B-A3B-4bit   # {_WHAT["repo"]}
+  # path: ~/.lmstudio/models/lmstudio-community/Qwen3.8-27B-MLX-4bit   # {_WHAT["path"]}
+  # reasoning_effort: low        # {_WHAT["reasoning_effort"]}
+  # kv_cache_bits: 8             # {_WHAT["kv_cache_bits"]}
+  # speculative_decoding: true   # {_WHAT["speculative_decoding"]}
+  # thinking: false              # {_WHAT["thinking"]}
+  # context_length: 65536        # {_WHAT["context_length"]}
 
-    listen:
-      host: {DEFAULT_HOST}
-      port: {DEFAULT_PORT}
+listen:
+  host: {DEFAULT_HOST}
+  port: {DEFAULT_PORT}
 
-    cache:                        # prompts already processed, kept on disk: a conversation continues
-      dir: {home}/cache           # in about a second — also after a reboot
-      max_size: {DEFAULT_CACHE_MAX_SIZE}              # when full, what was used longest ago is dropped first
+cache:
+  dir: {home}/cache              # {_WHAT["cache_dir"]}
+  max_size: {DEFAULT_CACHE_MAX_SIZE}                 # {_WHAT["max_size"]}
 
-    requests:
-      max_parallel: {DEFAULT_MAX_PARALLEL}             # answered at the same time (see config.yaml.example for what it gains)
-      max_queue: {DEFAULT_MAX_QUEUE}               # waiting for their turn; one more is refused at once
-      max_wait_seconds: {DEFAULT_MAX_WAIT_SECONDS}       # a request that could not start by then is refused, and told why
+requests:
+  max_parallel: {DEFAULT_MAX_PARALLEL}                # {_WHAT["max_parallel"]}
+  max_queue: {DEFAULT_MAX_QUEUE}                  # {_WHAT["max_queue"]}
+  max_wait_seconds: {DEFAULT_MAX_WAIT_SECONDS}          # {_WHAT["max_wait_seconds"]}
 
-    log:
-      dir: {home}/logs
-    """)
-
-
-_TEMPLATE = f"""\
-# lmk configuration. Everything is optional: with nothing uncommented, lmk serves
-# {DEFAULT_MODEL_NAME} on http://{DEFAULT_HOST}:{DEFAULT_PORT}. After a change: `lmk up` (it restarts the service).
-#
-# model:
-#   # Name the model in exactly ONE of these three ways:
-#   name: {DEFAULT_MODEL_NAME}              # a tested model — the list is in config.yaml.example
-#   repo: mlx-community/Qwen3-30B-A3B-4bit   # its HuggingFace address after huggingface.co/ — any MLX
-#                                            # model; `lmk pull` downloads it; untested by us
-#   path: /Users/me/models/Some-Model-MLX    # a model folder already on this Mac; nothing to download
-#   # Clients send that name as "model" (for repo / path: the last part, in lower case).
-#
-#   context_length: 131072     # default: the model's own maximum. If this Mac is short of
-#                              # memory lmk lowers it; `lmk status` shows the value in use.
-#   thinking: false            # answer without thinking (default: the template's own — on for Qwen)
-#   reasoning_effort: low      # low / medium / xhigh where the model's template knows it; a server-wide
-#                              # constant, never per request: it sits at the start of every prompt
-#   kv_cache_bits: 8           # 8 halves what each token of context costs in memory: about twice the context
-#                              # on the same Mac; answers may differ slightly on very long prompts. Default 16
-#                              # (the model's own precision). 4 quarters it, at a larger cost to precision.
-#                              # Changing it starts the prompt cache empty for this model. Each model page
-#                              # says whether we tested it with 8.
-#   speculative_decoding: true # a small draft (the model's own draft head) guesses the next tokens and the model
-#                              # checks them: the same answers on code, faster while one request is being
-#                              # answered (when several are answered at once they are decoded plainly); prose
-#                              # may differ slightly. Needs the draft `lmk pull` fetches for the model; with a
-#                              # model that has none, lmk refuses to start and says so. Default false; the model
-#                              # page says when to turn it on. `lmk status` shows how many drafted tokens were accepted.
-#   draft_tokens: 3            # advanced: how many tokens the draft guesses per round (default: the draft's own)
-#
-# listen:
-#   host: {DEFAULT_HOST}
-#   port: {DEFAULT_PORT}
-#
-# cache:                       # lmk keeps the prompts it has already processed on disk, so a
-#   dir: ~/.lmk/cache          # conversation continues in about a second — also after a reboot
-#   max_size: {DEFAULT_CACHE_MAX_SIZE}             # when full, what was used longest ago is dropped first
-#
-# requests:
-#   max_parallel: {DEFAULT_MAX_PARALLEL}            # answered at the same time. What that gains depends on how long the
-#                              # conversations are. Measured on an M3 Ultra with the default model:
-#                              #   prompts of a few dozen tokens:  2 at once = 1.7x the speed of one, 4 = 2.2x
-#                              #   27k-token conversations:        2 at once = 1.0x (each runs at half speed)
-#                              # With 1, a request waits for the one before it and then runs at full speed.
-#   max_queue: {DEFAULT_MAX_QUEUE}              # waiting for their turn; one more is refused at once
-#   max_wait_seconds: {DEFAULT_MAX_WAIT_SECONDS}      # a request that could not start by then is refused, and told why
-#                              # (`lmk status` shows who is waiting, and for what)
-#
-# log:
-#   dir: ~/.lmk/logs
-"""
-
-_EXAMPLE_HEADER = """\
-# config.yaml.example — the full configuration reference, maintained by lmk and
-# refreshed automatically whenever a new version changes it.
-# Do not edit this file (it gets overwritten); copy the entries you want into
-# config.yaml in this directory.
-#
+log:
+  dir: {home}/logs
 """
 
 
-def _model_list() -> str:
-    lines = ["#", "# Tested models (model.name). We ran each one with a real agent: tool calls, thinking, images,",
-             "# and the on-disk prompt cache all work. `lmk pull` downloads the one you configured into the",
-             "# shared HuggingFace cache (~/.cache/huggingface/hub), where other tools can use it too."]
-    lines.append("# Grouped by the smallest Mac each should run on (expected from memory measured on a 96 GB Mac).")
-    tiers: dict[int, list[str]] = {}
-    for name, m in TESTED_MODELS.items():
-        tiers.setdefault(smallest_mac_gb(m), []).append(name)
-    for gb in sorted(tiers):
-        lines.append(f"#   -- needs at least {gb} GB --")
-        for name in tiers[gb]:
-            m = TESTED_MODELS[name]
-            lines.append(f"#   {name:<24} {m.size_gb:>5.1f} GB download, {m.loaded_gib:.0f} GiB loaded   {m.repo}")
-            lines.append(f"#   {'':<24} {m.good_for}. Thinking: {m.thinking}")
-    return "\n".join(lines) + "\n"
+def _model_lines() -> str:
+    """One commented `name:` line per tested model, smallest Mac first: choosing a model = uncommenting
+    a line. Nothing else here — sizes, speeds and what each is good for are on the model pages."""
+    order = sorted(TESTED_MODELS, key=lambda n: smallest_mac_gb(TESTED_MODELS[n]))
+    return "\n".join(f"  # name: {name}" for name in order)
+
+
+def _draft_family() -> str:
+    """The tested models that have a draft head, as one phrase: `the qwen3.8-27b ones`."""
+    names = [n for n, m in TESTED_MODELS.items() if m.draft_repo]
+    prefix = os.path.commonprefix(names).rstrip("-")
+    return f"the {prefix} ones" if len(names) > 1 and prefix else ", ".join(names)
 
 
 def example_text() -> str:
-    return _EXAMPLE_HEADER + _TEMPLATE + _model_list()
+    home = _home_for_humans()
+    return f"""\
+# config.yaml.example — every setting, as a config that runs. lmk rewrites this file at each `lmk up` so it always
+# matches the installed version: do not edit it; copy it, or the lines you want, into config.yaml next to it,
+# then `lmk up`. The values are the defaults, except the three the {DEFAULT_MODEL_NAME} page recommends.
+# What each setting does and what we measured: README.md "Configuration" and docs/models/<name>.md.
+
+model:
+  name: {DEFAULT_MODEL_NAME:<24} # a tested model, one of these (each has a page under docs/models/):
+{_model_lines()}
+  # repo: mlx-community/Qwen3-30B-A3B-4bit   # {_WHAT["repo"]}
+  # path: ~/.lmstudio/models/lmstudio-community/Qwen3.8-27B-MLX-4bit   # {_WHAT["path"]}
+  # The next three are the {DEFAULT_MODEL_NAME} page's recommendation; for another model its page says which to keep.
+  reasoning_effort: low          # {_WHAT["reasoning_effort"]}
+  # reasoning_effort: xhigh      # the template's own default; scored worse than low on every test
+  kv_cache_bits: 8               # {_WHAT["kv_cache_bits"]}
+  # kv_cache_bits: 16            # for a model whose page does not recommend 8
+  speculative_decoding: true     # {_WHAT["speculative_decoding"]}
+  # speculative_decoding: false  # for a model without a draft head: today all but {_draft_family()}
+  # thinking: false              # {_WHAT["thinking"]}
+  # context_length: 65536        # {_WHAT["context_length"]}
+  # draft_tokens: 3              # {_WHAT["draft_tokens"]}
+
+listen:
+  host: {DEFAULT_HOST}
+  port: {DEFAULT_PORT}
+  # port: 8080
+
+cache:
+  dir: {home}/cache              # {_WHAT["cache_dir"]}
+  max_size: {DEFAULT_CACHE_MAX_SIZE}                 # {_WHAT["max_size"]}
+  # max_size: 50G
+
+requests:
+  max_parallel: {DEFAULT_MAX_PARALLEL}                # {_WHAT["max_parallel"]}
+  # max_parallel: 1              # one at a time, each at full speed
+  max_queue: {DEFAULT_MAX_QUEUE}                  # {_WHAT["max_queue"]}
+  max_wait_seconds: {DEFAULT_MAX_WAIT_SECONDS}          # {_WHAT["max_wait_seconds"]}
+
+log:
+  dir: {home}/logs
+"""
 
 
 def _write_atomically(path: Path, text: str) -> None:

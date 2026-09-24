@@ -15,9 +15,10 @@ Text and images in, tool calls, thinking. This is the model lmk itself was built
 
 ## Speed (M3 Ultra, 96 GB — [`docs/benchmarks.md`](../benchmarks.md))
 
-| prefill | cached prefill | decode |
-|---|---|---|
-| 323 tok/s | 53k tok/s | 39 tok/s (about 33 on long agent conversations) |
+| | prefill | cached prefill | decode, prose | decode, code |
+|---|---|---|---|---|
+| defaults (16-bit KV cache, no draft) | 323 tok/s | 53k tok/s | 39 tok/s (about 33 on long agent conversations) | — |
+| the recommended configuration below | 321 tok/s | 47k tok/s | 44.5 tok/s | 58.6 tok/s (88% of drafted tokens accepted) |
 
 ## Recommended configuration
 
@@ -85,6 +86,11 @@ makes every cached conversation cold once.
   on and off pass with the draft loaded. With the draft on and the model's default sampling, one request at a time
   (`research/2026-09-23-speculative-decoding/exp04-eval-with-draft/`): code 40/40, instruct 20/20, tools 10/10 —
   the same as without; 86% of drafted tokens accepted, 7 s per answer instead of 9.
+- **Both together — `kv_cache_bits: 8` with `speculative_decoding: true`, the configuration recommended above** (2026-09-24,
+  `research/2026-09-23-speculative-decoding/exp05-kv8-with-draft/`): the first request crashed on the engine as shipped
+  (its verify step could not read a quantized cache; fixed in our engine fork). After the fix: greedy code and copy-editing
+  output identical to plain 8-bit decoding at 1.49x, 86% of drafted tokens accepted with the model's default sampling,
+  integration tests 5/5 with both on, including the prompt cache surviving a restart.
 
 
 ## Not tested

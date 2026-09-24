@@ -392,7 +392,7 @@ def cmd_bench(args) -> int:
         return _fail("✗ lmk is busy; a benchmark needs it to itself.  See:  lmk status", 1)
     model = status["model"]
     m = bench.machine()
-    _say(f"{model['id']} on {m['chip']} {m['memory_gb']} GB — measuring, about a minute")
+    _say(f"{model['id']} on {m['chip']} {m['memory_gb']} GB — {render.model_settings(model)} — measuring, about a minute")
     result = bench.run_bench(bench.stream_via_http(url), model["id"], seed=args.seed)
     _say(bench.human_block(result))
     _say("")

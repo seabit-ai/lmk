@@ -7,7 +7,9 @@ A warm-up first, then three probes, temperature 0, one at a time:
   cold prefill  — a fixed ~4k-token text behind a random number, so no cached prefix can match
                   (the cache restores up to the longest common prefix; a fresh first token makes that zero)
   cache hit     — the same request again: the whole prompt comes back from disk
-  decode        — a short prompt, 400 tokens out
+  decode        — a short prompt, 400 tokens out: prose (a story), then code (a class). Both, because
+                  speculative decoding gains most on code (exp05: 1.49x code, 1.14x prose) — with one prose
+                  number a user who turned it on sees almost nothing (owner, 2026-09-24)
 Timing is client-side (HTTP included): what an agent on this Mac would see.
 The result is one Markdown row for docs/benchmarks.md."""
 import json
@@ -23,6 +25,7 @@ TEMPLATE_SENTENCE = "The quick brown fox jumps over the lazy dog. "
 TEMPLATE_REPEATS = 400          # ~4,060 tokens on Qwen3.8 (research/2026-09-22-more-models exp01)
 DECODE_TOKENS = 400
 DECODE_PROMPT = "Write a 250-word story about a lighthouse keeper."
+DECODE_CODE_PROMPT = "Write a Python class implementing an LRU cache with get and put, with type hints and docstrings."
 
 
 def probe_prompt(nonce: str) -> str:
@@ -48,6 +51,14 @@ class Probe:
     first_token_ms: int
     total_ms: int
     restore_ms: Optional[int] = None   # server-side: the cached part coming back from disk (lmk's usage chunk)
+    draft_accepted: Optional[int] = None  # speculative decoding: drafted tokens the model agreed with ...
+    draft_drafted: Optional[int] = None   # ... out of how many it drafted; None when no draft model is loaded
+
+    @property
+    def acceptance(self) -> Optional[float]:
+        if not self.draft_drafted:
+            return None
+        return (self.draft_accepted or 0) / self.draft_drafted
 
 
 @dataclass
@@ -57,6 +68,7 @@ class BenchResult:
     cold: Probe
     hit: Probe
     decode: Probe
+    decode_code: Optional[Probe] = None   # None: a result from before the code probe existed
 
     @property
     def cold_was_cold(self) -> bool:
@@ -84,7 +96,15 @@ class BenchResult:
 
     @property
     def decode_tok_s(self) -> float:
-        return self.decode.completion_tokens / max(1, self.decode.total_ms - self.decode.first_token_ms) * 1000
+        return _decode_rate(self.decode)
+
+    @property
+    def decode_code_tok_s(self) -> Optional[float]:
+        return None if self.decode_code is None else _decode_rate(self.decode_code)
+
+
+def _decode_rate(p: Probe) -> float:
+    return p.completion_tokens / max(1, p.total_ms - p.first_token_ms) * 1000
 
 
 StreamFn = Callable[[dict], "list[tuple[int, dict]]"]   # body -> [(ms since start, chunk)]
@@ -112,10 +132,11 @@ def _probe(stream: StreamFn, model_id: str, messages: list, max_tokens: int) -> 
                  if c.get("choices") and any(k in c["choices"][0]["delta"] for k in ("content", "reasoning_content")))
     usage_chunk = next(c for _, c in chunks if c.get("usage"))
     usage = usage_chunk["usage"]
+    lmk = usage_chunk.get("lmk") or {}
     return Probe(prompt_tokens=usage["prompt_tokens"],
                  cached_tokens=(usage.get("prompt_tokens_details") or {}).get("cached_tokens", 0),
                  completion_tokens=usage["completion_tokens"], first_token_ms=first, total_ms=chunks[-1][0],
-                 restore_ms=(usage_chunk.get("lmk") or {}).get("restore_ms"))
+                 restore_ms=lmk.get("restore_ms"), draft_accepted=lmk.get("draft_accepted"), draft_drafted=lmk.get("draft_drafted"))
 
 
 def run_bench(stream: StreamFn, model_id: str, seed: Optional[int] = None,
@@ -126,7 +147,8 @@ def run_bench(stream: StreamFn, model_id: str, seed: Optional[int] = None,
     cold = _probe(stream, model_id, prompt, 32)
     hit = _probe(stream, model_id, prompt, 32)
     decode = _probe(stream, model_id, [{"role": "user", "content": DECODE_PROMPT}], DECODE_TOKENS)
-    return BenchResult(seed=seed, warmup=warmup, cold=cold, hit=hit, decode=decode)
+    decode_code = _probe(stream, model_id, [{"role": "user", "content": DECODE_CODE_PROMPT}], DECODE_TOKENS)
+    return BenchResult(seed=seed, warmup=warmup, cold=cold, hit=hit, decode=decode, decode_code=decode_code)
 
 
 def machine() -> dict:
@@ -144,13 +166,30 @@ ROW_HEADER = ("| chip | memory | model | context | prefill | cached prefill | de
               "|---|---|---|---|---|---|---|---|---|---|")
 
 
+def settings_note(model: dict) -> str:
+    """The non-default switches a row was measured with, for the model cell: '' at the defaults."""
+    parts = []
+    if model.get("kv_cache_bits", 16) != 16:
+        parts.append(f"KV cache {model['kv_cache_bits']}-bit")
+    if model.get("speculative_decoding"):
+        parts.append("speculative decoding")
+    return f" ({', '.join(parts)})" if parts else ""
+
+
+def _accepted(p: Optional[Probe]) -> str:
+    return "" if p is None or p.acceptance is None else f" ({p.acceptance:.0%} of drafted tokens accepted)"
+
+
 def markdown_row(r: BenchResult, m: dict, status: dict, date: str) -> str:
     model = status["model"]
     mem = f"{m['memory_gb']} GB" if m.get("memory_gb") else "?"
     cold = (f"{r.cold_prefill_tok_s:.0f} tok/s ({r.cold.prompt_tokens - r.cold.cached_tokens:,} tokens)" if r.cold_was_cold
             else f"— (seed reused: {r.cold.cached_tokens:,} cached)")
-    return (f"| {m['chip']} | {mem} | {model['id']} | {model['context_length']:,} | {cold} | "
-            f"{_k(r.hit_tok_s)} tok/s ({r.hit.cached_tokens:,} cached; first token {r.hit_first_token_s:.2f} s) | {r.decode_tok_s:.1f} tok/s | "
+    decode = f"{r.decode_tok_s:.1f} tok/s"
+    if r.decode_code is not None:
+        decode = f"{r.decode_tok_s:.1f} tok/s prose · {r.decode_code_tok_s:.1f} code{_accepted(r.decode_code)}"
+    return (f"| {m['chip']} | {mem} | {model['id']}{settings_note(model)} | {model['context_length']:,} | {cold} | "
+            f"{_k(r.hit_tok_s)} tok/s ({r.hit.cached_tokens:,} cached; first token {r.hit_first_token_s:.2f} s) | {decode} | "
             f"{status.get('build', '?')} | {str(status.get('engine', '?'))[:7]} | {date} |")
 
 
@@ -165,7 +204,9 @@ def human_block(r: BenchResult) -> str:
     lines = [f"  prefill          {cold}",
              f"  cached prefill   {hit}   ({r.hit.cached_tokens:,} of {r.hit.prompt_tokens:,} from disk; "
              f"first token {r.hit_first_token_s:.2f} s incl. the last partial block)",
-             f"  decode           {r.decode_tok_s:>7.1f} tokens/s"]
+             f"  decode, prose    {r.decode_tok_s:>7.1f} tokens/s" + _accepted(r.decode)]
+    if r.decode_code is not None:
+        lines.append(f"  decode, code     {r.decode_code_tok_s:>7.1f} tokens/s" + _accepted(r.decode_code))
     if r.warmup.first_token_ms > 3000:
         lines.append(f"  (the warm-up request took {r.warmup.first_token_ms / 1000:.0f} s: the weights had to be paged back in; not counted)")
     return "\n".join(lines)

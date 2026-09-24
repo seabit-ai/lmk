@@ -105,7 +105,8 @@ Known issues）、启动时校验会炸的配置值。加模型的工作量大�
   `make clean venv` → `make cache-compat` + `make itest`；不过就 `CACHE_FORMAT_VERSION` +1。
 - 引擎缺省是贪心（temp 0）且不读模型的 generation_config；引擎的 `stop_strings` 对思考段也生效；`seed` 在批处理路径被引擎忽略。
   三条都由 lmk 侧兜住（`sampling.py` / `stopmatch.py`），别把 stop 或 seed "顺手"直接传给引擎。
-- **进表的门槛**：集成测试开关各 5/5 **且** exp03 那三个 agent 任务在模型缺省采样下多轮全对；过不了的（Gemma 4 12B）也写一页 `docs/models/<name>.md`（标 tried, not listed，记全过程），**不进 README**——别污染客户的阅读上下文。
+- **进表的门槛**：集成测试开关各 5/5 **且** exp03 那三个 agent 任务在模型缺省采样下多轮全对；**模型页的 Recommended configuration 是一个组合，
+  验收也按这个组合跑一遍**（2026-09-24：kv8 与投机各自 5/5，同开第一个请求 500——上游 mlx-vlm 的校验注意力不吃量化 cache，fork 7a1e17f 修）；过不了的（Gemma 4 12B）也写一页 `docs/models/<name>.md`（标 tried, not listed，记全过程），**不进 README**——别污染客户的阅读上下文。
 - zsh 里 `set -- $var` 不拆词（未加引号的变量不做 word splitting）——跑多模型循环用 bash 脚本，别在 zsh 单行里 `for pair in "a b"`（2026-09-22 起错了一个默认配置的服务占了 1235 端口）。
 - **第二个家族翻出来的 Qwen 假设**（Gemma 4，2026-09-22，exp05 F1–F4）：思考开≠每轮都有思考；冷 prefill≠命中为零（Gemma 能取回
   10 个 turn 头 token）；`thinking: false` 对 Gemma 是提示不是硬开关；同一模型的两个模板修订对工具结果要不同形状。

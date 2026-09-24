@@ -57,7 +57,10 @@ def serve() -> int:
         return EXIT_WILL_NOT_FIX_ITSELF
 
     log.info("LmkStarting", "loading the resident model", model=cfg.model.id, path=str(resolved.path),
-             requestedContextLength=cfg.model.context_length, build=build_id())
+             requestedContextLength=cfg.model.context_length, build=build_id(),
+             kvCacheBits=cfg.model.kv_cache_bits, speculativeDecoding=cfg.model.speculative_decoding,
+             draftPath=None if draft_path is None else str(draft_path), thinking=cfg.model.thinking,
+             reasoningEffort=cfg.model.reasoning_effort)
     engine = MlxEngine(cfg.model.id, resolved.path, cfg.model.context_length, cache_dir=cfg.cache_dir,
                        cache_max_bytes=cfg.cache_max_bytes, repo=cfg.model.source.repo, revision=resolved.revision,
                        max_parallel=cfg.requests.max_parallel, template_kwargs=cfg.model.template_kwargs(),
@@ -86,7 +89,9 @@ def serve() -> int:
         return EXIT_WILL_NOT_FIX_ITSELF
     log.info("LmkReady", "serving", host=cfg.host, port=server.port, model=cfg.model.id,
              contextLength=model.context_length, maxParallel=cfg.requests.max_parallel,
-             tokenBudget=engine.token_budget())
+             tokenBudget=engine.token_budget(), kvCacheBits=model.kv_cache_bits,
+             speculativeDecoding=model.speculative_decoding, thinking=engine.thinking_enabled(),
+             reasoningEffort=engine.reasoning_effort())
 
     def stop(signum, _frame):  # launchd stops us with SIGTERM
         raise KeyboardInterrupt

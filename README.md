@@ -30,8 +30,9 @@ request log (`LmkChatDone`) and [`research/2026-09-20-memory-guard`](research/20
 The cache-hit numbers are with the cache files warm in the OS page cache; a true cold read after a
 reboot is not measured yet.
 
-`lmk bench` measures the same three things on your Mac and prints a row for
-[`docs/benchmarks.md`](docs/benchmarks.md) — other machines and models are what that table is missing.
+`lmk bench` measures the same things on your Mac — prefill, cache hit, decode on prose and on code — says which
+switches were on, and prints a row for [`docs/benchmarks.md`](docs/benchmarks.md); other machines and models
+are what that table is missing.
 
 ### Why not the server you already have?
 
@@ -71,11 +72,17 @@ your agent:
 
 ```
 ✓ lmk is up    http://127.0.0.1:1235/v1   (OpenAI-compatible)
-  model      qwen3.8-27b-4bit   (text, image in)
-  context    262,144 tokens
-  cache      0 B of 200.0 GB   ~/.lmk/cache
-  running    1s   (build 908b57c)
-  busy       no — idle
+  model      qwen3.8-27b-4bit · text, image in · 262,144 tokens
+  settings   thinking off · KV cache 8-bit · speculative decoding on
+  draft      no tokens drafted yet
+  about it   https://github.com/seabit-ai/lmk/blob/main/docs/models/qwen3.8-27b-4bit.md
+  sampling   temp 1.0 · top_p 0.95 · top_k 20   (the model's generation_config; a request may override)
+  memory     pressure: normal · 76% of 96.0 GB free · lmk holds 16.5 GB
+  cache      0 B of 200.0 GB in ~/.lmk/cache
+  requests   answering 0 of 2 · waiting 0 of 16 · tokens in memory 0 of 1,844,474
+  since start  0 answered · 0 refused · 0 failed · 0 cancelled · up 1s · build v0.7.0
+
+  idle — no requests
 
   Point your agent at it — any OpenAI-compatible client:
     base URL   http://127.0.0.1:1235/v1
@@ -105,7 +112,7 @@ Everything lmk installs lives in `~/.lmk`. The model goes to the shared HuggingF
 | `lmk status` | Is it up, what is it doing right now, how full is the cache. |
 | `lmk logs` | Recent events. `-f` to follow, `--raw` for the model runtime's own output. |
 | `lmk down` | Stop it, and don't start it at login. Model, cache and config are kept. |
-| `lmk bench` | Prefill, cache-hit and decode speed on this Mac, as a row for [`docs/benchmarks.md`](docs/benchmarks.md). |
+| `lmk bench` | Prefill, cache-hit and decode speed (prose and code) on this Mac, with the switches in effect, as a row for [`docs/benchmarks.md`](docs/benchmarks.md). |
 
 When a request seems stuck, `lmk status` shows what it is doing:
 
@@ -194,16 +201,18 @@ picked a model and want your agent to be fast on it every day, that is what lmk 
 
 ## Configuration
 
-There is nothing you have to configure. `~/.lmk/config.yaml` is written at install with every value in use, so what you see is what runs;
-`~/.lmk/config.yaml.example` next to it is the full, always-current reference — including the
-list of models we have tested. The settings, with their defaults:
+There is nothing you have to configure. `~/.lmk/config.yaml` is written at install with every value in use, so what you see is what runs.
+`~/.lmk/config.yaml.example` next to it is a config that runs too — the defaults, plus the three settings the default
+model's page recommends — with every tested model as a line to uncomment and every other choice as a commented
+example; lmk rewrites it at each `lmk up`, so it always matches the installed version. The settings, with their defaults:
 
 ```yaml
 model:
-  name: qwen3.8-27b-4bit          # a tested model (see Models); or, for any other model, one of:
-                             #   repo: mlx-community/Qwen3-30B-A3B-4bit   (its HuggingFace address after huggingface.co/)
-                             #   path: /Users/me/models/Some-Model-MLX    (a model folder already on this Mac)
-                             # clients send that name as "model" (repo / path: its last part, lower case)
+  name: qwen3.8-27b-4bit     # a tested model (see Models). Clients send that name as "model"
+  # repo: mlx-community/Qwen3-30B-A3B-4bit   # instead of name: any MLX model on HuggingFace (its address after
+                             #                huggingface.co/); untested by us. Clients send its last part, lower case
+  # path: ~/.lmstudio/models/lmstudio-community/Qwen3.8-27B-MLX-4bit   # instead of name: an MLX model folder
+                             #                already on this Mac — here, one LM Studio downloaded
   # thinking: false           # the model answers without thinking (default: the template's own, on for Qwen)
   # reasoning_effort: low     # for templates that know it (Qwen3.8: low / medium / xhigh); a server-wide constant
   # kv_cache_bits: 8          # 8 halves what each token of context costs in memory (about twice the context on the
@@ -211,8 +220,8 @@ model:
   # speculative_decoding: true  # the model's own draft head guesses tokens, the model checks them: same answers on
                              # code, faster while one request is being answered. Needs the draft `lmk pull` fetches;
                              # the model page says whether there is one. Default false
-  # context_length:                             (default: the model's maximum; lmk lowers it if
-                             #                   memory is short, and `lmk status` shows the value in use)
+  # context_length: 65536     # default: the model's maximum; lmk lowers it if memory is short, and `lmk status`
+                             # shows the value in use
 listen: {host: 127.0.0.1, port: 1235}
 cache:  {dir: ~/.lmk/cache, max_size: 200G}     # when full, what was used longest ago goes first
 requests:

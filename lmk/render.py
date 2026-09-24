@@ -105,6 +105,16 @@ def _finished_line(f: dict, who_width: int) -> str:
     return f"  {_who(f):<{who_width}}  " + " · ".join(parts)
 
 
+def model_settings(model: dict) -> str:
+    """The switches a user can set, each stated even when off: a reader must be able to tell
+    'off' from 'this lmk does not have it' (explicit over short). `model` is the status document's."""
+    thinking = "on" if model.get("thinking") else "off"
+    if model.get("reasoning_effort"):
+        thinking += f" (effort {model['reasoning_effort']})"
+    return (f"thinking {thinking} · KV cache {model.get('kv_cache_bits', 16)}-bit · "
+            f"speculative decoding {'on' if model.get('speculative_decoding') else 'off'}")
+
+
 def status_block(status: dict, url: str) -> str:
     model = status["model"]
     context = f"{model['context_length']:,} tokens"
@@ -112,16 +122,18 @@ def status_block(status: dict, url: str) -> str:
     if requested and model["context_length"] < requested:
         context += f" (asked for {requested:,}; lowered to fit this Mac's memory)"
     lines = [f"✓ lmk is up    {url}/v1   (OpenAI-compatible)",
-             f"  model      {model['id']} · {', '.join(model.get('input_modalities') or ['text'])} in · {context}"
-             + (f" · thinking {'on' if model['thinking'] else 'off'}" if "thinking" in model else "")
-             + (f" · KV cache {model['kv_cache_bits']}-bit" if model.get("kv_cache_bits", 16) != 16 else "")
-             + (" · speculative decoding on" if model.get("speculative_decoding") else "")]
+             f"  model      {model['id']} · {', '.join(model.get('input_modalities') or ['text'])} in · {context}"]
+    if "thinking" in model:
+        lines.append(f"  settings   {model_settings(model)}")
     draft = status.get("draft")
-    if draft and draft.get("drafted"):
-        rate = draft["accepted"] / draft["drafted"]
-        per_round = (draft["accepted"] + draft["rounds"]) / max(1, draft["rounds"])
-        lines.append(f"  draft      {rate:.0%} of drafted tokens accepted ({draft['accepted']:,} of {draft['drafted']:,}) · "
-                     f"{per_round:.1f} tokens per round")
+    if draft is not None:
+        if draft.get("drafted"):
+            rate = draft["accepted"] / draft["drafted"]
+            per_round = (draft["accepted"] + draft["rounds"]) / max(1, draft["rounds"])
+            lines.append(f"  draft      {rate:.0%} of drafted tokens accepted ({draft['accepted']:,} of {draft['drafted']:,}) · "
+                         f"{per_round:.1f} tokens per round")
+        else:
+            lines.append("  draft      no tokens drafted yet")
     if model["id"] in TESTED_MODELS:
         lines.append(f"  about it   {model_page_url(model['id'])}")
     if "sampling_defaults" in status:

@@ -189,7 +189,8 @@ def run_chat(engine: Engine, body: dict, identity: CallerIdentity,
              uncachedActual=stats.prompt_tokens - stats.cached_tokens,
              completionTokens=stats.completion_tokens, toolCalls=len(tool_calls),
              restoreMs=state["restore_ms"], ttftMs=state["first_ms"], totalMs=total_ms, finishReason=finish, cancelled=state["cancelled"],
-             sampling=prepared.sampling, stop=prepared.stop_strings or None)
+             sampling=prepared.sampling, stop=prepared.stop_strings or None,
+             draftAccepted=stats.draft_accepted, draftDrafted=stats.draft_drafted)
     return {"id": completion_id, "finish_reason": finish, "usage": usage, "tool_calls": tool_calls,
             "content": "".join(state["text"]), "reasoning_content": "".join(state["reasoning"]),
             "base": base, "cancelled": state["cancelled"]}
