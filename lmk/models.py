@@ -5,7 +5,7 @@ shared HF cache, where every other tool can see them too. Downloading is its
 own explicit command (`lmk pull`), never a side effect of starting.
 """
 import json
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Optional
 
@@ -46,7 +46,8 @@ class TestedModel:
     good_for: str        # one line: why someone would pick it
     fit: MemoryFit
     speed: Speed
-    draft_repo: Optional[str] = None  # the draft model for speculative decoding lmk publishes for it, if any
+    drafts: dict = field(default_factory=dict)  # kind -> repo of a draft model for speculative decoding (mtp / dflash2)
+    default_draft: Optional[str] = None         # the model page's pick among `drafts`; model.draft in the config overrides
     kv_cache_bits: int = 16           # the model page's recommendation; the README table's ctx column uses it
 
     @property
@@ -57,6 +58,11 @@ class TestedModel:
 # Qwen3.8's own MTP draft head, split out of the original weights (the MLX conversions drop it);
 # one drafter serves every quantization of the 27B, compatibility is by hidden size and vocabulary.
 DRAFT_QWEN38_27B = "seabit-ai/Qwen3.8-27B-MTP-draft"
+# z-lab's DFlash 2 drafter for the same model (Inco AI publishes it; 2B parameters, bf16 4 GB): a
+# block-diffusion drafter that guesses more tokens per round than the MTP head (research exp07–exp12).
+DRAFT_QWEN38_27B_DFLASH2 = "incoai/Qwen3.8-27B-DFlash2"
+DRAFTS_QWEN38_27B = {"mtp": DRAFT_QWEN38_27B, "dflash2": DRAFT_QWEN38_27B_DFLASH2}
+DRAFT_KINDS = ("mtp", "dflash2")
 
 # Models we have run end to end with a real agent. config.yaml.example and README.md print this
 # list, so the one-liners are written for someone choosing a model, not for us.
@@ -66,20 +72,20 @@ TESTED_MODELS: dict[str, TestedModel] = {
         thinking="on by default at the top level; set `reasoning_effort: low` — it tested best",
         good_for="the default; best-tested with `reasoning_effort: low`",
         fit=MemoryFit(14.95, 65536, 10240, 48, full_kv_bytes_per_token_8bit=34816), speed=Speed(323, 53_000, 39.5),
-        draft_repo=DRAFT_QWEN38_27B, kv_cache_bits=8),
+        drafts=DRAFTS_QWEN38_27B, default_draft="mtp", kv_cache_bits=8),
     "qwen3.8-27b-8bit": TestedModel(
         repo="lmstudio-community/Qwen3.8-27B-MLX-8bit", size_gb=29.5, max_context=262_144, images=True,
         thinking="same as the 4-bit",
         good_for="the 27B with less quantization loss, 40% slower decode",
-        fit=MemoryFit(27.48, 65536, 10240, 48), speed=Speed(319, 44_000, 23.1), draft_repo=DRAFT_QWEN38_27B),
+        fit=MemoryFit(27.48, 65536, 10240, 48), speed=Speed(319, 44_000, 23.1), drafts=DRAFTS_QWEN38_27B, default_draft="mtp"),
     "qwen3.8-27b-5bit": TestedModel(
         repo="lmstudio-community/Qwen3.8-27B-MLX-5bit", size_gb=19.4, max_context=262_144, images=True,
         thinking="same as the 4-bit", good_for="the 27B between 4- and 8-bit: 19 GB, 20% slower decode than 4-bit",
-        fit=MemoryFit(18.08, 65536, 10240, 48), speed=Speed(315, 57_000, 31.6), draft_repo=DRAFT_QWEN38_27B),
+        fit=MemoryFit(18.08, 65536, 10240, 48), speed=Speed(315, 57_000, 31.6), drafts=DRAFTS_QWEN38_27B, default_draft="mtp"),
     "qwen3.8-27b-6bit": TestedModel(
         repo="lmstudio-community/Qwen3.8-27B-MLX-6bit", size_gb=22.8, max_context=262_144, images=True,
         thinking="same as the 4-bit", good_for="the 27B at 6-bit: 23 GB, 30% slower decode than 4-bit",
-        fit=MemoryFit(21.22, 65536, 10240, 48), speed=Speed(315, 53_000, 28.1), draft_repo=DRAFT_QWEN38_27B),
+        fit=MemoryFit(21.22, 65536, 10240, 48), speed=Speed(315, 53_000, 28.1), drafts=DRAFTS_QWEN38_27B, default_draft="mtp"),
     "qwen3.5-122b-a10b-4bit": TestedModel(
         repo="mlx-community/Qwen3.5-122B-A10B-4bit", size_gb=69.6, max_context=262_144, images=True,
         thinking="on/off only; **use `thinking: false`** — on, it can think for thousands of tokens on a small task",
@@ -209,18 +215,27 @@ class DraftNotDownloaded(Exception):
         self.repo = repo
 
 
-def draft_repo_for(source) -> Optional[str]:
-    """The draft model lmk knows for this source; None for repo / path sources and
-    for tested models without one."""
+def draft_kind_for(source, kind: Optional[str] = None) -> Optional[str]:
+    """The drafter kind in effect: the configured one, else the model page's default; None for
+    repo / path sources and for tested models without a draft."""
     if source.kind != "name":
         return None
-    return TESTED_MODELS[source.value].draft_repo
+    tested = TESTED_MODELS[source.value]
+    chosen = kind or tested.default_draft
+    return chosen if chosen in tested.drafts else None
 
 
-def resolve_draft(source) -> Optional[Path]:
+def draft_repo_for(source, kind: Optional[str] = None) -> Optional[str]:
+    """The draft model lmk knows for this source and kind (model.draft; the model page's default
+    when unset); None for repo / path sources and for tested models without one."""
+    effective = draft_kind_for(source, kind)
+    return None if effective is None else TESTED_MODELS[source.value].drafts[effective]
+
+
+def resolve_draft(source, kind: Optional[str] = None) -> Optional[Path]:
     """The downloaded draft model's directory; None when this model has none. Never
     touches the network."""
-    repo = draft_repo_for(source)
+    repo = draft_repo_for(source, kind)
     if repo is None:
         return None
     snapshot = _hf_snapshot_dir(repo)

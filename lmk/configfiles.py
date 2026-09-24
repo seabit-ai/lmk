@@ -20,7 +20,8 @@ _WHAT = {
     "path": "instead of name: an MLX model folder already on this Mac — here, one LM Studio downloaded",
     "reasoning_effort": "Qwen3.8: low / medium / xhigh (other models: their page); server-wide",
     "kv_cache_bits": "16 = the model's own precision; 8 = about twice the context on the same Mac",
-    "speculative_decoding": "the model's own draft head guesses tokens, the model checks them (`lmk pull` fetches it)",
+    "speculative_decoding": "a draft guesses tokens, the model checks them (`lmk up` fetches the draft)",
+    "draft": "which drafter: mtp (the model's own head) or dflash2 (z-lab's, guesses more per round); default: the model page's",
     "thinking": "answer without thinking; default: the template's own (on for Qwen, off for Gemma)",
     "context_length": "default: the model's maximum, lowered if memory is short; `lmk status` shows the value in use",
     "draft_tokens": "advanced: tokens the draft guesses per round (default: the draft's own)",
@@ -45,6 +46,7 @@ model:
   # reasoning_effort: low        # {_WHAT["reasoning_effort"]}
   # kv_cache_bits: 8             # {_WHAT["kv_cache_bits"]}
   # speculative_decoding: true   # {_WHAT["speculative_decoding"]}
+  # draft: dflash2               # {_WHAT["draft"]}
   # thinking: false              # {_WHAT["thinking"]}
   # context_length: 65536        # {_WHAT["context_length"]}
 
@@ -75,7 +77,7 @@ def _model_lines() -> str:
 
 def _draft_family() -> str:
     """The tested models that have a draft head, as one phrase: `the qwen3.8-27b ones`."""
-    names = [n for n, m in TESTED_MODELS.items() if m.draft_repo]
+    names = [n for n, m in TESTED_MODELS.items() if m.drafts]
     prefix = os.path.commonprefix(names).rstrip("-")
     return f"the {prefix} ones" if len(names) > 1 and prefix else ", ".join(names)
 
@@ -99,7 +101,8 @@ model:
   kv_cache_bits: 8               # {_WHAT["kv_cache_bits"]}
   # kv_cache_bits: 16            # for a model whose page does not recommend 8
   speculative_decoding: true     # {_WHAT["speculative_decoding"]}
-  # speculative_decoding: false  # for a model without a draft head: today all but {_draft_family()}
+  # speculative_decoding: false  # for a model without a draft: today all but {_draft_family()}
+  # draft: dflash2               # {_WHAT["draft"]}
   # thinking: false              # {_WHAT["thinking"]}
   # context_length: 65536        # {_WHAT["context_length"]}
   # draft_tokens: 3              # {_WHAT["draft_tokens"]}

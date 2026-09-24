@@ -75,7 +75,7 @@ def cmd_pull(_args) -> int:
         code = _download_model(source, again="lmk pull")
         if code:
             return code
-    code = _download_draft(source, again="lmk pull", required=False)
+    code = _download_draft(source, cfg.model.draft, again="lmk pull", required=False)
     if code:
         return code
     _say("  next:  lmk up")
@@ -115,17 +115,18 @@ def _download_model(source, again: str) -> int:
     return 0
 
 
-def _download_draft(source, again: str, required: bool) -> int:
-    """The draft model for speculative decoding, when lmk publishes one for this model (under
-    1 GB). `required`: the config has speculative_decoding on, so without it lmk cannot start."""
+def _download_draft(source, kind, again: str, required: bool) -> int:
+    """The draft model for speculative decoding — the configured kind (model.draft) or the model
+    page's default — when lmk knows one for this model. `required`: the config has
+    speculative_decoding on, so without it lmk cannot start."""
     from lmk import pull
     from lmk.models import DraftNotDownloaded, draft_repo_for, resolve_draft
 
-    repo = draft_repo_for(source)
+    repo = draft_repo_for(source, kind)
     if repo is None:
         return 0
     try:
-        resolve_draft(source)
+        resolve_draft(source, kind)
         return 0
     except DraftNotDownloaded:
         pass
@@ -165,7 +166,7 @@ def _resolve_or_download(cfg: LmkConfig):
             raise _StopWithCode(code) from e
         resolved = resolve_model(cfg.model.source)
     if cfg.model.speculative_decoding:
-        code = _download_draft(cfg.model.source, again="lmk up", required=True)
+        code = _download_draft(cfg.model.source, cfg.model.draft, again="lmk up", required=True)
         if code:
             raise _StopWithCode(code)
     return resolved

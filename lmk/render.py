@@ -111,8 +111,11 @@ def model_settings(model: dict) -> str:
     thinking = "on" if model.get("thinking") else "off"
     if model.get("reasoning_effort"):
         thinking += f" (effort {model['reasoning_effort']})"
+    speculative = "on" if model.get("speculative_decoding") else "off"
+    if model.get("speculative_decoding") and model.get("draft_kind"):
+        speculative += f" ({model['draft_kind']})"
     return (f"thinking {thinking} · KV cache {model.get('kv_cache_bits', 16)}-bit · "
-            f"speculative decoding {'on' if model.get('speculative_decoding') else 'off'}")
+            f"speculative decoding {speculative}")
 
 
 def status_block(status: dict, url: str) -> str:
