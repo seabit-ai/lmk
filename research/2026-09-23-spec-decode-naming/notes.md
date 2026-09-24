@@ -36,3 +36,8 @@
 - 高级项 `model.draft_tokens`（每轮猜几个），默认取模型页写的数（Qwen3.8-27B：3）；对应 mlx-vlm 的 `draft_block_size`。
 - 默认 `off`；过验收的模型在模型页推荐 `auto`，seed 的 config 对默认模型写实际值。
 - 状态行 `· draft on` + 自启动以来的接受率；usage chunk 加 `lmk.draft_accepted_tokens` / `lmk.draft_tokens`；bench 多打一行接受率。
+
+## 裁定（09-23，owner）
+建议里的 `draft_model: auto|off` **被否**：owner 问"why auto? instead of on?"——我把开关和将来的仓名塞进了一个键。且 YAML 1.1 把 `on`/`off`
+解析成布尔，字符串键收不到 "on"。定为布尔 `speculative_decoding: true|false`（同 `thinking` 样式）+ `draft_tokens`；外挂草稿器将来另起
+`draft_model:`。开在没有草稿器的模型上启动即报错退出（fail fast）。

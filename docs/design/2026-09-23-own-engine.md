@@ -67,11 +67,15 @@ lmk 的引擎路线图归自己：**投机解码与磁盘 cache 同时有，KV �
     turboquant 路径已支持分开但质量无数据。做法：长上下文评测臂多跑一个 k8v4 变体，有数再决定值不值得多背一个补丁。
 - **落地状态（09-23）**：fork 建好（owner），分支 `lmk` 上 KV 量化接线 d3650db；lmk 分支 `kv-cache-bits`。验收 2/3/4 过，
   itest 8 位开关各 4/4 + 重启还原过；**第 1 条（长上下文评测臂）未做**，做完才写模型页推荐。数据 `research/2026-09-23-kv-cache-quant/`。
-- **投机解码 SAD（09-23，四点，owner 裁了 1/3/4，第 2 点待提案）**：
+- **投机解码 SAD（09-23，四点全部已裁）**：
   1. 草稿器从哪来——**已裁 B**：Seabit 在 HF 发拆好的草稿器（`seabit-ai/Qwen3.8-27B-MTP-draft`，Apache 2.0 允许再分发），`lmk pull` 直接下。
      A（lmk pull 现场下原版分片拆）留作兜底；否决 C（让用户自己拆：把最难的一步推给用户）。**卡点：HF 上还没有 `seabit-ai` 组织**，
      owner 建组织并把 Xinkai569 加进去后，上传/模型卡/校验和归我（我这边有该账号的 write token）。
-  2. 用户面——命名依据 `research/2026-09-23-spec-decode-naming/`，提案见该文件末节，待裁。
+  2. 用户面——**已裁**（命名依据 `research/2026-09-23-spec-decode-naming/`）：布尔开关 `model.speculative_decoding: true|false`（默认 false，
+     与 `thinking` 同样式；模型页推荐时写 true），高级项 `model.draft_tokens`（每轮猜几个，默认模型页的数，Qwen3.8-27B 为 3）。
+     否决 `draft_model: auto|off`（我把开关和将来的仓名塞进一个键；且 YAML 把 `on`/`off` 解析成布尔，一个键混两种类型是 `id`/`name` 那种乱）。
+     将来外挂草稿器另加 `draft_model: <HF 仓或路径>`，MVP 不要。**开在没有草稿器的模型上 = 启动时干净报错退出**（fail fast，
+     走 `LmkConfigInvalid` 那条路，不是静默退回普通 decode）。状态行 `· draft on` + 自启动以来接受率；usage chunk 加接受的草稿 token 数；bench 加一行接受率。
   3. 验收——**已裁**（"sounds about right"）：代码/复述类贪心逐 token 一致；散文允许分叉但评测判分不降；另量两条进记录不进门槛：
      采样开着（Qwen 默认 temp 1.0）的接受率、并发 2 时的收益。
   4. 范围——**已裁**：MVP 先做 Qwen3.8-27B 的自带 MTP 头，其他草稿家族（z-lab DFlash 给 122B、Gemma assistant/DFlash）之后加；
