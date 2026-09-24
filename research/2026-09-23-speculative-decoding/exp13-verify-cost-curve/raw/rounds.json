@@ -1,0 +1,219 @@
+{
+ "model": "/Users/xinkai/.cache/huggingface/hub/models--lmstudio-community--Qwen3.8-27B-MLX-4bit/snapshots/6067b15cf581666a4aecf6af3afaba4bb5efc20c",
+ "plain": {
+  "stock": {
+   "story": {
+    "tokens": 400,
+    "sha": "adad345a9c",
+    "decode_tok_s": 39.3
+   },
+   "code": {
+    "tokens": 400,
+    "sha": "58b44530ab",
+    "decode_tok_s": 39.2
+   },
+   "copyedit": {
+    "tokens": 134,
+    "sha": "8fe1ef2be6",
+    "decode_tok_s": 39.1
+   }
+  },
+  "fastwide": {
+   "story": {
+    "tokens": 400,
+    "sha": "adad345a9c",
+    "decode_tok_s": 39.2
+   },
+   "code": {
+    "tokens": 400,
+    "sha": "58b44530ab",
+    "decode_tok_s": 39.1
+   },
+   "copyedit": {
+    "tokens": 134,
+    "sha": "8fe1ef2be6",
+    "decode_tok_s": 39.1
+   }
+  }
+ },
+ "spec": {
+  "mtp": {
+   "stock": {
+    "story": {
+     "tokens": 400,
+     "sha": "572686175c",
+     "decode_tok_s": 47.4,
+     "rounds": 185,
+     "accepted": 214
+    },
+    "code": {
+     "tokens": 400,
+     "sha": "58b44530ab",
+     "decode_tok_s": 60.2,
+     "rounds": 146,
+     "accepted": 253
+    },
+    "copyedit": {
+     "tokens": 134,
+     "sha": "8fe1ef2be6",
+     "decode_tok_s": 59.2,
+     "rounds": 50,
+     "accepted": 83
+    }
+   },
+   "fastwide": {
+    "story": {
+     "tokens": 400,
+     "sha": "572686175c",
+     "decode_tok_s": 47.2,
+     "rounds": 185,
+     "accepted": 214
+    },
+    "code": {
+     "tokens": 400,
+     "sha": "58b44530ab",
+     "decode_tok_s": 60.1,
+     "rounds": 146,
+     "accepted": 253
+    },
+    "copyedit": {
+     "tokens": 134,
+     "sha": "8fe1ef2be6",
+     "decode_tok_s": 58.9,
+     "rounds": 50,
+     "accepted": 83
+    }
+   }
+  },
+  "dflash2": {
+   "stock": {
+    "story": {
+     "tokens": 400,
+     "sha": "b058517e64",
+     "decode_tok_s": 39.9,
+     "rounds": 182,
+     "accepted": 217
+    },
+    "code": {
+     "tokens": 400,
+     "sha": "58b44530ab",
+     "decode_tok_s": 59.0,
+     "rounds": 95,
+     "accepted": 305
+    },
+    "copyedit": {
+     "tokens": 134,
+     "sha": "8fe1ef2be6",
+     "decode_tok_s": 71.7,
+     "rounds": 27,
+     "accepted": 106
+    }
+   },
+   "fastwide": {
+    "story": {
+     "tokens": 400,
+     "sha": "b058517e64",
+     "decode_tok_s": 39.7,
+     "rounds": 182,
+     "accepted": 217
+    },
+    "code": {
+     "tokens": 400,
+     "sha": "58b44530ab",
+     "decode_tok_s": 58.8,
+     "rounds": 95,
+     "accepted": 305
+    },
+    "copyedit": {
+     "tokens": 134,
+     "sha": "8fe1ef2be6",
+     "decode_tok_s": 63.1,
+     "rounds": 27,
+     "accepted": 106
+    }
+   }
+  }
+ },
+ "breakdown": {
+  "mtp": {
+   "stock": {
+    "rounds": 146,
+    "per_round_ms": {
+     "draft": 12.12,
+     "verify": 38.87,
+     "rollback": 0.44,
+     "round": 45.66,
+     "other": -5.77
+    },
+    "rollback_rounds": 28,
+    "verify_median_ms_by_width": {
+     "2": 32.7,
+     "3": 38.86
+    },
+    "verify_width_histogram": {
+     "2": 1,
+     "3": 145
+    }
+   },
+   "fastwide": {
+    "rounds": 146,
+    "per_round_ms": {
+     "draft": 12.14,
+     "verify": 39.02,
+     "rollback": 0.45,
+     "round": 45.83,
+     "other": -5.78
+    },
+    "rollback_rounds": 28,
+    "verify_median_ms_by_width": {
+     "2": 32.63,
+     "3": 39.06
+    },
+    "verify_width_histogram": {
+     "2": 1,
+     "3": 145
+    }
+   }
+  },
+  "dflash2": {
+   "stock": {
+    "rounds": 95,
+    "per_round_ms": {
+     "draft": 15.39,
+     "verify": 54.52,
+     "rollback": 0.72,
+     "round": 70.86,
+     "other": 0.23
+    },
+    "rollback_rounds": 29,
+    "verify_median_ms_by_width": {
+     "3": 40.38,
+     "5": 54.67
+    },
+    "verify_width_histogram": {
+     "3": 1,
+     "5": 94
+    }
+   },
+   "fastwide": {
+    "rounds": 95,
+    "per_round_ms": {
+     "draft": 15.43,
+     "verify": 54.94,
+     "rollback": 0.72,
+     "round": 71.34,
+     "other": 0.25
+    },
+    "rollback_rounds": 29,
+    "verify_median_ms_by_width": {
+     "3": 40.66,
+     "5": 54.98
+    },
+    "verify_width_histogram": {
+     "3": 1,
+     "5": 94
+    }
+   }
+  }
+ }
+}
