@@ -195,6 +195,7 @@ class LmkServer:
                       "requested_context_length": m.requested_context_length,
                       "input_modalities": self._engine.input_modalities(),
                       "thinking": self._engine.thinking_enabled(),
+                      "reasoning_effort": self._engine.reasoning_effort(),
                       "kv_cache_bits": m.kv_cache_bits,
                       "speculative_decoding": getattr(m, "speculative_decoding", False)},
             "sampling_defaults": self._engine.sampling_defaults(),

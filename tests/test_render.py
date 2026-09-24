@@ -5,7 +5,8 @@ from lmk import render
 STATUS = {
     "build": "abc1234", "uptime_ms": 11_520_000,
     "model": {"id": "qwen3.8-27b-4bit", "path": "/m", "context_length": 262144, "requested_context_length": 262144,
-              "input_modalities": ["text", "image"]},
+              "input_modalities": ["text", "image"], "thinking": True, "reasoning_effort": None, "kv_cache_bits": 16,
+              "speculative_decoding": False},
     "cache": {"dir": "/Users/someone/.lmk/cache/0123abcd", "used_bytes": 10 * 1024**3, "max_bytes": 162 * 1024**3,
               "records": 209},
     "in_flight": [],
@@ -23,11 +24,10 @@ def test_the_header_says_where_it_is_what_runs_memory_cache_and_limits():
     text = render.status_block(status, "http://127.0.0.1:1235")
     assert text.splitlines()[0] == "✓ lmk is up    http://127.0.0.1:1235/v1   (OpenAI-compatible)"
     assert "  model      qwen3.8-27b-4bit · text, image in · 262,144 tokens" in text and "lowered" not in text
-    off = dict(STATUS, model=dict(STATUS["model"], thinking=False))
-    assert "· 262,144 tokens · thinking off" in render.status_block(off, "http://127.0.0.1:1235")
-    quantized = dict(STATUS, model=dict(STATUS["model"], kv_cache_bits=8))
-    assert "· 262,144 tokens · KV cache 8-bit" in render.status_block(quantized, "http://127.0.0.1:1235")
-    assert "KV cache" not in text                     # 16 = the model's own precision: nothing to say
+    # every switch is stated, off included: a reader must tell "off" from "this lmk has no such thing"
+    assert "  settings   thinking on · KV cache 16-bit · speculative decoding off" in text
+    off = dict(STATUS, model=dict(STATUS["model"], thinking=False, reasoning_effort="low", kv_cache_bits=8))
+    assert "  settings   thinking off (effort low) · KV cache 8-bit · speculative decoding off" in render.status_block(off, "http://127.0.0.1:1235")
     assert "  about it   https://github.com/seabit-ai/lmk/blob/main/docs/models/qwen3.8-27b-4bit.md" in text
     assert "about it" not in render.status_block(dict(STATUS, model=dict(STATUS["model"], id="my-own-model")), "u")
     assert "sampling" not in text                       # an older server without the field: no line
@@ -154,7 +154,8 @@ def test_speculative_decoding_shows_on_the_model_line_and_its_acceptance_below()
     on = dict(STATUS, model=dict(STATUS["model"], speculative_decoding=True),
               draft={"rounds": 100, "accepted": 180, "drafted": 240})
     text = render.status_block(on, "http://127.0.0.1:1235")
-    assert "· 262,144 tokens · speculative decoding on" in text
+    assert "· KV cache 16-bit · speculative decoding on" in text
     assert "  draft      75% of drafted tokens accepted (180 of 240) · 2.8 tokens per round" in text
     fresh = dict(on, draft={"rounds": 0, "accepted": 0, "drafted": 0})
-    assert "  draft" not in render.status_block(fresh, "http://127.0.0.1:1235")   # nothing counted yet: no line
+    assert "  draft      no tokens drafted yet" in render.status_block(fresh, "http://127.0.0.1:1235")
+    assert "  draft" not in render.status_block(dict(on, draft=None), "http://127.0.0.1:1235")   # no draft model at all
