@@ -70,7 +70,7 @@
 
 ## 2026-09-24 `config.yaml.example` 改成真配置（分支 `config-example`，基于 `speculative-decoding`）
 - 裁决与形状：OOBE 设计文档 C5。待：owner 机器上照用户的样子看一眼 `~/.lmk/config.yaml.example`，然后合并。
-- 顺带发现、未裁：种子 `config.yaml` 的注释和旧 example 一样长（`kv_cache_bits` / `speculative_decoding` 各 5–6 行），要不要同样收成一行 + 例子。
+- 种子 `config.yaml` 同形状（owner 09-24 "fix ~/.lmk/config.yaml too"）：注释文案与 example 共用一张表（`_WHAT`）；owner 的文件已照此重写，生效值不变。
 
 ## 已裁但还没做的
 - **kitten 发 `X-Lmk-Purpose` / `X-Lmk-Ref-Id`**：2026-09-20 已在 kitten repo 的分支 `llm-call-identity` 上实现并验证
