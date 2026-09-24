@@ -24,12 +24,12 @@ With the draft on, code and copy-editing come out 1.5x faster and token for toke
 prose 15% faster, and there the answer can differ from plain decoding's after a few dozen tokens (greedy is
 exact up to floating-point ties, not bit-exact). See "Tested" for how this was measured.
 
-Two drafts exist for this model; `model.draft` picks one, the default is `mtp`:
+Two drafts exist for this model; `model.draft` picks one, the default is `dflash2`:
 
 | `draft:` | what it is | download | prose | code | copy-editing |
 |---|---|---|---|---|---|
-| `mtp` (default) | the model's own multi-token-prediction head, split out of the original weights | 0.8 GB | 45 tok/s (1.2x) | 60 (1.5x) | 59 (1.5x) |
-| `dflash2` | z-lab's DFlash 2, a block-diffusion drafter trained for this model (Inco AI), quantized by us to 4 bits | 1.1 GB | 47 (1.2x) | 68 (1.7x) | 80 (2.1x) |
+| `mtp` | the model's own multi-token-prediction head, split out of the original weights | 0.8 GB | 45 tok/s (1.2x) | 60 (1.5x) | 59 (1.5x) |
+| `dflash2` (default) | z-lab's DFlash 2, a block-diffusion drafter trained for this model (Inco AI), quantized by us to 4 bits | 1.1 GB | 47 (1.2x) | 68 (1.7x) | 80 (2.1x) |
 
 Measured at 16-bit KV cache, greedy; with `kv_cache_bits: 8` the numbers are the same within 2%. On the M3 Ultra
 `dflash2` is faster on code and copy-editing and even on prose; the output is the same as with `mtp` (identical to

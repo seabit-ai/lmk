@@ -110,7 +110,7 @@
   （M3 Ultra 上打平；M4 Pro 的数等用户的 bench 行）。待 owner 授权合并；合并后 fork `lmk` ff 到 3b493b5 再 push。
 - **草稿器已发布**（2026-09-24）：HF 组织 `seabit-ai`（头像 `docs/brand/seabit-ai-logo.png`）；`seabit-ai/Qwen3.8-27B-MTP-draft`（0.8 GB）、
   `seabit-ai/Qwen3.8-27B-DFlash2-4bit`（1.1 GB，exp14：比 bf16 快，code 1.71×）。两者 sha256 与本机一致，空 HF cache 里经 lmk 的下载路径都取得到。
-  **待 owner**：27B 的缺省草稿器改不改 `dflash2`；合并分支 `dflash2-4bit`。
+  27B-4bit 的缺省草稿器改成 `dflash2`（owner 2026-09-24；5/6/8 位版仍 mtp，DFlash2 只在 4 位上量过）。
   多行投机（两条请求同时投机）仍关着（MAX_ROUND_ROWS = 1）；散文接受率低时自动退回普通解码（own-engine 补记三的附带规则）没做。
 
 ## 已裁但还没做的

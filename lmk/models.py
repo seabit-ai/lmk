@@ -73,7 +73,7 @@ TESTED_MODELS: dict[str, TestedModel] = {
         thinking="on by default at the top level; set `reasoning_effort: low` — it tested best",
         good_for="the default; best-tested with `reasoning_effort: low`",
         fit=MemoryFit(14.95, 65536, 10240, 48, full_kv_bytes_per_token_8bit=34816), speed=Speed(323, 53_000, 39.5),
-        drafts=DRAFTS_QWEN38_27B, default_draft="mtp", kv_cache_bits=8),
+        drafts=DRAFTS_QWEN38_27B, default_draft="dflash2", kv_cache_bits=8),
     "qwen3.8-27b-8bit": TestedModel(
         repo="lmstudio-community/Qwen3.8-27B-MLX-8bit", size_gb=29.5, max_context=262_144, images=True,
         thinking="same as the 4-bit",

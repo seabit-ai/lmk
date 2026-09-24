@@ -227,7 +227,7 @@ model:
   # speculative_decoding: true  # a draft guesses tokens, the model checks them: same answers on code, faster while one
                              # request is being answered. Needs the draft `lmk up` fetches; the model page says which
                              # models have one. Default false
-  # draft: dflash2            # which drafter: mtp (the model's own head, default where it exists) or dflash2 (z-lab's,
+  # draft: mtp                # which drafter: mtp (the model's own head) or dflash2 (z-lab's; the 27B-4bit's default,
                              # guesses more per round; the model page has both measured). Only with speculative_decoding
   # context_length: 65536     # default: the model's maximum; lmk lowers it if memory is short, and `lmk status`
                              # shows the value in use
