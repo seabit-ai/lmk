@@ -3,7 +3,9 @@ says about the whole machine. Numbers only — lmk does not know who is using th
 so it never says."""
 import ctypes
 import ctypes.util
+import subprocess
 from dataclasses import dataclass
+from typing import Optional
 
 _PRESSURE = {1: "normal", 2: "warning", 4: "critical"}
 
@@ -34,6 +36,16 @@ class SystemMemory:
         return MemoryReading(pressure=_PRESSURE.get(level, "normal"),
                              free_percent=_sysctl_int("kern.memorystatus_level", 4),
                              total_bytes=_sysctl_int("hw.memsize", 8))
+
+    def resident_bytes(self, pid: int) -> Optional[int]:
+        """What one process holds in memory. While the server loads, this climbs from ~0 to the
+        model's weight bytes plus ~0.4 GB of runtime (measured 2026-09-24: 16.05 GB of safetensors,
+        16.5 GB resident at LmkReady) — the only load progress observable from outside the process."""
+        try:
+            out = subprocess.run(["ps", "-o", "rss=", "-p", str(pid)], capture_output=True, text=True, timeout=5).stdout
+            return int(out.strip()) * 1024 if out.strip() else None
+        except (OSError, subprocess.SubprocessError, ValueError):
+            return None
 
 
 _current = SystemMemory()

@@ -22,6 +22,7 @@ class MemoryFit:
     attention_bytes_per_context_per_step: int
     rotating_constant_gib: float = 0.0
     rotating_bytes_per_prefill_step_token: int = 0
+    full_kv_bytes_per_token_8bit: int = 0   # the probe's number with kv_cache_bits: 8; 0 = not measured
     measured_context_on_96gb: int = 0   # what the engine actually fitted on the M3 Ultra 96 GB, when it was less than the maximum
 
 
@@ -45,11 +46,17 @@ class TestedModel:
     good_for: str        # one line: why someone would pick it
     fit: MemoryFit
     speed: Speed
+    draft_repo: Optional[str] = None  # the draft model for speculative decoding lmk publishes for it, if any
+    kv_cache_bits: int = 16           # the model page's recommendation; the README table's ctx column uses it
 
     @property
     def loaded_gib(self) -> float:
         return self.fit.baseline_gib
 
+
+# Qwen3.8's own MTP draft head, split out of the original weights (the MLX conversions drop it);
+# one drafter serves every quantization of the 27B, compatibility is by hidden size and vocabulary.
+DRAFT_QWEN38_27B = "seabit-ai/Qwen3.8-27B-MTP-draft"
 
 # Models we have run end to end with a real agent. config.yaml.example and README.md print this
 # list, so the one-liners are written for someone choosing a model, not for us.
@@ -58,20 +65,21 @@ TESTED_MODELS: dict[str, TestedModel] = {
         repo="lmstudio-community/Qwen3.8-27B-MLX-4bit", size_gb=16.1, max_context=262_144, images=True,
         thinking="on by default at the top level; set `reasoning_effort: low` — it tested best",
         good_for="the default; best-tested with `reasoning_effort: low`",
-        fit=MemoryFit(14.95, 65536, 10240, 48), speed=Speed(323, 53_000, 39.5)),
+        fit=MemoryFit(14.95, 65536, 10240, 48, full_kv_bytes_per_token_8bit=34816), speed=Speed(323, 53_000, 39.5),
+        draft_repo=DRAFT_QWEN38_27B, kv_cache_bits=8),
     "qwen3.8-27b-8bit": TestedModel(
         repo="lmstudio-community/Qwen3.8-27B-MLX-8bit", size_gb=29.5, max_context=262_144, images=True,
         thinking="same as the 4-bit",
         good_for="the 27B with less quantization loss, 40% slower decode",
-        fit=MemoryFit(27.48, 65536, 10240, 48), speed=Speed(319, 44_000, 23.1)),
+        fit=MemoryFit(27.48, 65536, 10240, 48), speed=Speed(319, 44_000, 23.1), draft_repo=DRAFT_QWEN38_27B),
     "qwen3.8-27b-5bit": TestedModel(
         repo="lmstudio-community/Qwen3.8-27B-MLX-5bit", size_gb=19.4, max_context=262_144, images=True,
         thinking="same as the 4-bit", good_for="the 27B between 4- and 8-bit: 19 GB, 20% slower decode than 4-bit",
-        fit=MemoryFit(18.08, 65536, 10240, 48), speed=Speed(315, 57_000, 31.6)),
+        fit=MemoryFit(18.08, 65536, 10240, 48), speed=Speed(315, 57_000, 31.6), draft_repo=DRAFT_QWEN38_27B),
     "qwen3.8-27b-6bit": TestedModel(
         repo="lmstudio-community/Qwen3.8-27B-MLX-6bit", size_gb=22.8, max_context=262_144, images=True,
         thinking="same as the 4-bit", good_for="the 27B at 6-bit: 23 GB, 30% slower decode than 4-bit",
-        fit=MemoryFit(21.22, 65536, 10240, 48), speed=Speed(315, 53_000, 28.1)),
+        fit=MemoryFit(21.22, 65536, 10240, 48), speed=Speed(315, 53_000, 28.1), draft_repo=DRAFT_QWEN38_27B),
     "qwen3.5-122b-a10b-4bit": TestedModel(
         repo="mlx-community/Qwen3.5-122B-A10B-4bit", size_gb=69.6, max_context=262_144, images=True,
         thinking="on/off only; **use `thinking: false`** — on, it can think for thousands of tokens on a small task",
@@ -119,7 +127,7 @@ MIN_USEFUL_CONTEXT = 32_768
 MAC_MEMORY_SIZES_GB = (16, 24, 32, 48, 64, 96, 128, 192, 256, 512)
 
 
-def context_on(m: TestedModel, mac_gb: int) -> int:
+def context_on(m: TestedModel, mac_gb: int, kv_cache_bits: Optional[int] = None) -> int:
     """The context mlx-engine would fit on a Mac with this much memory: its own formula with this
     model's measured coefficients (one small term it does not log is left out; on the 122B this
     gives 168k where the engine fitted 165,888). 0 = does not load. Expected, not measured, except
@@ -134,7 +142,11 @@ def context_on(m: TestedModel, mac_gb: int) -> int:
     available = working_set - ENGINE_RESERVE_BYTES - fixed
     if available <= 0:
         return 0
-    per_token = f.full_kv_bytes_per_token + f.prompt_input_bytes_per_token + f.attention_bytes_per_context_per_step * SMALLEST_PREFILL_STEP
+    bits = m.kv_cache_bits if kv_cache_bits is None else kv_cache_bits
+    kv_bytes = f.full_kv_bytes_per_token
+    if bits == 8 and f.full_kv_bytes_per_token_8bit:
+        kv_bytes = f.full_kv_bytes_per_token_8bit
+    per_token = kv_bytes + f.prompt_input_bytes_per_token + f.attention_bytes_per_context_per_step * SMALLEST_PREFILL_STEP
     tokens = int(available // per_token) // ENGINE_ALLOCATION_STEP * ENGINE_ALLOCATION_STEP
     return min(m.max_context, max(ENGINE_MIN_CONTEXT, tokens))
 
@@ -160,6 +172,7 @@ def tested_models_markdown() -> str:
     for name, m in TESTED_MODELS.items():
         tiers.setdefault(smallest_mac_gb(m), []).append(name)
     out = []
+    footnote = [False]
     for gb in sorted(tiers):
         # Mac sizes from this group's minimum up to where every model in it reaches its maximum context
         sizes = [g for g in MAC_MEMORY_SIZES_GB if g >= gb]
@@ -172,12 +185,48 @@ def tested_models_markdown() -> str:
         for name in tiers[gb]:
             m = TESTED_MODELS[name]
             default = " (default)" if name == DEFAULT_MODEL_NAME else ""
-            ctx = " / ".join(_k(context_on(m, g)) for g in sizes)
-            out.append(f"| [`{name}`](docs/models/{name}.md){default} | {m.good_for} | {ctx} tokens | "
+            cells = []
+            for g in sizes:
+                cell = _k(context_on(m, g))
+                if m.kv_cache_bits != 16 and context_on(m, g, 16) != context_on(m, g):
+                    cell += f" ({_k(context_on(m, g, 16))} at 16-bit)"
+                    footnote[0] = True
+                cells.append(cell)
+            ctx = " / ".join(cells) + " tokens"
+            out.append(f"| [`{name}`](docs/models/{name}.md){default} | {m.good_for} | {ctx} | "
                        f"{'yes' if m.images else 'no'} | "
                        f"{_k(m.speed.cached_prefill_tok_s)} / {m.speed.prefill_tok_s:,} / {m.speed.decode_tok_s:.0f} |")
         out.append("")
+    if footnote[0]:
+        out.append("Where a model's recommended `kv_cache_bits: 8` changes the number, the figure at the model's own "
+                   "16-bit precision is in parentheses; its page says what the setting costs.")
     return "\n".join(out).rstrip("\n")
+
+
+class DraftNotDownloaded(Exception):
+    def __init__(self, repo: str):
+        super().__init__(f"the draft model {repo} is not downloaded")
+        self.repo = repo
+
+
+def draft_repo_for(source) -> Optional[str]:
+    """The draft model lmk knows for this source; None for repo / path sources and
+    for tested models without one."""
+    if source.kind != "name":
+        return None
+    return TESTED_MODELS[source.value].draft_repo
+
+
+def resolve_draft(source) -> Optional[Path]:
+    """The downloaded draft model's directory; None when this model has none. Never
+    touches the network."""
+    repo = draft_repo_for(source)
+    if repo is None:
+        return None
+    snapshot = _hf_snapshot_dir(repo)
+    if snapshot is None or not (snapshot / "config.json").exists() or not any(snapshot.glob("*.safetensors")):
+        raise DraftNotDownloaded(repo)
+    return snapshot
 
 
 class ModelNotDownloaded(Exception):

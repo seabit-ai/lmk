@@ -1,0 +1,14 @@
+{
+ "content": "no",
+ "reasoning": "91 = 7 × 13, so it is not a prime number.\n",
+ "tool_calls": [],
+ "finish": "stop",
+ "tokens": 23,
+ "ms": 5846,
+ "raw_message": {
+  "role": "assistant",
+  "content": "no",
+  "reasoning_content": "91 = 7 × 13, so it is not a prime number.\n"
+ },
+ "pass": true
+}

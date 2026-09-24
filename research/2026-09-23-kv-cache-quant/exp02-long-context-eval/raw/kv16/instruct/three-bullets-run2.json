@@ -1,0 +1,14 @@
+{
+ "content": "- Data loss from hardware failure, disk corruption, or accidental deletion is permanent and unrecoverable.\n- A buggy application update, failed migration, or erroneous SQL statement can corrupt or destroy data with no way to roll back.\n- Ransomware or a security breach can encrypt or delete all data, with no restoration path short of starting from scratch.",
+ "reasoning": "The user wants three bullet points about risks of running a database without backups, each starting with \"- \", and nothing else. This is a straightforward factual question.\n",
+ "tool_calls": [],
+ "finish": "stop",
+ "tokens": 106,
+ "ms": 11650,
+ "raw_message": {
+  "role": "assistant",
+  "content": "- Data loss from hardware failure, disk corruption, or accidental deletion is permanent and unrecoverable.\n- A buggy application update, failed migration, or erroneous SQL statement can corrupt or destroy data with no way to roll back.\n- Ransomware or a security breach can encrypt or delete all data, with no restoration path short of starting from scratch.",
+  "reasoning_content": "The user wants three bullet points about risks of running a database without backups, each starting with \"- \", and nothing else. This is a straightforward factual question.\n"
+ },
+ "pass": true
+}

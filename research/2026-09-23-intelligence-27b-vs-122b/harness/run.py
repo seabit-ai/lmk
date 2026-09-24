@@ -6,12 +6,24 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from tasks import INSTRUCT, TOOL_TASKS, TOOLS_SPEC, run_tool
 
-ROOT = Path(__file__).resolve().parent.parent; RAW = ROOT / "raw"; DATA = ROOT / "data"
-RUNS, MAX_TOKENS, PARALLEL, MAX_TOOL_STEPS = int(os.environ.get("EVAL_RUNS", 3)), 8000, 2, 8
+ROOT = Path(__file__).resolve().parent.parent; DATA = ROOT / "data"
+RAW = Path(os.environ["EVAL_RAW_DIR"]) if os.environ.get("EVAL_RAW_DIR") else ROOT / "raw"   # another experiment's results live elsewhere
+RUNS, MAX_TOKENS, MAX_TOOL_STEPS = int(os.environ.get("EVAL_RUNS", 3)), 8000, 8
+PARALLEL = int(os.environ.get("EVAL_PARALLEL", 2))   # 1 = one request at a time (speculative decoding only runs then)
 LIMIT = int(os.environ.get("EVAL_LIMIT", 0))   # smoke test: at most this many items per category
+# EVAL_PREFIX_FILE: real text put in front of every conversation as reference material (long-context arms,
+# research/2026-09-23-kv-cache-quant/exp02); merged into an existing system message so the template sees one
+PREFIX = open(os.environ["EVAL_PREFIX_FILE"]).read() if os.environ.get("EVAL_PREFIX_FILE") else ""
+
+def with_prefix(messages):
+    if not PREFIX: return messages
+    head = "Reference material — the files of the project you are working in (for context; the task follows):\n\n" + PREFIX
+    if messages and messages[0]["role"] == "system":
+        return [{"role": "system", "content": head + "\n\n" + messages[0]["content"]}] + messages[1:]
+    return [{"role": "system", "content": head}] + messages
 
 def chat(url, model, messages, tools=None):
-    body = {"model": model, "messages": messages, "max_tokens": MAX_TOKENS}
+    body = {"model": model, "messages": with_prefix(messages), "max_tokens": MAX_TOKENS}
     if tools: body["tools"] = tools
     req = urllib.request.Request(f"{url}/v1/chat/completions", data=json.dumps(body).encode(),
                                  headers={"Content-Type": "application/json", "X-Lmk-Purpose": "eval"})

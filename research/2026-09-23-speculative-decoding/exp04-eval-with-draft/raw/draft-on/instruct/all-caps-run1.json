@@ -1,0 +1,14 @@
+{
+ "content": "MOUNTAINS ARE MEGASTRUCTURES OF EARTH THAT RISE DRAMATICALLY ABOVE THE SURROUNDING TERRAIN.",
+ "reasoning": "The user wants a single sentence about mountains, and it must be written entirely in capital letters. Let me think of a simple sentence about mountains and convert it to all caps.\n\n\"Mountains are the tallest landforms on Earth.\" → \"MOUNTAINS ARE THE TALLEST LANDFORMS ON EARTH.\"\n\nThat works well — it's one sentence, it's about mountains, and it's all capital letters.\n",
+ "tool_calls": [],
+ "finish": "stop",
+ "tokens": 118,
+ "ms": 5064,
+ "raw_message": {
+  "role": "assistant",
+  "content": "MOUNTAINS ARE MEGASTRUCTURES OF EARTH THAT RISE DRAMATICALLY ABOVE THE SURROUNDING TERRAIN.",
+  "reasoning_content": "The user wants a single sentence about mountains, and it must be written entirely in capital letters. Let me think of a simple sentence about mountains and convert it to all caps.\n\n\"Mountains are the tallest landforms on Earth.\" → \"MOUNTAINS ARE THE TALLEST LANDFORMS ON EARTH.\"\n\nThat works well — it's one sentence, it's about mountains, and it's all capital letters.\n"
+ },
+ "pass": true
+}

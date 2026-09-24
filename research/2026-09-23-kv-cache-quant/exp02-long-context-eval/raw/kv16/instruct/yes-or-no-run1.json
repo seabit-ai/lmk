@@ -1,0 +1,14 @@
+{
+ "content": "no",
+ "reasoning": "The user asks if 91 is a prime number.\n\n91 = 7 × 13\n\nSo 91 is not a prime number. The answer is \"no.\"\n",
+ "tool_calls": [],
+ "finish": "stop",
+ "tokens": 44,
+ "ms": 6107,
+ "raw_message": {
+  "role": "assistant",
+  "content": "no",
+  "reasoning_content": "The user asks if 91 is a prime number.\n\n91 = 7 × 13\n\nSo 91 is not a prime number. The answer is \"no.\"\n"
+ },
+ "pass": true
+}

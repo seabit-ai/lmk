@@ -1,0 +1,14 @@
+{
+ "content": "{\"name\":\"Elena Vasquez\",\"age\":34,\"city\":\"Portland\"}",
+ "reasoning": "The user wants me to create a fictional person as a JSON object with exactly three keys: name (string), age (integer), city (string). They want only the raw JSON output — no code fences, no surrounding prose.\n\nLet me create a simple fictional person.\n",
+ "tool_calls": [],
+ "finish": "stop",
+ "tokens": 76,
+ "ms": 1772,
+ "raw_message": {
+  "role": "assistant",
+  "content": "{\"name\":\"Elena Vasquez\",\"age\":34,\"city\":\"Portland\"}",
+  "reasoning_content": "The user wants me to create a fictional person as a JSON object with exactly three keys: name (string), age (integer), city (string). They want only the raw JSON output — no code fences, no surrounding prose.\n\nLet me create a simple fictional person.\n"
+ },
+ "pass": true
+}

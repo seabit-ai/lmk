@@ -1,0 +1,14 @@
+{
+ "content": "Here are two tips for sleeping better:\n\n1. **Keep a consistent sleep schedule.** Go to bed and wake up at the same time every day, even on weekends. This reinforces your body's circadian rhythm and makes falling asleep easier.\n\n2. **Cool down your bedroom.** Aim for a temperature around 65–68 °F (18–20 °C). A cooler room helps your core body temperature drop, which is a natural signal that it's time to sleep.\n\nDone.",
+ "reasoning": "The user wants two tips for sleeping better, and the answer must end with the single word \"Done.\" as the last word. Let me think of two good, practical tips for sleep.\n\n1. Keep a consistent sleep schedule — go to bed and wake up at the same time every day, even on weekends.\n2. Keep your bedroom cool, dark, and quiet — optimize the environment for sleep.\n\nNow I need to make sure the last word is exactly \"Done.\"\n",
+ "tool_calls": [],
+ "finish": "stop",
+ "tokens": 207,
+ "ms": 20604,
+ "raw_message": {
+  "role": "assistant",
+  "content": "Here are two tips for sleeping better:\n\n1. **Keep a consistent sleep schedule.** Go to bed and wake up at the same time every day, even on weekends. This reinforces your body's circadian rhythm and makes falling asleep easier.\n\n2. **Cool down your bedroom.** Aim for a temperature around 65–68 °F (18–20 °C). A cooler room helps your core body temperature drop, which is a natural signal that it's time to sleep.\n\nDone.",
+  "reasoning_content": "The user wants two tips for sleeping better, and the answer must end with the single word \"Done.\" as the last word. Let me think of two good, practical tips for sleep.\n\n1. Keep a consistent sleep schedule — go to bed and wake up at the same time every day, even on weekends.\n2. Keep your bedroom cool, dark, and quiet — optimize the environment for sleep.\n\nNow I need to make sure the last word is exactly \"Done.\"\n"
+ },
+ "pass": true
+}

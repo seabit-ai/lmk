@@ -174,8 +174,10 @@ def run_chat(engine: Engine, body: dict, identity: CallerIdentity,
              "prompt_tokens_details": {"cached_tokens": stats.cached_tokens}}
     # lmk's own timing next to the standard usage: how long the cached part took to come back
     # from disk (what a client cannot see from outside; `lmk bench` reads it)
-    send({"object": "chat.completion.chunk", "choices": [], "usage": usage,
-          "lmk": {"restore_ms": state["restore_ms"], "first_token_ms": state["first_ms"]}})
+    lmk_fields = {"restore_ms": state["restore_ms"], "first_token_ms": state["first_ms"]}
+    if stats.draft_drafted is not None:
+        lmk_fields.update(draft_accepted=stats.draft_accepted, draft_drafted=stats.draft_drafted)
+    send({"object": "chat.completion.chunk", "choices": [], "usage": usage, "lmk": lmk_fields})
 
     total_ms = clock.mono_ms() - started
     log.info("LmkChatDone", "chat completion finished",

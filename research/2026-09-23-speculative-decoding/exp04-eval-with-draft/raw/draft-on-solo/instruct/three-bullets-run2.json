@@ -1,0 +1,14 @@
+{
+ "content": "- Complete data loss due to hardware failure, disk corruption, or other storage device failures, leaving no way to recover any information.\n- Inability to recover from human error, such as accidental deletion, erroneous updates, or dropped tables, resulting in permanent loss of records.\n- Vulnerability to ransomware or malicious attacks, where encrypted or corrupted data cannot be restored without a clean backup to fall back on.",
+ "reasoning": "The user wants exactly three bullet points about risks of running a database without backups, each starting with '- ', and nothing else. No intro, no outro, just the three bullets.\n",
+ "tool_calls": [],
+ "finish": "stop",
+ "tokens": 123,
+ "ms": 3010,
+ "raw_message": {
+  "role": "assistant",
+  "content": "- Complete data loss due to hardware failure, disk corruption, or other storage device failures, leaving no way to recover any information.\n- Inability to recover from human error, such as accidental deletion, erroneous updates, or dropped tables, resulting in permanent loss of records.\n- Vulnerability to ransomware or malicious attacks, where encrypted or corrupted data cannot be restored without a clean backup to fall back on.",
+  "reasoning_content": "The user wants exactly three bullet points about risks of running a database without backups, each starting with '- ', and nothing else. No intro, no outro, just the three bullets.\n"
+ },
+ "pass": true
+}

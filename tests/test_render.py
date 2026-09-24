@@ -148,3 +148,13 @@ def test_a_nearly_full_disk_is_said_next_to_the_cache_line():
     status["cache"]["disk_low"] = True
     assert "less than 10 GB free — lmk has stopped adding to the cache" in render.status_block(status, "http://x")
     assert "stopped adding" not in render.status_block(STATUS, "http://x")
+
+
+def test_speculative_decoding_shows_on_the_model_line_and_its_acceptance_below():
+    on = dict(STATUS, model=dict(STATUS["model"], speculative_decoding=True),
+              draft={"rounds": 100, "accepted": 180, "drafted": 240})
+    text = render.status_block(on, "http://127.0.0.1:1235")
+    assert "· 262,144 tokens · speculative decoding on" in text
+    assert "  draft      75% of drafted tokens accepted (180 of 240) · 2.8 tokens per round" in text
+    fresh = dict(on, draft={"rounds": 0, "accepted": 0, "drafted": 0})
+    assert "  draft" not in render.status_block(fresh, "http://127.0.0.1:1235")   # nothing counted yet: no line

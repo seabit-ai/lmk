@@ -1,0 +1,14 @@
+{
+ "content": "- Complete or partial data loss due to hardware failure, disk corruption, or system crash with no way to recover the information.\n- Irreversible damage from human error, such as accidental deletion of tables, failed migrations, or corrupted updates.\n- Inability to recover from ransomware attacks or malicious deletions, potentially forcing the organization to pay a ransom or lose data permanently.",
+ "reasoning": "The user wants exactly three bullet points, each starting with '- ', about risks of running a database without backups. Nothing else - no intro, no outro, just the three bullets.\n\nLet me think of three distinct, important risks:\n1. Data loss from hardware failure\n2. Data loss from human error (accidental deletion, bad updates)\n3. Data loss from ransomware/cyberattack\n\nThese are three clearly distinct categories of risk. Let me format them properly.\n",
+ "tool_calls": [],
+ "finish": "stop",
+ "tokens": 180,
+ "ms": 7060,
+ "raw_message": {
+  "role": "assistant",
+  "content": "- Complete or partial data loss due to hardware failure, disk corruption, or system crash with no way to recover the information.\n- Irreversible damage from human error, such as accidental deletion of tables, failed migrations, or corrupted updates.\n- Inability to recover from ransomware attacks or malicious deletions, potentially forcing the organization to pay a ransom or lose data permanently.",
+  "reasoning_content": "The user wants exactly three bullet points, each starting with '- ', about risks of running a database without backups. Nothing else - no intro, no outro, just the three bullets.\n\nLet me think of three distinct, important risks:\n1. Data loss from hardware failure\n2. Data loss from human error (accidental deletion, bad updates)\n3. Data loss from ransomware/cyberattack\n\nThese are three clearly distinct categories of risk. Let me format them properly.\n"
+ },
+ "pass": true
+}

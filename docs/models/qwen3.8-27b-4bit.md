@@ -25,6 +25,10 @@ Text and images in, tool calls, thinking. This is the model lmk itself was built
 model:
   name: qwen3.8-27b-4bit
   reasoning_effort: low       # its template knows low / medium / xhigh; the default (xhigh) scored worse on every test
+  kv_cache_bits: 8            # halves what each token of context costs: 122k tokens on a 32 GB Mac instead of 85k.
+                              # Scored the same as 16-bit with 60k tokens of context in front of every task (below)
+  speculative_decoding: true  # the model's own draft head (lmk pull fetches it): code answers come out identical,
+                              # 1.5x faster when one request is being answered; scored the same on our tests (below)
 ```
 
 ## Thinking
@@ -52,6 +56,17 @@ makes every cached conversation cold once.
 - **Slower on long conversations:** ~33 tok/s at 60k+ tokens of context against ~39 fresh.
 - **First touch after hours idle is slow.** If other models were loaded meanwhile, the weights get
   paged back in on the next request: 37 s instead of 13 s for a 4k prompt, once.
+- **`kv_cache_bits: 8` changes answers slightly.** The KV cache holds numbers rounded to 8 bits, so a greedy answer can
+  differ from the 16-bit one after a few dozen tokens even on a 3k-token prompt. It did not score lower on our
+  tests (Tested), and the prompt cache written at 8 bits lives in its own directory: switching bits starts the
+  cache empty for this model. Restoring a cached prompt is about a fifth slower at 8 bits (first token 1.03 s
+  instead of 1.01 s on a 4k prompt).
+- **`speculative_decoding: true` helps one request at a time.** While two or more requests are being answered
+  together lmk decodes them plainly (a mixed-length batch did not reproduce plain decoding on the engine's
+  batched path; recorded in `research/2026-09-23-speculative-decoding/exp03-engine-wiring/`). Prose answers can
+  differ from the plain ones (near-tie words flip); code and copy-editing answers came out token for token the
+  same. With the model's default sampling the gain is smaller than with `temperature: 0`.
+
 
 ## Tested
 
@@ -60,6 +75,17 @@ makes every cached conversation cold once.
 
 - [intelligence eval](../../research/2026-09-23-intelligence-27b-vs-122b/README.md) (2026-09-23): thinking off / low / xhigh, 3 runs each — math 95 / 94 / 91%,
   code 96 / 99 / 89%, format 77 / 100 / 97%, tools 100% all three.
+- **`kv_cache_bits: 8`, 60,000 tokens of project files in front of every task** (2026-09-23,
+  `research/2026-09-23-kv-cache-quant/exp02-long-context-eval/`): code 40/40, instruct 20/20, tools 10/10 —
+  16-bit scored 39/40, 20/20, 10/10; 4-bit 38/40, 19/20, 9/10. The engine's probe measured 34,816 bytes of KV per
+  token at 8 bits (65,536 at 16). Chat tests with thinking on and off, and prompt-cache restore after a restart, pass at 8 bits.
+- **`speculative_decoding: true`** (2026-09-23, `research/2026-09-23-speculative-decoding/exp03-engine-wiring/`):
+  greedy decoding 39 → 58 tok/s on code and copy-editing (output identical), 39 → 46 tok/s on a story (output differs);
+  with the model's default sampling 39 → 50 tok/s on code (69% of drafted tokens accepted). Chat tests with thinking
+  on and off pass with the draft loaded. With the draft on and the model's default sampling, one request at a time
+  (`research/2026-09-23-speculative-decoding/exp04-eval-with-draft/`): code 40/40, instruct 20/20, tools 10/10 —
+  the same as without; 86% of drafted tokens accepted, 7 s per answer instead of 9.
+
 
 ## Not tested
 

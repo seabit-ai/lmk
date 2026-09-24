@@ -1,0 +1,14 @@
+{
+ "content": "- Permanent data loss due to hardware failure, disk corruption, or storage degradation with no way to recover.\n- Irreversible damage from human error, such as accidentally dropping tables, running a bad UPDATE, or deleting records.\n- Total data unavailability in the event of ransomware or a cyberattack, with no clean copy to restore from.",
+ "reasoning": "The user wants exactly three bullet points, each starting with '- ', and nothing else. No intro, no outro, just the three bullets. Let me think of three distinct risks of running a database without backups:\n\n1. Data loss from hardware failure\n2. Data loss from human error (accidental deletion, bad update)\n3. Data loss from ransomware/cyberattack\n\nThese are three distinct and well-known risks. Let me format them precisely.\n",
+ "tool_calls": [],
+ "finish": "stop",
+ "tokens": 169,
+ "ms": 3858,
+ "raw_message": {
+  "role": "assistant",
+  "content": "- Permanent data loss due to hardware failure, disk corruption, or storage degradation with no way to recover.\n- Irreversible damage from human error, such as accidentally dropping tables, running a bad UPDATE, or deleting records.\n- Total data unavailability in the event of ransomware or a cyberattack, with no clean copy to restore from.",
+  "reasoning_content": "The user wants exactly three bullet points, each starting with '- ', and nothing else. No intro, no outro, just the three bullets. Let me think of three distinct risks of running a database without backups:\n\n1. Data loss from hardware failure\n2. Data loss from human error (accidental deletion, bad update)\n3. Data loss from ransomware/cyberattack\n\nThese are three distinct and well-known risks. Let me format them precisely.\n"
+ },
+ "pass": true
+}

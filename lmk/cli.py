@@ -15,6 +15,7 @@ from typing import Optional
 
 from lmk import render, service
 from lmk.clock import get_current_clock
+from lmk.memory import get_current_memory
 from lmk.config import ConfigError, LmkConfig, app_dir, config_path, fingerprint, load_config
 from lmk.configfiles import refresh_example, seed_config
 from lmk.models import TESTED_MODELS, ModelNotDownloaded, missing_weight_files, resolve_model
@@ -67,8 +68,8 @@ def cmd_pull(_args) -> int:
         return 0
     try:
         resolve_model(source)
-        _say(f"✓ {source.repo} is already downloaded.\n  next:  lmk up")
-        return 0
+        _say(f"✓ {source.repo} is already downloaded.")
+        return _pull_draft(source)
     except ModelNotDownloaded:
         pass
 
@@ -98,21 +99,83 @@ def cmd_pull(_args) -> int:
     missing = missing_weight_files(snapshot)
     if missing:
         return _fail(f"✗ the download finished but {len(missing)} weight file(s) are missing — run `lmk pull` again", 1)
-    _say(f"\n✓ downloaded {source.repo}\n  next:  lmk up")
+    _say(f"\n✓ downloaded {source.repo}")
+    return _pull_draft(source)
+
+
+def _pull_draft(source) -> int:
+    """The draft model for speculative decoding, when lmk publishes one for this model. Small
+    (under 1 GB); a failure is said, not fatal — the model works without it."""
+    from lmk.models import DraftNotDownloaded, draft_repo_for, resolve_draft
+
+    repo = draft_repo_for(source)
+    if repo is None:
+        _say("  next:  lmk up")
+        return 0
+    try:
+        resolve_draft(source)
+        _say(f"✓ its draft model {repo} is downloaded too (speculative_decoding: true uses it).\n  next:  lmk up")
+        return 0
+    except DraftNotDownloaded:
+        pass
+    from huggingface_hub import snapshot_download
+
+    _say(f"Downloading its draft model {repo} (under 1 GB; for speculative_decoding: true)")
+    try:
+        snapshot_download(repo)
+    except KeyboardInterrupt:
+        return _fail("\nstopped. `lmk pull` continues from here.", 130)
+    except Exception as e:  # noqa: BLE001 - not fatal: the model works without its draft
+        _say(f"  (could not fetch it: {e}\n   the model works without it; `lmk pull` again later)\n  next:  lmk up")
+        return 0
+    _say(f"✓ downloaded {repo}\n  next:  lmk up")
     return 0
 
 
 # ---- up ----
 
-def _why_it_did_not_start(cfg: LmkConfig) -> str:
+def _why_it_did_not_start(cfg: LmkConfig, since_ms: Optional[int] = None) -> str:
+    """The log lines of THIS start. The previous life's LmkReady and its traceback are still in
+    the files, and shown next to a fresh failure they point the reader the wrong way."""
     out = []
-    events = [render.log_line(l) for l in _tail(cfg.log_dir / "lmk.jsonl", 8)]
+    events = _since(_tail(cfg.log_dir / "lmk.jsonl", 40), since_ms)[-8:]
     if events:
-        out += [f"  last events ({render.short_path(str(cfg.log_dir / 'lmk.jsonl'))}):"] + [f"    {l}" for l in events]
-    stderr = _tail(cfg.log_dir / "lmk.stderr.log", 15)
+        out += [f"  last events ({render.short_path(str(cfg.log_dir / 'lmk.jsonl'))}):"] + \
+               [f"    {render.log_line(l)}" for l in events]
+    # the JSON lines in stderr are the same events again; what only stderr has is a traceback
+    stderr = [l for l in _since(_tail(cfg.log_dir / "lmk.stderr.log", 60), since_ms) if _time_ms(l) is None][-15:]
     if stderr:
         out += [f"  last output ({render.short_path(str(cfg.log_dir / 'lmk.stderr.log'))}):"] + [f"    {l}" for l in stderr]
     return "\n".join(out)
+
+
+def _since(lines: list[str], since_ms: Optional[int]) -> list[str]:
+    """Lines from this start on: from the first log line stamped at or after since_ms, or — when
+    the process died before writing one (a traceback and nothing else) — after the last older line."""
+    if since_ms is None:
+        return lines
+    first_fresh = last_stale = None
+    for i, line in enumerate(lines):
+        stamp = _time_ms(line)
+        if stamp is None:
+            continue
+        if stamp >= since_ms:
+            first_fresh = i if first_fresh is None else first_fresh
+        else:
+            last_stale = i
+    if first_fresh is not None:
+        return lines[first_fresh:]
+    return lines[last_stale + 1:] if last_stale is not None else lines
+
+
+def _time_ms(line: str) -> Optional[int]:
+    if not line.startswith("{"):
+        return None
+    try:
+        stamp = json.loads(line).get("time_ms")
+    except ValueError:
+        return None
+    return stamp if isinstance(stamp, int) else None
 
 
 def _smoke(cfg: LmkConfig) -> Optional[str]:
@@ -177,27 +240,36 @@ def cmd_up(_args) -> int:
 
     service.start(app_dir(), cfg.log_dir, dict(os.environ))
     started = clock.mono_ms()
+    since_ms = clock.wall_ms()  # log lines are stamped with the wall clock
     live = sys.stdout.isatty()  # a counter that rewrites its line is noise in a pipe or a log
+    total = _weights_to_load(cfg, resolved.path)
     if not live:
-        _say(f"  loading {cfg.model.id} …")
+        _say(f"  {render.loading_line(cfg.model.id, None, total)}")
     while True:
         status = _get_status(cfg)
         if status is not None:
             break
-        waited = (clock.mono_ms() - started) // 1000
-        if not service.is_registered():
-            return _fail("✗ lmk exited while starting.\n" + _why_it_did_not_start(cfg), 5)
-        if waited > READY_TIMEOUT_S:
-            return _fail(f"✗ lmk did not answer within {READY_TIMEOUT_S}s.\n" + _why_it_did_not_start(cfg), 5)
+        job = service.job_state()
+        if job is None or job.exited:
+            # a clean exit is `lmk serve` saying a restart will not help; launchd leaves it there
+            if job is not None and job.crashed:
+                return _fail("✗ lmk crashed while starting.\n" + _why_it_did_not_start(cfg, since_ms), 5)
+            return _fail("✗ lmk exited while starting.\n" + _why_it_did_not_start(cfg, since_ms), 5)
+        if job.crashed:
+            # it was restarted by launchd: the second try will hit the same thing (a load never fails at random)
+            return _fail("✗ lmk crashed while starting and launchd started it again.\n" + _why_it_did_not_start(cfg, since_ms), 5)
+        if (clock.mono_ms() - started) // 1000 > READY_TIMEOUT_S:
+            return _fail(f"✗ lmk did not answer within {READY_TIMEOUT_S}s.\n" + _why_it_did_not_start(cfg, since_ms), 5)
         if live:
-            print(f"\r  loading {cfg.model.id} … {waited}s", end="", flush=True)
+            resident = get_current_memory().resident_bytes(job.pid)
+            print(f"\r  {render.loading_line(cfg.model.id, resident, total)}" + " " * 12, end="", flush=True)
         clock.sleep_s(1)
     if live:
-        print("\r" + " " * 60 + "\r", end="")
+        print("\r" + " " * 72 + "\r", end="")
 
     problem = _smoke(cfg)
     if problem:
-        return _fail(f"✗ lmk started but a test request failed: {problem}\n" + _why_it_did_not_start(cfg), 5)
+        return _fail(f"✗ lmk started but a test request failed: {problem}\n" + _why_it_did_not_start(cfg, since_ms), 5)
     status = _get_status(cfg) or status
     _say(render.status_block(status, url) + "\n\n" + render.connect_block(url, status["model"]))
     return 0
@@ -210,9 +282,35 @@ def _status_text(cfg: LmkConfig) -> tuple[str, bool]:
     if status is not None:
         return render.status_block(status, render.base_url(cfg.host, cfg.port)), True
     if service.is_registered():
-        return ("… lmk is starting (or failing to) — it is registered but not answering yet.\n"
-                "  watch it:  lmk logs -f"), False
+        job = service.job_state()
+        if job is not None and job.crashed:
+            return ("✗ lmk crashes while starting (launchd keeps restarting it).\n"
+                    "  see why:  lmk logs --raw      then:  lmk up"), False
+        if job is not None and job.loading:
+            try:
+                total = _weights_to_load(cfg, resolve_model(cfg.model.source).path)
+            except (ModelNotDownloaded, FileNotFoundError):
+                total = 0
+            resident = get_current_memory().resident_bytes(job.pid)
+            return (f"… lmk is starting: {render.loading_line(cfg.model.id, resident, total)}\n"
+                    "  watch it:  lmk logs -f"), False
+        return ("… lmk is registered but not running — it stopped for a reason a restart would not fix.\n"
+                "  see why:  lmk logs      then:  lmk up"), False
     return "✗ lmk is not running.\n  start it:  lmk up", False
+
+
+def _weights_to_load(cfg: LmkConfig, model_path: Path) -> int:
+    """The bytes the server reads into memory at start: the model, plus its draft when on."""
+    from lmk.modelfit import weights_bytes
+    from lmk.models import resolve_draft
+
+    total = weights_bytes(model_path)
+    if cfg.model.speculative_decoding:
+        try:
+            total += weights_bytes(resolve_draft(cfg.model.source))
+        except Exception:  # noqa: BLE001 - the draft's absence is `lmk serve`'s to report, not the progress line's
+            pass
+    return total
 
 
 def cmd_status(args) -> int:

@@ -1,0 +1,14 @@
+{
+ "content": "MOUNTAINS ARE MAJESTIC LANDFORMS THAT RISE IMPRESSIVELY ABOVE THE SURROUNDING TERRAIN.",
+ "reasoning": "The user wants a single sentence about mountains, written entirely in capital letters. Simple request.\n",
+ "tool_calls": [],
+ "finish": "stop",
+ "tokens": 48,
+ "ms": 7685,
+ "raw_message": {
+  "role": "assistant",
+  "content": "MOUNTAINS ARE MAJESTIC LANDFORMS THAT RISE IMPRESSIVELY ABOVE THE SURROUNDING TERRAIN.",
+  "reasoning_content": "The user wants a single sentence about mountains, written entirely in capital letters. Simple request.\n"
+ },
+ "pass": true
+}

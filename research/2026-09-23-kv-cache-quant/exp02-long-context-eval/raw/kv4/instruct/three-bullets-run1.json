@@ -1,0 +1,14 @@
+{
+ "content": "- Permanent data loss from hardware failure, disk corruption, or accidental deletion with no way to recover.\n- Inability to undo human errors such as a bad migration, accidental DROP TABLE, or incorrect bulk update.\n- No recovery path after ransomware encryption or a malicious deletion, since there is no known-good state to restore from.",
+ "reasoning": "The user is asking me to name three risks of running a database without backups, with a very specific format: exactly three bullet points, each starting with '- ', and nothing else.\n\nThis is a straightforward factual question about database operations, not about the lmk project. Let me think of the three most significant risks:\n\n1. Permanent data loss from hardware failure, disk corruption, or accidental deletion\n2. Inability to recover from human errors (bad migrations, accidental DROP TABLE, bad updates)\n3. Vulnerability to ransomware or malicious attacks with no recovery path\n\nI need to format these as exactly three bullet points starting with '- ' and include nothing else. No intro, no outro, no extra text.\n",
+ "tool_calls": [],
+ "finish": "stop",
+ "tokens": 218,
+ "ms": 18346,
+ "raw_message": {
+  "role": "assistant",
+  "content": "- Permanent data loss from hardware failure, disk corruption, or accidental deletion with no way to recover.\n- Inability to undo human errors such as a bad migration, accidental DROP TABLE, or incorrect bulk update.\n- No recovery path after ransomware encryption or a malicious deletion, since there is no known-good state to restore from.",
+  "reasoning_content": "The user is asking me to name three risks of running a database without backups, with a very specific format: exactly three bullet points, each starting with '- ', and nothing else.\n\nThis is a straightforward factual question about database operations, not about the lmk project. Let me think of the three most significant risks:\n\n1. Permanent data loss from hardware failure, disk corruption, or accidental deletion\n2. Inability to recover from human errors (bad migrations, accidental DROP TABLE, bad updates)\n3. Vulnerability to ransomware or malicious attacks with no recovery path\n\nI need to format these as exactly three bullet points starting with '- ' and include nothing else. No intro, no outro, no extra text.\n"
+ },
+ "pass": true
+}

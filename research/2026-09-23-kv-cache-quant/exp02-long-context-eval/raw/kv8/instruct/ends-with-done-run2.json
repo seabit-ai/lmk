@@ -1,0 +1,14 @@
+{
+ "content": "1. **Keep a consistent sleep schedule.** Go to bed and wake up at the same times every day, even on weekends. This trains your body's internal clock to expect sleep at the right time.\n\n2. **Get morning sunlight.** Ten to thirty minutes of outdoor light within an hour of waking helps anchor your circadian rhythm and makes it easier to feel sleepy at night.\n\nDone.",
+ "reasoning": "The user is asking for two tips for sleeping better, and the answer must end with the single word \"Done.\" as the last word. Let me provide a concise, helpful answer.\n",
+ "tool_calls": [],
+ "finish": "stop",
+ "tokens": 121,
+ "ms": 13798,
+ "raw_message": {
+  "role": "assistant",
+  "content": "1. **Keep a consistent sleep schedule.** Go to bed and wake up at the same times every day, even on weekends. This trains your body's internal clock to expect sleep at the right time.\n\n2. **Get morning sunlight.** Ten to thirty minutes of outdoor light within an hour of waking helps anchor your circadian rhythm and makes it easier to feel sleepy at night.\n\nDone.",
+  "reasoning_content": "The user is asking for two tips for sleeping better, and the answer must end with the single word \"Done.\" as the last word. Let me provide a concise, helpful answer.\n"
+ },
+ "pass": true
+}

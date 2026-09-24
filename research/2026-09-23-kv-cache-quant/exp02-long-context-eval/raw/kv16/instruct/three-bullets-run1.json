@@ -1,0 +1,14 @@
+{
+ "content": "- Hardware or disk failure permanently destroys all data with no way to recover it.\n- Human error such as an accidental DROP, bad migration, or overwrite cannot be undone.\n- Ransomware or a malicious insider can encrypt or delete data with no clean copy to restore from.",
+ "reasoning": "The user is asking me to name three risks of running a database without backups. They want exactly three bullet points, each starting with \"- \", and nothing else. This is a general knowledge question, not related to the lmk codebase. Let me think of three clear, distinct risks:\n\n1. Data loss from hardware failure\n2. Data loss from human error (accidental deletion, bad migration)\n3. Data loss from malicious action (ransomware, malicious user)\n\nLet me format these as exactly three bullet points starting with \"- \" and nothing else.\n",
+ "tool_calls": [],
+ "finish": "stop",
+ "tokens": 176,
+ "ms": 20829,
+ "raw_message": {
+  "role": "assistant",
+  "content": "- Hardware or disk failure permanently destroys all data with no way to recover it.\n- Human error such as an accidental DROP, bad migration, or overwrite cannot be undone.\n- Ransomware or a malicious insider can encrypt or delete data with no clean copy to restore from.",
+  "reasoning_content": "The user is asking me to name three risks of running a database without backups. They want exactly three bullet points, each starting with \"- \", and nothing else. This is a general knowledge question, not related to the lmk codebase. Let me think of three clear, distinct risks:\n\n1. Data loss from hardware failure\n2. Data loss from human error (accidental deletion, bad migration)\n3. Data loss from malicious action (ransomware, malicious user)\n\nLet me format these as exactly three bullet points starting with \"- \" and nothing else.\n"
+ },
+ "pass": true
+}

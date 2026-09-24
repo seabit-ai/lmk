@@ -1,0 +1,14 @@
+{
+ "content": "1. **Keep a consistent sleep schedule.** Go to bed and wake up at the same times every day, even on weekends. This trains your circadian rhythm so your body knows when to wind down.\n\n2. **Make your bedroom cool, dark, and quiet.** Aim for around 18°C (65°F), use a blackout curtain or eye mask, and remove screens at least an hour before bed. A cool, dark room signals your brain that it's time to sleep.\n\nDone.",
+ "reasoning": "The user is asking for two tips for sleeping better, and the answer must end with the single word \"Done.\" as the last word. This is a straightforward request unrelated to the lmk project files. Let me provide two practical sleep tips and make sure the last word is \"Done.\"\n",
+ "tool_calls": [],
+ "finish": "stop",
+ "tokens": 165,
+ "ms": 17055,
+ "raw_message": {
+  "role": "assistant",
+  "content": "1. **Keep a consistent sleep schedule.** Go to bed and wake up at the same times every day, even on weekends. This trains your circadian rhythm so your body knows when to wind down.\n\n2. **Make your bedroom cool, dark, and quiet.** Aim for around 18°C (65°F), use a blackout curtain or eye mask, and remove screens at least an hour before bed. A cool, dark room signals your brain that it's time to sleep.\n\nDone.",
+  "reasoning_content": "The user is asking for two tips for sleeping better, and the answer must end with the single word \"Done.\" as the last word. This is a straightforward request unrelated to the lmk project files. Let me provide two practical sleep tips and make sure the last word is \"Done.\"\n"
+ },
+ "pass": true
+}

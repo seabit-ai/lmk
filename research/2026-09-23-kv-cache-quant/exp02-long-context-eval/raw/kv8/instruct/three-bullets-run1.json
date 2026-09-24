@@ -1,0 +1,14 @@
+{
+ "content": "- Hardware or storage failure silently corrupts or destroys data, and without a backup there is no copy to restore from.\n- Human error such as an accidental DROP, a bad migration, or an overwriting UPDATE is permanent and unrecoverable.\n- Malicious acts including ransomware encryption or deliberate deletion by an insider leave no intact copy to return to.",
+ "reasoning": "The user is asking a general knowledge question about database backup risks, completely unrelated to the lmk project context. They want exactly three bullet points, each starting with '- ', and nothing else. Let me think of the three most important/distinct risks:\n\n1. Data loss from hardware failure / disk failure\n2. Data loss from human error (accidental deletion, bad migration)\n3. Data loss from malicious acts (ransomware, deliberate deletion)\n\nThese are three distinct categories of risk. Let me format them precisely as requested.\n",
+ "tool_calls": [],
+ "finish": "stop",
+ "tokens": 187,
+ "ms": 27204,
+ "raw_message": {
+  "role": "assistant",
+  "content": "- Hardware or storage failure silently corrupts or destroys data, and without a backup there is no copy to restore from.\n- Human error such as an accidental DROP, a bad migration, or an overwriting UPDATE is permanent and unrecoverable.\n- Malicious acts including ransomware encryption or deliberate deletion by an insider leave no intact copy to return to.",
+  "reasoning_content": "The user is asking a general knowledge question about database backup risks, completely unrelated to the lmk project context. They want exactly three bullet points, each starting with '- ', and nothing else. Let me think of the three most important/distinct risks:\n\n1. Data loss from hardware failure / disk failure\n2. Data loss from human error (accidental deletion, bad migration)\n3. Data loss from malicious acts (ransomware, deliberate deletion)\n\nThese are three distinct categories of risk. Let me format them precisely as requested.\n"
+ },
+ "pass": true
+}
