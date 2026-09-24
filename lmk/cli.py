@@ -428,7 +428,7 @@ def cmd_report(args) -> int:
                          config_text=config_text, config_path=render.short_path(str(config_path())), status=status,
                          canary=canary, canary_error=canary_error,
                          events=[render.log_line(l) for l in _tail(cfg.log_dir / "lmk.jsonl", args.lines)],
-                         stderr=_tail(cfg.log_dir / "lmk.stderr.log", args.lines)))
+                         stderr=_tail(cfg.log_dir / "lmk.stderr.log", args.lines * 3), url=render.base_url(cfg.host, cfg.port)))
     return 0
 
 

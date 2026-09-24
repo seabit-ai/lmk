@@ -6,13 +6,14 @@ answer, the last events and the last traceback. Nothing is sent anywhere — the
 from typing import Optional
 
 from lmk.bench import CANARY_EXPECTED, Probe, canary_matches
+from lmk.render import status_block
 
 ISSUES_URL = "https://github.com/seabit-ai/lmk/issues/new"
 
 
 def markdown(*, machine: dict, build: str, engine: str, config_text: str, config_path: str, status: Optional[dict],
              canary: Optional[Probe], canary_error: Optional[str], events: list[str], stderr: list[str],
-             bench_row: Optional[str] = None) -> str:
+             bench_row: Optional[str] = None, url: str = "") -> str:
     out = [f"<!-- lmk report — paste into {ISSUES_URL} . Review it first: it holds your config and the last log lines. -->",
            "## Machine",
            f"- {machine.get('chip', '?')} · {machine.get('gpu_cores', '?')} GPU cores · {machine.get('memory_gb', '?')} GB · "
@@ -29,18 +30,15 @@ def markdown(*, machine: dict, build: str, engine: str, config_text: str, config
     out.append("")
     if bench_row:
         out += ["## Bench", bench_row, ""]
-    out.append("## Status (`GET /lmk/v1/status`)")
+    out.append("## Status (`lmk status`)")
     if status is None:
         out.append("- lmk is not running (or did not answer)")
     else:
-        model, requests, totals = status.get("model") or {}, status.get("requests") or {}, status.get("totals") or {}
-        out += [f"- model {model.get('id')} · context {model.get('context_length')} (asked {model.get('requested_context_length')}) · "
-                f"thinking {model.get('thinking')} · effort {model.get('reasoning_effort')} · KV cache {model.get('kv_cache_bits')}-bit · "
-                f"speculative decoding {model.get('speculative_decoding')}",
-                f"- memory {status.get('memory')}", f"- cache {status.get('cache')}", f"- draft {status.get('draft')}",
-                f"- requests {requests} · totals {totals} · up {status.get('uptime_ms')} ms · fingerprint {status.get('config_fingerprint')}"]
+        out += ["```", status_block(status, url), "```"]
     out += ["", "## Last events (`lmk logs`)", "```"] + [l.rstrip("\n") for l in events] + ["```", ""]
-    out += ["## Last output (`lmk logs --raw`, tracebacks live here)", "```"] + [l.rstrip("\n") for l in stderr] + ["```"]
+    # the engine's own lines and tracebacks; the JSON event lines also land in stderr and are above already
+    raw = [l.rstrip("\n") for l in stderr if not l.startswith("{\"time_ms\"")]
+    out += ["## Last output (`lmk logs --raw`: the engine's lines and tracebacks)", "```"] + raw + ["```"]
     return "\n".join(out) + "\n"
 
 

@@ -5,8 +5,11 @@ MACHINE = {"chip": "Apple M3 Ultra", "gpu_cores": 60, "memory_gb": 96, "model_id
 STATUS = {"build": "v0.7.0", "engine": "7a1e17f3", "config_fingerprint": "abc", "uptime_ms": 5000,
           "model": {"id": "qwen3.8-27b-4bit", "context_length": 262144, "requested_context_length": None, "thinking": False,
                     "reasoning_effort": None, "kv_cache_bits": 8, "speculative_decoding": True},
-          "memory": {"pressure": "normal"}, "cache": {"used_bytes": 1}, "draft": {"rounds": 1, "accepted": 2, "drafted": 3},
-          "requests": {"answering": 0}, "totals": {"answered": 3}}
+          "memory": {"pressure": "normal", "free_percent": 76, "total_bytes": 96 * 1024**3, "lmk_gpu_bytes": 17 * 1024**3},
+          "cache": {"dir": "/Users/someone/.lmk/cache/abc", "used_bytes": 10 * 1024**3, "max_bytes": 150 * 1024**3, "records": 3},
+          "draft": {"rounds": 1, "accepted": 2, "drafted": 3},
+          "requests": {"answering": 0, "max_parallel": 2, "waiting": 0, "max_queue": 16}, "totals": {"answered": 3},
+          "in_flight": [], "waiting": [], "recent": []}
 
 
 def test_the_report_is_one_markdown_block_with_the_scene_and_the_canary_verdict():
@@ -18,8 +21,16 @@ def test_the_report_is_one_markdown_block_with_the_scene_and_the_canary_verdict(
     assert "- Apple M3 Ultra · 60 GPU cores · 96 GB · Mac15,14 · macOS 26.6.2" in text and "- lmk v0.7.0 · engine 7a1e17f" in text
     assert "## Configuration (`~/.lmk/config.yaml`)" in text and "  name: qwen3.8-27b-4bit" in text
     assert "- matches the reference" in text
-    assert "KV cache 8-bit · speculative decoding True" in text
+    assert "  settings   thinking off · KV cache 8-bit · speculative decoding on" in text   # the same lines as `lmk status`
     assert "10:00:00 INFO LmkReady serving" in text and "ValueError: x" in text
+
+
+def test_the_raw_section_keeps_the_engines_lines_and_tracebacks_but_not_the_json_events_again():
+    text = report.markdown(machine=MACHINE, build="b", engine="e", config_text="", config_path="c", status=None, canary=None,
+                           canary_error=None, events=["10:00:00 INFO LmkChatDone x"],
+                           stderr=['{"time_ms": 1, "event": "LmkChatDone"}', "[coordinator][WARNING]: Skipping prompt cache save", "ValueError: x"])
+    raw = text.split("## Last output")[1]
+    assert "Skipping prompt cache save" in raw and "ValueError: x" in raw and '"time_ms"' not in raw
 
 
 def test_the_report_says_when_the_canary_differs_or_could_not_run():
