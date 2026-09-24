@@ -78,6 +78,12 @@
   README 的 status 示例换成真输出；27B 页 Speed 表加推荐配置一行（散文 44.5 / 代码 58.6，接受 88%）。已在 owner 机器上照用户的样子跑过。
 - 种子 `config.yaml` 同形状（owner 09-24 "fix ~/.lmk/config.yaml too"）：注释文案与 example 共用一张表（`_WHAT`）；owner 的文件已照此重写，生效值不变。
 
+## 2026-09-24 投机解码推到 122B（exp06，未成）与 Splash（research/2026-09-24-splash）
+- 122B 的 MTP 头拆出来了（5.05 GB bf16，重排成 switch_mlp 布局才能加载；`~/.cache/lmk-research/qwen3.5-122b-a10b-mtp-draft`，HF cache 软链已摆）。
+  冒烟：接受 0/2555，decode 0.52×，且 drafts 全拒时输出仍与普通解码分叉——两个嫌疑（草稿器权重映射 / MoE 校验前向），下一步用 mlx-vlm 自己的循环隔离。
+  **没进 lmk**（models.py 未接 draft_repo），模型页不动。
+- Splash：对手主张已记成 SPL-001..006，未验证。owner 定要不要同机实测（brew 装、约一小时、跑时要停常驻）。
+
 ## 已裁但还没做的
 - **kitten 发 `X-Lmk-Purpose` / `X-Lmk-Ref-Id`**：2026-09-20 已在 kitten repo 的分支 `llm-call-identity` 上实现并验证
   （用途 `turn` / `compaction` / `groom`；refId = `<sessionId>/<actionRef>`，groom = `groom/<project>/<startMs>`；未声明的不发头）。

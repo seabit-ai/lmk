@@ -1,0 +1,73 @@
+{
+ "kv_bits": null,
+ "base": {
+  "story": {
+   "tokens": 400,
+   "text": "Elias had tended the lantern on Blackwood Rock for forty years, long enough to know the rhythm of the tides better than his own heartbeat. The lighthouse was a solitary cylinder of white stone, standing defiant against the churning gray Atlantic. Every evening, as the sun dipped below the horizon, painting the sky in bruised purples and oranges, Elias began his ritual. He climbed the spiral stairs, the iron steps cold beneath his boots, until he reached the glass-enclosed lantern room.\n\nThe great Fresnel lens, a beehive of prisms, waited for him. With a soft cloth, he polished the glass, removing the salt spray that threatened to dim its brilliance. Then came the lighting. The flame, once a simple oil wick, was now a steady electric arc, but the feeling remained the same: a warm, golden eye opening in the darkness.\n\nElias watched the beam sweep across the water, a rhythmic heartbeat of light. It was a promise to the sailors below: *You are seen. You are safe.* He knew the stories of ships lost in the fog, of families waiting in vain on the shore. His vigilance was their only shield against the abyss.\n\nOne stormy night, the wind howled like a wounded beast, rattling the windowpanes. The sea rose in monstrous waves, threatening to swallow the rock whole. Elias stood firm, his hand resting on the railing, watching the beam cut through the driving rain. A faint glimmer appeared in the distance—a fishing trawler, struggling against the gale. The light guided them, a steady hand in the chaos.\n\nAs the storm broke and dawn painted the sky in soft pinks, Elias felt the familiar exhaustion settle in his bones. He was just a man in a tower, but in the darkness, he was a guardian. The sea would always be wild, but as long as he drew breath, the light would never fade",
+   "sha": "6519c07c4b",
+   "ttft_ms": 113,
+   "decode_tok_s": 60.1
+  },
+  "code": {
+   "tokens": 400,
+   "text": "```python\nimport re\nimport pytest\n\ndef parse_duration(s: str) -> int:\n    \"\"\"\n    Parses a duration string into total seconds.\n    \n    Supported formats:\n    - '1h30m' -> 3900\n    - '45s' -> 45\n    - '2h' -> 7200\n    - '1m10s' -> 70\n    - '1h1m1s' -> 3661\n    \n    Args:\n        s (str): The duration string containing hours (h), minutes (m), and/or seconds (s).\n        \n    Returns:\n        int: The total duration in seconds.\n        \n    Raises:\n        ValueError: If the string format is invalid or contains unrecognized units.\n    \"\"\"\n    pattern = r'((\\d+)h)?((\\d+)m)?((\\d+)s)?'\n    match = re.fullmatch(pattern, s)\n    \n    if not match:\n        raise ValueError(f\"Invalid duration format: {s}\")\n    \n    hours = int(match.group(2)) if match.group(2) else 0\n    minutes = int(match.group(4)) if match.group(4) else 0\n    seconds = int(match.group(6)) if match.group(6) else 0\n    \n    # Ensure at least one unit was provided\n    if hours == 0 and minutes == 0 and seconds == 0:\n        raise ValueError(f\"Invalid duration format: {s}\")\n        \n    return hours * 3600 + minutes * 60 + seconds\n\ndef test_parse_duration():\n    assert parse_duration('1h30m') == 3900\n    assert parse_duration('45s') == 45\n    assert parse_duration('2h') == 7",
+   "sha": "594652d587",
+   "ttft_ms": 241,
+   "decode_tok_s": 59.8
+  },
+  "copyedit": {
+   "tokens": 134,
+   "text": "The lighthouse keeper had lived on the rock for ninety-one years, or so he told the fishermen who brought his supplies every second Tuesday. Nobody believed him, of course, but nobody argued either; the sea has a way of making arguments feel small. Each evening he climbed the hundred and twelve steps, trimmed the wick that no longer needed trimming since the lamp went electric in 1974, and wrote one line in a ledger that had belonged to his father. The lines were never about the weather. They were about the ships he had not seen: the ones that passed in fog, the ones that turned back, the one that did not.",
+   "sha": "8fe1ef2be6",
+   "ttft_ms": 473,
+   "decode_tok_s": 59.8
+  }
+ },
+ "spec": {
+  "story": {
+   "tokens": 374,
+   "text": "Elias had tended the lantern on Blackwood Rock for forty years, long enough to know the rhythm of the tides better than his own heartbeat. The lighthouse was a solitary cylinder of white stone, standing defiant against the relentless gray Atlantic. Every evening, as the sun dipped below the horizon, painting the sky in bruised purples and oranges, Elias began his ritual. He climbed the spiral stairs, the iron steps cold beneath his boots, and polished the great Fresnel lens until it gleamed like a diamond.\n\nThe storm that arrived on a Tuesday was unlike any other. The wind howled like a wounded beast, tearing at the shutters, while waves crashed against the base of the tower with terrifying force. Inside, the world was reduced to the rhythmic *thump-thump* of the clockwork mechanism and the swirling dance of light. Elias watched the beam cut through the darkness, a steady eye in the chaos. He knew that somewhere out there, a ship was fighting for its life, guided only by his flame.\n\nFor hours, he stood watch, his hands steady despite the trembling floor. He thought of the families waiting in port, unaware of the danger their loved ones faced. The light was not just a machine; it was a promise. It whispered, *You are not alone. Keep your course.*\n\nAs dawn finally broke, the storm subsided, leaving a calm, silver sea. Elias watched a fishing trawler safely navigate the treacherous reefs, its captain nodding toward the tower in silent gratitude. Exhausted but content, Elias climbed down to brew his morning coffee. The lighthouse stood silent now, but the light had done its work. He was just a man, but in the darkness, he was the guardian of hope, the keeper of the flame that never wavered.",
+   "sha": "5638dfbf94",
+   "ttft_ms": 131,
+   "decode_tok_s": 31.0
+  },
+  "code": {
+   "tokens": 400,
+   "text": "```python\nimport re\nimport pytest\n\ndef parse_duration(s: str) -> int:\n    \"\"\"\n    Parses a duration string into total seconds.\n    \n    Supported formats:\n    - '1h30m' -> 900\n    - '45s' -> 45\n    - '2h' -> 7200\n    - '1m10s' -> 70\n    \n    Args:\n        s (str): The duration string containing hours (h), minutes (m), and/or seconds (s).\n        \n    Returns:\n        int: The total duration in seconds.\n        \n    Raises:\n        ValueError: If the string format is invalid or contains unrecognized units.\n    \"\"\"\n    pattern = r'((\\d+)h)?((\\d+)m)?((\\d+)s)?'\n    match = re.fullmatch(pattern, s)\n    \n    if not match:\n        raise ValueError(f\"Invalid duration format: {s}\")\n    \n    hours = int(match.group(2)) if match.group(2) else 0\n    minutes = int(match.group(4)) if match.group(4) else 0\n    seconds = int(match.group(6)) if match.group(6) else 0\n    \n    # Ensure at least one unit was provided\n    if hours == 0 and minutes == 0 and seconds == 0:\n        raise ValueError(f\"Invalid duration format: {s}\")\n        \n    return hours * 3600 + minutes * 60 + seconds\n\ndef test_parse_duration():\n    assert parse_duration('1h30m') == 5400\n    assert parse_duration('45s') == 45\n    assert parse_duration('2h') == 7200\n    assert parse_duration('1m10s') == 7",
+   "sha": "f5ada74112",
+   "ttft_ms": 258,
+   "decode_tok_s": 30.8
+  },
+  "copyedit": {
+   "tokens": 134,
+   "text": "The lighthouse keeper had lived on the rock for ninety-one years, or so he told the fishermen who brought his supplies every second Tuesday. Nobody believed him, of course, but nobody argued either; the sea has a way of making arguments feel small. Each evening he climbed the hundred and twelve steps, trimmed the wick that no longer needed trimming since the lamp went electric in 1974, and wrote one line in a ledger that had belonged to his father. The lines were never about the weather. They were about the ships he had not seen: the ones that passed in fog, the ones that turned back, the one that did not.",
+   "sha": "8fe1ef2be6",
+   "ttft_ms": 493,
+   "decode_tok_s": 30.9
+  }
+ },
+ "sampled": {
+  "tokens": 400,
+  "text": "```python\nimport re\nimport pytest\n\ndef parse_duration(s: str) -> int:\n    \"\"\"\n    Parse duration strings into total seconds.\n    \n    Supported formats include combinations of hours (h), minutes (m), and seconds (s).\n    Examples:\n        '1h30m' -> 5400\n        '45s' -> 45\n        '2h' -> 7200\n        '1h45m10s' -> 7510\n    \n    Args:\n        s (str): The duration string to parse.\n        \n    Returns:\n        int: Total number of seconds.\n        \n    Raises:\n        ValueError: If the string format is invalid.\n    \"\"\"\n    pattern = r'(\\d+)([hms])'\n    matches = re.findall(pattern, s.lower())\n    \n    if not matches:\n        raise ValueError(f\"Invalid duration format: {s}\")\n    \n    total_seconds = 0\n    \n    for value, unit in matches:\n        number = int(value)\n        if unit == 'h':\n            total_seconds += number * 3600\n        elif unit == 'm':\n            total_seconds += number * 60\n        elif unit == 's':\n            total_seconds += number\n            \n    return total_seconds\n\ndef test_parse_duration():\n    assert parse_duration('1h30m') == 5400\n    assert parse_duration('45s') == 45\n    assert parse_duration('2h') == 7200\n    assert parse_duration('1h45m10s') == 7510\n    assert parse_duration('0m') == 0\n    assert parse_duration('1h') == 3600\n    assert parse_duration('5m') == ",
+  "sha": "6d8fff5f69",
+  "ttft_ms": 294,
+  "decode_tok_s": 31.5
+ },
+ "pair": {
+  "story": {
+   "tokens": 374,
+   "text": "Elias had tended the lantern on Blackwood Rock for forty years, long enough to know the rhythm of the tides better than his own heartbeat. The lighthouse was a solitary cylinder of white stone, standing defiant against the relentless gray Atlantic. Every evening, as the sun dipped below the horizon, painting the sky in bruised purples and oranges, Elias began his ritual. He climbed the spiral stairs, the iron steps cold beneath his boots, and polished the great Fresnel lens until it gleamed like a diamond.\n\nThe storm that arrived on a Tuesday was unlike any other. The wind howled like a wounded beast, tearing at the shutters, while waves crashed against the base of the tower with terrifying force. Inside, the world was reduced to the rhythmic *thump-thump* of the clockwork mechanism and the swirling dance of light. Elias watched the beam cut through the darkness, a steady eye in the chaos. He knew that somewhere out there, a ship was fighting for its life, guided only by his flame.\n\nFor hours, he stood watch, his hands steady despite the trembling floor. He thought of the families waiting in port, unaware of the danger their loved ones faced. The light was not just a machine; it was a promise. It whispered, *You are not alone. Keep your course.*\n\nAs dawn finally broke, the storm subsided, leaving a calm, silver sea. Elias watched a fishing trawler safely navigate the treacherous reefs, its captain nodding toward the tower in silent gratitude. Exhausted but content, Elias climbed down to brew his morning coffee. The lighthouse stood silent now, but the light had done its work. He was just a man, but in the darkness, he was the guardian of hope, the keeper of the flame that never wavered.",
+   "sha": "5638dfbf94",
+   "ttft_ms": 354,
+   "decode_tok_s": 42.9
+  },
+  "code": {
+   "tokens": 400,
+   "text": "```python\nimport re\nimport pytest\n\ndef parse_duration(s: str) -> int:\n    \"\"\"\n    Parses a duration string into total seconds.\n    \n    Supported formats:\n    - '1h30m' -> 900\n    - '45s' -> 45\n    - '2h' -> 7200\n    - '1m10s' -> 70\n    - '1h1m1s' -> 3661\n    \n    Args:\n        s (str): The duration string containing hours (h), minutes (m), and/or seconds (s).\n        \n    Returns:\n        int: The total duration in seconds.\n        \n    Raises:\n        ValueError: If the string format is invalid or contains unrecognized units.\n    \"\"\"\n    pattern = r'((?P<hours>\\d+)h)?((?P<minutes>\\d+)m)?((?P<seconds>\\d+)s)?'\n    match = re.fullmatch(pattern, s)\n    \n    if not match:\n        raise ValueError(f\"Invalid duration format: {s}\")\n    \n    hours = int(match.group('hours') or 0)\n    minutes = int(match.group('minutes') or 0)\n    seconds = int(match.group('seconds') or 0)\n    \n    return hours * 3600 + minutes * 60 + seconds\n\ndef test_parse_duration():\n    assert parse_duration('1h30m') == 3600 + 1800\n    assert parse_duration('45s') == 45\n    assert parse_duration('2h') == 7200\n    assert parse_duration('1m10s') == 70\n    assert parse_duration('1h1m1s') == 3661\n",
+   "sha": "fe2934225a",
+   "ttft_ms": 386,
+   "decode_tok_s": 41.9
+  }
+ },
+ "pair_wall_s": 9.913098209013697
+}
