@@ -1,0 +1,32 @@
+main loaded in 3.3s
+none    story     run1  decode   38.6 tok/s  tokens 400  ttft   164 ms  sha adad345a9c  
+none    story     run2  decode   38.8 tok/s  tokens 400  ttft   164 ms  sha adad345a9c  
+none    code      run1  decode   38.8 tok/s  tokens 400  ttft   384 ms  sha 58b44530ab  
+none    code      run2  decode   38.8 tok/s  tokens 400  ttft   384 ms  sha 58b44530ab  
+none    copyedit  run1  decode   38.3 tok/s  tokens 133  ttft   689 ms  sha 8fe1ef2be6  
+none    copyedit  run2  decode   38.3 tok/s  tokens 133  ttft   688 ms  sha 8fe1ef2be6  
+draft loaded in 0.0s kind=mtp
+mtp-b2  story     run1  decode   50.8 tok/s  tokens 400  ttft   142 ms  sha 572686175c  tok/round 1.79  accepted 176/223
+mtp-b2  story     run2  decode   50.8 tok/s  tokens 400  ttft   143 ms  sha 572686175c  tok/round 1.79  accepted 176/223
+mtp-b2  code      run1  decode   56.2 tok/s  tokens 400  ttft   364 ms  sha 58b44530ab  tok/round 1.96  accepted 196/204
+mtp-b2  code      run2  decode   55.5 tok/s  tokens 400  ttft   361 ms  sha 58b44530ab  tok/round 1.96  accepted 196/204
+mtp-b2  copyedit  run1  decode   58.0 tok/s  tokens 133  ttft   668 ms  sha 8fe1ef2be6  tok/round 1.99  accepted 67/67
+mtp-b2  copyedit  run2  decode   55.5 tok/s  tokens 133  ttft   666 ms  sha 8fe1ef2be6  tok/round 1.99  accepted 67/67
+mtp-b3  story     run1  decode   47.3 tok/s  tokens 400  ttft   143 ms  sha 572686175c  tok/round 2.14  accepted 212/373
+mtp-b3  story     run2  decode   47.2 tok/s  tokens 400  ttft   144 ms  sha 572686175c  tok/round 2.14  accepted 212/373
+mtp-b3  code      run1  decode   61.6 tok/s  tokens 400  ttft   364 ms  sha 58b44530ab  tok/round 2.80  accepted 257/285
+mtp-b3  code      run2  decode   61.5 tok/s  tokens 400  ttft   363 ms  sha 58b44530ab  tok/round 2.80  accepted 257/285
+mtp-b3  copyedit  run1  decode   64.0 tok/s  tokens 133  ttft   668 ms  sha 8fe1ef2be6  tok/round 2.96  accepted 90/90
+mtp-b3  copyedit  run2  decode   66.6 tok/s  tokens 133  ttft   668 ms  sha 8fe1ef2be6  tok/round 2.96  accepted 90/90
+mtp-b4  story     run1  decode   38.9 tok/s  tokens 400  ttft   142 ms  sha 572686175c  tok/round 2.33  accepted 227/513
+mtp-b4  story     run2  decode   39.5 tok/s  tokens 400  ttft   144 ms  sha 572686175c  tok/round 2.33  accepted 227/513
+mtp-b4  code      run1  decode   56.1 tok/s  tokens 400  ttft   363 ms  sha 58b44530ab  tok/round 3.42  accepted 283/349
+mtp-b4  code      run2  decode   58.9 tok/s  tokens 400  ttft   364 ms  sha 58b44530ab  tok/round 3.42  accepted 283/349
+mtp-b4  copyedit  run1  decode   64.4 tok/s  tokens 133  ttft   669 ms  sha 8fe1ef2be6  tok/round 3.91  accepted 101/102
+mtp-b4  copyedit  run2  decode   64.1 tok/s  tokens 133  ttft   671 ms  sha 8fe1ef2be6  tok/round 3.91  accepted 101/102
+mtp-b6  story     run1  decode   27.3 tok/s  tokens 400  ttft   145 ms  sha 572686175c  tok/round 2.48  accepted 238/798
+mtp-b6  story     run2  decode   27.3 tok/s  tokens 400  ttft   143 ms  sha 572686175c  tok/round 2.48  accepted 238/798
+mtp-b6  code      run1  decode   46.2 tok/s  tokens 400  ttft   363 ms  sha 58b44530ab  tok/round 4.30  accepted 306/465
+mtp-b6  code      run2  decode   46.6 tok/s  tokens 400  ttft   366 ms  sha 58b44530ab  tok/round 4.30  accepted 306/465
+mtp-b6  copyedit  run1  decode   70.0 tok/s  tokens 133  ttft   670 ms  sha 8fe1ef2be6  tok/round 5.78  accepted 110/115
+mtp-b6  copyedit  run2  decode   64.9 tok/s  tokens 133  ttft   666 ms  sha 8fe1ef2be6  tok/round 5.78  accepted 110/115

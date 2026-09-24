@@ -1,0 +1,16 @@
+{
+ "prompt_tokens": 69,
+ "completion_tokens": 400,
+ "first_token_ms": 362.6990829943679,
+ "total_ms": 8995.10250001913,
+ "decode_tok_s": 46.22119480805255,
+ "text": "```python\nimport re\n\n\ndef parse_duration(s: str) -> int:\n    \"\"\"\n    Parse a duration string into total seconds.\n\n    Supported formats include combinations of hours (h), minutes (m), and seconds (s).\n    Examples:\n        '1h30m' -> 5400\n        '45s'   -> 45\n        '2h'    -> 7200\n        '1m30s' -> 90\n\n    Args:\n        s: A string representing a duration with optional h, m, s units.\n\n    Returns:\n        Total duration in seconds as an integer.\n\n    Raises:\n        ValueError: If the string is empty or contains invalid format.\n    \"\"\"\n    if not s:\n        raise ValueError(\"Duration string cannot be empty\")\n\n    pattern = r'(\\d+)([hms])'\n    matches = re.findall(pattern, s)\n\n    if not matches:\n        raise ValueError(f\"Invalid duration format: '{s}'\")\n\n    # Check if the entire string is consumed by valid tokens\n    reconstructed = ''.join(f\"{num}{unit}\" for num, unit in matches)\n    if reconstructed != s:\n        raise ValueError(f\"Invalid duration format: '{s}'\")\n\n    total_seconds = 0\n    for num, unit in matches:\n        value = int(num)\n        if unit == 'h':\n            total_seconds += value * 3600\n        elif unit == 'm':\n            total_seconds += value * 60\n        elif unit == 's':\n            total_seconds += value\n\n    return total_seconds\n\n\ndef test_parse_duration():\n    assert parse_duration('1h30m') == 5400\n    assert parse_duration('45s') == 45\n    assert parse",
+ "sha": "58b44530ab",
+ "rounds": 93,
+ "accepted": 306,
+ "drafted": 465,
+ "tokens_per_round": 4.301075268817204,
+ "arm": "mtp-b6",
+ "prompt": "code",
+ "rep": 1
+}

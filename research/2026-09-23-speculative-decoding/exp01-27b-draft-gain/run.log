@@ -1,0 +1,77 @@
+[model_kit][INFO]: Loading model from /Users/xinkai/.cache/huggingface/hub/models--lmstudio-community--Qwen3.8-27B-MLX-4bit/snapshots/6067b15cf581666a4aecf6af3afaba4bb5efc20c...
+[model_kit][INFO]: Model loaded successfully
+main loaded in 3.2s
+[generate][WARNING]: request_id missing for sequential generation; cancellation by id is disabled
+[cache_wrapper][INFO]: Prompt cache: using 0/26 tokens from cache
+[prompt_progress_reporter][INFO]: begin: is_draft=False, cached_tokens=0, total_prompt_tokens=26, prefill_tokens_processed=0
+[prompt_progress_reporter][INFO]: update: is_draft=False, prefill_tokens_processed=15
+[prompt_progress_reporter][INFO]: update: is_draft=False, prefill_tokens_processed=25
+[prompt_progress_reporter][INFO]: finish: is_draft=False, prefill_tokens_processed=None
+[generate][WARNING]: request_id missing for sequential generation; cancellation by id is disabled
+[cache_wrapper][INFO]: Prompt cache: using 15/26 tokens from cache
+[prompt_progress_reporter][INFO]: begin: is_draft=False, cached_tokens=15, total_prompt_tokens=26, prefill_tokens_processed=0
+[prompt_progress_reporter][INFO]: update: is_draft=False, prefill_tokens_processed=10
+[prompt_progress_reporter][INFO]: finish: is_draft=False, prefill_tokens_processed=None
+main   story     run1  decode   39.5 tok/s  tokens 400  from_draft   0%  ttft    262 ms
+[generate][WARNING]: request_id missing for sequential generation; cancellation by id is disabled
+[cache_wrapper][INFO]: Prompt cache: using 15/26 tokens from cache
+[prompt_progress_reporter][INFO]: begin: is_draft=False, cached_tokens=15, total_prompt_tokens=26, prefill_tokens_processed=0
+[prompt_progress_reporter][INFO]: update: is_draft=False, prefill_tokens_processed=10
+[prompt_progress_reporter][INFO]: finish: is_draft=False, prefill_tokens_processed=None
+main   story     run2  decode   39.5 tok/s  tokens 400  from_draft   0%  ttft    260 ms
+[generate][WARNING]: request_id missing for sequential generation; cancellation by id is disabled
+[cache_wrapper][INFO]: Prompt cache: using 0/69 tokens from cache
+[prompt_progress_reporter][INFO]: begin: is_draft=False, cached_tokens=0, total_prompt_tokens=69, prefill_tokens_processed=0
+[prompt_progress_reporter][INFO]: update: is_draft=False, prefill_tokens_processed=58
+[prompt_progress_reporter][INFO]: update: is_draft=False, prefill_tokens_processed=68
+[prompt_progress_reporter][INFO]: finish: is_draft=False, prefill_tokens_processed=None
+main   code      run1  decode   39.4 tok/s  tokens 400  from_draft   0%  ttft    503 ms
+[generate][WARNING]: request_id missing for sequential generation; cancellation by id is disabled
+[cache_wrapper][INFO]: Prompt cache: using 58/69 tokens from cache
+[prompt_progress_reporter][INFO]: begin: is_draft=False, cached_tokens=58, total_prompt_tokens=69, prefill_tokens_processed=0
+[prompt_progress_reporter][INFO]: update: is_draft=False, prefill_tokens_processed=10
+[prompt_progress_reporter][INFO]: finish: is_draft=False, prefill_tokens_processed=None
+main   code      run2  decode   39.4 tok/s  tokens 400  from_draft   0%  ttft    258 ms
+[generate][WARNING]: request_id missing for sequential generation; cancellation by id is disabled
+[cache_wrapper][INFO]: Prompt cache: using 0/172 tokens from cache
+[prompt_progress_reporter][INFO]: begin: is_draft=False, cached_tokens=0, total_prompt_tokens=172, prefill_tokens_processed=0
+[prompt_progress_reporter][INFO]: update: is_draft=False, prefill_tokens_processed=161
+[prompt_progress_reporter][INFO]: update: is_draft=False, prefill_tokens_processed=171
+[prompt_progress_reporter][INFO]: finish: is_draft=False, prefill_tokens_processed=None
+main   copyedit  run1  decode   39.2 tok/s  tokens 134  from_draft   0%  ttft    866 ms
+[generate][WARNING]: request_id missing for sequential generation; cancellation by id is disabled
+[cache_wrapper][INFO]: Prompt cache: using 161/172 tokens from cache
+[prompt_progress_reporter][INFO]: begin: is_draft=False, cached_tokens=161, total_prompt_tokens=172, prefill_tokens_processed=0
+[prompt_progress_reporter][INFO]: update: is_draft=False, prefill_tokens_processed=10
+[prompt_progress_reporter][INFO]: finish: is_draft=False, prefill_tokens_processed=None
+main   copyedit  run2  decode   39.4 tok/s  tokens 134  from_draft   0%  ttft    255 ms
+[model_kit][INFO]: Loading draft model from /Users/xinkai/.cache/huggingface/hub/models--mlx-community--Qwen3.5-4B-MLX-4bit/snapshots/32f3e8ecf65426fc3306969496342d504bfa13f3...
+[model_kit][INFO]: Draft model loaded
+draft 4b loaded in 2.0s
+[generate][WARNING]: request_id missing for sequential generation; cancellation by id is disabled
+[cache_wrapper][INFO]: Prompt cache: using 0/26 tokens from cache
+[prompt_progress_reporter][INFO]: begin: is_draft=False, cached_tokens=0, total_prompt_tokens=26, prefill_tokens_processed=0
+[prompt_progress_reporter][INFO]: update: is_draft=True, prefill_tokens_processed=25
+[prompt_progress_reporter][INFO]: update: is_draft=False, prefill_tokens_processed=25
+[prompt_progress_reporter][INFO]: finish: is_draft=False, prefill_tokens_processed=None
+Traceback (most recent call last):
+  File "/Users/xinkai/src/lmk/research/2026-09-23-speculative-decoding/exp01-27b-draft-gain/run.py", line 92, in <module>
+    main()
+  File "/Users/xinkai/src/lmk/research/2026-09-23-speculative-decoding/exp01-27b-draft-gain/run.py", line 83, in main
+    r = run_one(kit, toks[:], n, draft is not None)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/xinkai/src/lmk/research/2026-09-23-speculative-decoding/exp01-27b-draft-gain/run.py", line 47, in run_one
+    for r in create_generator(kit, tokens, **kwargs):
+  File "/Users/xinkai/src/lmk/.engine/mlx-engine/mlx_engine/generate.py", line 108, in __next__
+    raise value  # type: ignore[misc]
+    ^^^^^^^^^^^
+  File "/Users/xinkai/src/lmk/.engine/mlx-engine/mlx_engine/generate.py", line 127, in _generate
+    for item in stream:
+  File "/Users/xinkai/src/lmk/.engine/mlx-engine/mlx_engine/generate.py", line 607, in _sequential_generation
+    generation_result = next(stream)
+                        ^^^^^^^^^^^^
+  File "/Users/xinkai/src/lmk/.venv/lib/python3.11/site-packages/mlx_lm/generate.py", line 716, in stream_generate
+    for n, (token, logprobs, from_draft) in enumerate(token_generator):
+  File "/Users/xinkai/src/lmk/.venv/lib/python3.11/site-packages/mlx_lm/generate.py", line 531, in speculative_generate_step
+    raise ValueError(
+ValueError: Speculative decoding requires a trimmable prompt cache (got {'ArraysCache'}).
