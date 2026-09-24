@@ -67,8 +67,8 @@ def cmd_pull(_args) -> int:
         return 0
     try:
         resolve_model(source)
-        _say(f"✓ {source.repo} is already downloaded.\n  next:  lmk up")
-        return 0
+        _say(f"✓ {source.repo} is already downloaded.")
+        return _pull_draft(source)
     except ModelNotDownloaded:
         pass
 
@@ -98,7 +98,36 @@ def cmd_pull(_args) -> int:
     missing = missing_weight_files(snapshot)
     if missing:
         return _fail(f"✗ the download finished but {len(missing)} weight file(s) are missing — run `lmk pull` again", 1)
-    _say(f"\n✓ downloaded {source.repo}\n  next:  lmk up")
+    _say(f"\n✓ downloaded {source.repo}")
+    return _pull_draft(source)
+
+
+def _pull_draft(source) -> int:
+    """The draft model for speculative decoding, when lmk publishes one for this model. Small
+    (under 1 GB); a failure is said, not fatal — the model works without it."""
+    from lmk.models import DraftNotDownloaded, draft_repo_for, resolve_draft
+
+    repo = draft_repo_for(source)
+    if repo is None:
+        _say("  next:  lmk up")
+        return 0
+    try:
+        resolve_draft(source)
+        _say(f"✓ its draft model {repo} is downloaded too (speculative_decoding: true uses it).\n  next:  lmk up")
+        return 0
+    except DraftNotDownloaded:
+        pass
+    from huggingface_hub import snapshot_download
+
+    _say(f"Downloading its draft model {repo} (under 1 GB; for speculative_decoding: true)")
+    try:
+        snapshot_download(repo)
+    except KeyboardInterrupt:
+        return _fail("\nstopped. `lmk pull` continues from here.", 130)
+    except Exception as e:  # noqa: BLE001 - not fatal: the model works without its draft
+        _say(f"  (could not fetch it: {e}\n   the model works without it; `lmk pull` again later)\n  next:  lmk up")
+        return 0
+    _say(f"✓ downloaded {repo}\n  next:  lmk up")
     return 0
 
 

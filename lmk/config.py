@@ -65,6 +65,8 @@ class ModelConfig:
     thinking: Optional[bool]       # None: the template's default (Qwen: on). False: the model answers without thinking
     reasoning_effort: Optional[str]  # for templates that know it (Qwen3.8: low / medium / xhigh); None: the template's default
     kv_cache_bits: int = 16        # 16 = the model's own precision; 8 / 4 quantize the KV cache (more context, same memory)
+    speculative_decoding: bool = False  # draft tokens with the model's own draft head; needs the draft lmk pull fetched
+    draft_tokens: Optional[int] = None  # tokens drafted per round; None: the draft model's own setting
 
     def template_kwargs(self) -> dict:
         kwargs = {}
@@ -168,10 +170,17 @@ def load_config(path: Optional[Path] = None) -> LmkConfig:
     if isinstance(kv_bits, bool) or not isinstance(kv_bits, int) or kv_bits not in KV_CACHE_BITS:
         raise ConfigError(f"model.kv_cache_bits must be one of {', '.join(map(str, KV_CACHE_BITS))} "
                           f"(16 = the model's own precision; 8 halves what each token of context costs in memory) — got {kv_bits!r}")
+    speculative = model.get("speculative_decoding", False)
+    if not isinstance(speculative, bool):
+        raise ConfigError("model.speculative_decoding must be true or false")
+    draft_tokens = model.get("draft_tokens")
+    if draft_tokens is not None and (isinstance(draft_tokens, bool) or not isinstance(draft_tokens, int)
+                                     or not 1 <= draft_tokens <= 16):
+        raise ConfigError(f"model.draft_tokens must be a whole number from 1 to 16 (tokens drafted per round) — got {draft_tokens!r}")
     return LmkConfig(
         model=ModelConfig(id=_default_model_id(source), source=source,
                           context_length=context_length, thinking=thinking, reasoning_effort=effort,
-                          kv_cache_bits=int(kv_bits)),
+                          kv_cache_bits=int(kv_bits), speculative_decoding=speculative, draft_tokens=draft_tokens),
         host=str(listen.get("host") or DEFAULT_HOST),
         port=int(listen.get("port") or DEFAULT_PORT),
         cache_dir=Path(str(cache.get("dir") or lmk_home() / "cache")).expanduser(),

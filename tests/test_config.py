@@ -130,3 +130,15 @@ def test_kv_cache_bits_refuses_other_values_and_says_what_it_takes(tmp_path):
         with pytest.raises(ConfigError) as e:
             load_config(write(tmp_path, f"model: {{name: qwen3.8-27b-4bit, kv_cache_bits: {bad}}}"))
         assert "model.kv_cache_bits must be one of 16, 8, 4" in str(e.value)
+
+
+def test_speculative_decoding_is_a_switch_with_an_optional_draft_size(tmp_path):
+    cfg = load_config(write(tmp_path, "model: {name: qwen3.8-27b-4bit}"))
+    assert cfg.model.speculative_decoding is False and cfg.model.draft_tokens is None
+    cfg = load_config(write(tmp_path, "model: {name: qwen3.8-27b-4bit, speculative_decoding: true, draft_tokens: 2}"))
+    assert cfg.model.speculative_decoding is True and cfg.model.draft_tokens == 2
+    with pytest.raises(ConfigError, match="speculative_decoding must be true or false"):
+        load_config(write(tmp_path, "model: {name: qwen3.8-27b-4bit, speculative_decoding: auto}"))
+    for bad in ("0", "17", "true", "'3'"):
+        with pytest.raises(ConfigError, match="draft_tokens must be a whole number from 1 to 16"):
+            load_config(write(tmp_path, f"model: {{name: qwen3.8-27b-4bit, draft_tokens: {bad}}}"))

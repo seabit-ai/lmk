@@ -15,6 +15,7 @@ class LoadedModel:
     context_length: int  # the value in use — the engine may fit it to the memory it finds
     requested_context_length: Optional[int] = None
     kv_cache_bits: int = 16
+    speculative_decoding: bool = False
 
 
 @dataclass
@@ -22,6 +23,8 @@ class GenerationStats:
     prompt_tokens: int = 0
     cached_tokens: int = 0
     completion_tokens: int = 0
+    draft_accepted: Optional[int] = None  # speculative decoding: drafted tokens the model agreed with ...
+    draft_drafted: Optional[int] = None   # ... out of how many it drafted (shared when requests overlap)
 
 
 @dataclass
@@ -51,6 +54,9 @@ class Engine(Protocol):
     def input_modalities(self) -> list[str]: ...
     def chat_format(self) -> ChatFormat: ...
     def cache_stats(self) -> Optional[dict]: ...
+    def draft_stats(self) -> Optional[dict]:
+        """Speculative decoding since start: rounds, accepted, drafted. None without a draft model."""
+        return None
     def sampling_defaults(self) -> dict:
         """Engine kwargs used when a request names no sampling parameter (see lmk.sampling)."""
         ...
@@ -73,8 +79,9 @@ class MlxEngine:
     def __init__(self, model_id: str, model_path: Path, context_length: Optional[int] = None, *,
                  cache_dir: Optional[Path] = None, cache_max_bytes: Optional[int] = None,
                  repo: Optional[str] = None, revision: Optional[str] = None, max_parallel: int = 2,
-                 template_kwargs: Optional[dict] = None, kv_cache_bits: int = 16):
-        from mlx_engine.generate import get_runtime_load_info, load_model  # heavy import, kept out of module scope
+                 template_kwargs: Optional[dict] = None, kv_cache_bits: int = 16,
+                 draft_path: Optional[Path] = None, draft_tokens: Optional[int] = None):
+        from mlx_engine.generate import get_runtime_load_info, load_draft_model, load_model  # heavy import, kept out of module scope
 
         if not model_path.exists():
             raise FileNotFoundError(f"model path does not exist: {model_path}")
@@ -93,9 +100,13 @@ class MlxEngine:
         # the engine gets the same number as a backstop
         self._kit = load_model(model_path, max_kv_size=requested, max_seq_nums=max_parallel,
                                kv_bits=None if kv_cache_bits == 16 else kv_cache_bits)
+        self._draft_tokens = draft_tokens
+        if draft_path is not None:
+            load_draft_model(self._kit, str(draft_path))
         in_use = get_runtime_load_info(self._kit).get("context_length") or requested
         self._model = LoadedModel(id=model_id, path=model_path, context_length=in_use,
-                                  requested_context_length=requested, kv_cache_bits=kv_cache_bits)
+                                  requested_context_length=requested, kv_cache_bits=kv_cache_bits,
+                                  speculative_decoding=draft_path is not None)
         self._format = TemplateChatFormat(self._kit.tokenizer, template_kwargs)
         self._thinking = bool((template_kwargs or {}).get("enable_thinking", self._format.dialect.thinking_default))
         from lmk.sampling import model_defaults
@@ -119,6 +130,19 @@ class MlxEngine:
 
     def cache_stats(self) -> Optional[dict]:
         return self._cache_stores[-1].stats() if self._cache_stores else None
+
+    def _drafter_counters(self) -> Optional[tuple[int, int, int]]:
+        drafter = getattr(self._kit, "_drafter", None)
+        if drafter is None:
+            return None
+        return drafter.rounds, drafter.accepted, drafter.drafted
+
+    def draft_stats(self) -> Optional[dict]:
+        counters = self._drafter_counters()
+        if counters is None:
+            return None
+        rounds, accepted, drafted = counters
+        return {"rounds": rounds, "accepted": accepted, "drafted": drafted}
 
     def preflight(self, prompt_text, images_b64=None) -> Preflight:
         from mlx_engine.generate import tokenize
@@ -194,12 +218,19 @@ class MlxEngine:
         if images_b64:
             kwargs["images_b64"] = images_b64
         kwargs.update(sampling or {})  # the engine's own names: temp, top_p, top_k, seed
+        if self._draft_tokens and self._drafter_counters() is not None:
+            kwargs["num_draft_tokens"] = self._draft_tokens
 
         def pieces():
+            before = self._drafter_counters()
             for result in create_generator(self._kit, tokens, **kwargs):
                 stats.completion_tokens += len(result.tokens)
                 if result.text:
                     yield result.text
+            after = self._drafter_counters()
+            if before is not None and after is not None:
+                stats.draft_accepted = after[1] - before[1]
+                stats.draft_drafted = after[2] - before[2]
 
         return Generation(pieces=pieces(), stats=stats)
 

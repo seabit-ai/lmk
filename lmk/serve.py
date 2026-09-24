@@ -5,7 +5,7 @@ import signal
 from lmk import log
 from lmk.config import ConfigError, build_id, config_path, fingerprint, load_config
 from lmk.configfiles import refresh_example, seed_config
-from lmk.models import ModelNotDownloaded, resolve_model
+from lmk.models import DraftNotDownloaded, ModelNotDownloaded, draft_repo_for, resolve_draft, resolve_model
 
 # launchd restarts us after a non-zero exit. Problems a restart cannot fix must
 # therefore end in a CLEAN exit, or the service spins forever in the background.
@@ -27,6 +27,18 @@ def serve() -> int:
         log.error("LmkModelMissing", f"{e} — run `lmk pull`, then `lmk up`")
         return EXIT_WILL_NOT_FIX_ITSELF
 
+    draft_path = None
+    if cfg.model.speculative_decoding:
+        if draft_repo_for(cfg.model.source) is None:
+            log.error("LmkConfigInvalid", "model.speculative_decoding is on, but lmk has no draft model for this model "
+                      "(the model page says which models have one) — set it to false, or pick a model with a draft",
+                      path=str(config_path()), model=cfg.model.id)
+            return EXIT_WILL_NOT_FIX_ITSELF
+        try:
+            draft_path = resolve_draft(cfg.model.source)
+        except DraftNotDownloaded as e:
+            log.error("LmkDraftMissing", f"{e} — run `lmk pull`, then `lmk up`")
+            return EXIT_WILL_NOT_FIX_ITSELF
     from lmk.modelfit import why_it_does_not_fit
 
     too_big = why_it_does_not_fit(resolved.path)
@@ -42,7 +54,7 @@ def serve() -> int:
     engine = MlxEngine(cfg.model.id, resolved.path, cfg.model.context_length, cache_dir=cfg.cache_dir,
                        cache_max_bytes=cfg.cache_max_bytes, repo=cfg.model.source.repo, revision=resolved.revision,
                        max_parallel=cfg.requests.max_parallel, template_kwargs=cfg.model.template_kwargs(),
-                       kv_cache_bits=cfg.model.kv_cache_bits)
+                       kv_cache_bits=cfg.model.kv_cache_bits, draft_path=draft_path, draft_tokens=cfg.model.draft_tokens)
     try:
         # a value the template rejects (Qwen3.8 accepts exactly xhigh / medium / low for reasoning_effort)
         # must stop the start with a clean exit, not the first request with a 500 — and not a restart loop

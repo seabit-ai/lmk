@@ -102,7 +102,14 @@ def status_block(status: dict, url: str) -> str:
     lines = [f"✓ lmk is up    {url}/v1   (OpenAI-compatible)",
              f"  model      {model['id']} · {', '.join(model.get('input_modalities') or ['text'])} in · {context}"
              + (f" · thinking {'on' if model['thinking'] else 'off'}" if "thinking" in model else "")
-             + (f" · KV cache {model['kv_cache_bits']}-bit" if model.get("kv_cache_bits", 16) != 16 else "")]
+             + (f" · KV cache {model['kv_cache_bits']}-bit" if model.get("kv_cache_bits", 16) != 16 else "")
+             + (" · speculative decoding on" if model.get("speculative_decoding") else "")]
+    draft = status.get("draft")
+    if draft and draft.get("drafted"):
+        rate = draft["accepted"] / draft["drafted"]
+        per_round = (draft["accepted"] + draft["rounds"]) / max(1, draft["rounds"])
+        lines.append(f"  draft      {rate:.0%} of drafted tokens accepted ({draft['accepted']:,} of {draft['drafted']:,}) · "
+                     f"{per_round:.1f} tokens per round")
     if model["id"] in TESTED_MODELS:
         lines.append(f"  about it   {model_page_url(model['id'])}")
     if "sampling_defaults" in status:
