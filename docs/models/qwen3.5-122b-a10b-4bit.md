@@ -48,6 +48,10 @@ makes every cached conversation cold once.
 
 ## Known issues
 
+- **Not smarter than the 27B on our tests — faster and terser.** With thinking off on both ([intelligence eval](../../research/2026-09-23-intelligence-27b-vs-122b/README.md)):
+  math 95% each, code 91% against the 27B's 96%, format 83% against 77%, tools 100% both; it answered
+  in 6 s / 218 tokens median against 9 s / 255. It has no thinking level between off and on, so the
+  27B's best setting (`reasoning_effort: low`, code 99%, format 100%) has no counterpart here.
 - **With thinking on, any count in the request can send it into a loop:** "a 250-word story",
   "about 250 words", "exactly three bullets" — it drafts, then counts the words of its draft one by
   one, and runs out of tokens without answering (6,000 tokens, no story). `thinking: false` avoids it.
@@ -63,9 +67,11 @@ makes every cached conversation cold once.
   content exactly), a question that needs no tool (none called), an integer argument typed as an
   integer.
 
+- [intelligence eval](../../research/2026-09-23-intelligence-27b-vs-122b/README.md) (2026-09-23), thinking off, 3 runs each: math 143/150, code 109/120, format 25/30, tools 15/15.
+
 ## Not tested
 
-- Quality against the 27B on real agent work. An earlier comparison (thinking on, through another
-  server) found it slower and less obedient — that result is about thinking on, not about the model.
+- Quality against the 27B on hard, long agent work; the eval's tasks are small and the 27B ties or wins them.
+- Thinking on, at all: every listed number is thinking off.
 - Long conversations and many-tool prompts with thinking off.
 - Any Mac other than the M3 Ultra 96 GB; on less than 96 GB it does not load.

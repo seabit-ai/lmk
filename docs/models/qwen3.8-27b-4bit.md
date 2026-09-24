@@ -24,7 +24,7 @@ Text and images in, tool calls, thinking. This is the model lmk itself was built
 ```yaml
 model:
   name: qwen3.8-27b-4bit
-  # reasoning_effort: low     # this model's template knows low / medium / xhigh; default is xhigh, the highest
+  reasoning_effort: low       # its template knows low / medium / xhigh; the default (xhigh) scored worse on every test
 ```
 
 ## Thinking
@@ -39,6 +39,12 @@ makes every cached conversation cold once.
 
 ## Known issues
 
+- **The default thinking level (`xhigh`) is the worst setting we measured.** On 50 GSM8K, 40 HumanEval,
+  10 format and 5 tool tasks, 3 runs each, `xhigh` scored below `low` on every category and ran out
+  of 8,000 tokens 20 times, thinking; `low` was the best configuration of any model in the test
+  (code 99%, format 100%) at about three seconds more per answer. Hence the recommended config above.
+- **With thinking off it guesses on small arithmetic:** asked whether 91 is prime it said yes 3 times
+  in 3; with `low` thinking it got it right every time.
 - **Thinks at the top level unless told otherwise.** The template's default effort is `xhigh`: a
   system line asking the model to "think carefully, validate key assumptions, consider plausible
   alternatives" goes in front of every prompt. On one agent task it thought through a 128-item
@@ -51,6 +57,9 @@ makes every cached conversation cold once.
 
 - Integration tests: tool calls, cache hits, warm-up, image reading, cache surviving a restart — pass.
 - Runs the author's agents daily (56-tool system prompt, conversations to 70k tokens).
+
+- [intelligence eval](../../research/2026-09-23-intelligence-27b-vs-122b/README.md) (2026-09-23): thinking off / low / xhigh, 3 runs each — math 95 / 94 / 91%,
+  code 96 / 99 / 89%, format 77 / 100 / 97%, tools 100% all three.
 
 ## Not tested
 

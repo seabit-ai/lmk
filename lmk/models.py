@@ -56,8 +56,8 @@ class TestedModel:
 TESTED_MODELS: dict[str, TestedModel] = {
     "qwen3.8-27b-4bit": TestedModel(
         repo="lmstudio-community/Qwen3.8-27B-MLX-4bit", size_gb=16.1, max_context=262_144, images=True,
-        thinking="on by default at the top level; `reasoning_effort: low` or `medium` to think less",
-        good_for="the default; lmk was built and measured on it",
+        thinking="on by default at the top level; set `reasoning_effort: low` — it tested best",
+        good_for="the default; best-tested with `reasoning_effort: low`",
         fit=MemoryFit(14.95, 65536, 10240, 48), speed=Speed(323, 53_000, 39.5)),
     "qwen3.8-27b-8bit": TestedModel(
         repo="lmstudio-community/Qwen3.8-27B-MLX-8bit", size_gb=29.5, max_context=262_144, images=True,
@@ -75,7 +75,7 @@ TESTED_MODELS: dict[str, TestedModel] = {
     "qwen3.5-122b-a10b-4bit": TestedModel(
         repo="mlx-community/Qwen3.5-122B-A10B-4bit", size_gb=69.6, max_context=262_144, images=True,
         thinking="on/off only; **use `thinking: false`** — on, it can think for thousands of tokens on a small task",
-        good_for="the biggest here; MoE, faster than the 27B",
+        good_for="the biggest here; MoE, faster than the 27B but not smarter on our tests",
         fit=MemoryFit(64.82, 24576, 6144, 64, measured_context_on_96gb=165_888), speed=Speed(753, 89_000, 60.5)),
     "qwen3.5-122b-a10b-48gb": TestedModel(
         repo="baa-ai/Qwen3.5-122B-A10B-RAM-48GB-MLX", size_gb=47.2, max_context=262_144, images=True,
