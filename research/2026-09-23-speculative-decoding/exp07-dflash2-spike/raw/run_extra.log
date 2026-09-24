@@ -1,0 +1,9 @@
+dflash2-b8    story      decode   38.3 tok/s  tokens 400  sha adad345a9c  tok/round 2.04  accepted 204/392
+dflash2-b8    code       decode   44.6 tok/s  tokens 400  sha 58b44530ab  tok/round 4.94  accepted 319/446
+dflash2-b8    copyedit   decode   58.4 tok/s  tokens 133  sha 8fe1ef2be6  tok/round 7.39  accepted 115/117
+dflash2-q4    story      decode   38.6 tok/s  tokens 400  sha adad345a9c  tok/round 2.02  accepted 202/396
+dflash2-q4    code       decode   43.5 tok/s  tokens 400  sha 58b44530ab  tok/round 4.30  accepted 307/369
+dflash2-q4    copyedit   decode   50.0 tok/s  tokens 133  sha 8fe1ef2be6  tok/round 4.93  accepted 106/106
+dflash2-q4-b8 story      decode   40.2 tok/s  tokens 400  sha adad345a9c  tok/round 2.02  accepted 202/396
+dflash2-q4-b8 code       decode   48.2 tok/s  tokens 400  sha 58b44530ab  tok/round 4.94  accepted 319/450
+dflash2-q4-b8 copyedit   decode   62.8 tok/s  tokens 133  sha 8fe1ef2be6  tok/round 7.39  accepted 115/117

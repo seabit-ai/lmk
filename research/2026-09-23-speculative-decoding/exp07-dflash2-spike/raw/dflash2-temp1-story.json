@@ -1,0 +1,16 @@
+{
+ "prompt_tokens": 26,
+ "completion_tokens": 400,
+ "first_token_ms": 140.36045799730346,
+ "total_ms": 11266.70237496728,
+ "decode_tok_s": 35.86084294168978,
+ "text": "The sea did not care for Elias’s name. It only cared for his rhythm. For forty years, Elias had lived in the shadow of the Great Beacon, a solitary sentinel perched on the jagged lip of Blackwood Promontory. His world was reduced to three elements: salt spray, the groan of old wood, and the relentless, breathing dark of the ocean.\n\nMost nights, the work was routine. He would climb the one hundred and twelve iron steps, polish the Fresnel lens until it sparkled like frozen stars, and ignite the oil. The beam swept across the water, a slow, hypnotic lullaby that pushed the darkness back. But this night was different. The storm did not arrive with thunder; it descended in silence, a thick, suffocating fog that swallowed the horizon and even the shore below.\n\nElias wiped the lens, his hands trembling not from cold, but from a sudden, primal fear. A boat was causing trouble. He couldn’t see it, but he could hear it—the sickening crunch of keel on rock, the muffled screams of men fighting the tide. The fog was too dense for the light to help them; the beam would only serve to disorient, blinding them with its own brilliance.\n\nWith a grim resolve, Elias descended the stairs. He grabbed his oil lantern and a heavy rope bag, fighting against the howling wind that tore at the door. He stumbled onto the rocks, the waves crashing inches from his boots. He raised the lantern, swinging it not as a signal, but as a beacon of hope. \"Here! Here!\" he roared, his voice torn to shreds by the gale.\n\nThrough the mist, shapes emerged. He hauled the first man up by the arm, then the second, ignoring the stinging salt in his eyes. When the fog finally lifted an hour later, the lighthouse beam continued its eternal sway. Elias returned inside",
+ "sha": "a59a17e4b0",
+ "rounds": 206,
+ "accepted": 193,
+ "drafted": 411,
+ "tokens_per_round": 1.941747572815534,
+ "arm": "dflash2-temp1",
+ "prompt": "story",
+ "rep": 1
+}

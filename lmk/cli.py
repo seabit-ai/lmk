@@ -35,7 +35,7 @@ def _fail(text: str, code: int) -> int:
 
 def _config() -> LmkConfig:
     if seed_config(config_path()):
-        _say(f"  wrote {render.short_path(str(config_path()))} (all comments — lmk runs fine without touching it)")
+        _say(f"  wrote {render.short_path(str(config_path()))} (every value in use is written out; edit it, then `lmk up`)")
     refresh_example(config_path())
     return load_config()
 

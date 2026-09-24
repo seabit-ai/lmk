@@ -1,7 +1,8 @@
 """~/.lmk/config.yaml — every key is optional (design OOBE §C).
 
-Defaults live here, in code. The seeded config.yaml is all comments, so no
-default value is ever frozen onto the user's disk.
+Defaults live here, in code. The seeded config.yaml writes every value in use (OOBE C4) —
+copied from these defaults once, then the file is the user's; a missing key still means
+the default here.
 """
 import hashlib
 import os

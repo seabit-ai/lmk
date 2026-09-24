@@ -62,12 +62,15 @@ The default model takes about 16 GB of memory for its weights, more as conversat
 on a smaller/larger Mac is something you may want to leave feedback to let us know.
 
 ```sh
-git clone https://github.com/seabit-ai/lmk && cd lmk && ./install.sh
+brew install seabit-ai/tap/lmk
 lmk up
 lmk bench
 ```
 
-`./install.sh` takes about 20 seconds and puts everything under `~/.lmk`. `lmk up` downloads the
+Without Homebrew: `git clone https://github.com/seabit-ai/lmk && cd lmk && ./install.sh` (or
+`curl -fsSL https://raw.githubusercontent.com/seabit-ai/lmk/main/install.sh | sh`). Either way lmk
+lives under `~/.lmk` — its own Python, the engine, the config, the cache; Homebrew holds only the
+command — and the first `lmk` command sets that up (about 1 GB, a minute). `lmk up` downloads the
 model if it is not on this Mac yet (16 GB, once, into the shared HuggingFace cache; one progress line
 with the percentage, the rate and the time left; interrupt any time, it resumes), then starts lmk now
 and at every login. It returns when the model is loaded and has answered a test request, and prints
@@ -332,14 +335,15 @@ with the raw numbers: [`research/2026-09-20-local-server-survey`](research/2026-
 
 ## Upgrading and removing
 
-Upgrade: `git pull && ./install.sh && lmk up`. Your cache is kept across upgrades.
+Upgrade: `brew upgrade lmk && lmk up` (the next `lmk` command installs the new build into `~/.lmk`),
+or from a clone `git pull && ./install.sh && lmk up`. Your cache is kept across upgrades.
 
 `install.sh` run from a clone installs that clone. Run without one
 (`curl -fsSL https://raw.githubusercontent.com/seabit-ai/lmk/main/install.sh | sh`) it installs
 the newest [release](https://github.com/seabit-ai/lmk/releases); `LMK_REF=main` (or a tag, or a
 commit) picks something else. `lmk status` shows which build is running.
 
-Remove: `lmk down`, then delete `~/.lmk`. The model stays in the HuggingFace cache until you
+Remove: `lmk down`, then delete `~/.lmk` (and `brew uninstall lmk`). The model stays in the HuggingFace cache until you
 delete it there (`hf cache rm`, or remove its folder under `~/.cache/huggingface/hub`).
 
 ## Working on lmk

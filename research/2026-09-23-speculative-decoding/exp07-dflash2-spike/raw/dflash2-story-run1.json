@@ -1,0 +1,16 @@
+{
+ "prompt_tokens": 26,
+ "completion_tokens": 400,
+ "first_token_ms": 137.77437497628853,
+ "total_ms": 10307.566749979742,
+ "decode_tok_s": 39.23383932406629,
+ "text": "Elias had not spoken a full sentence in three years. The silence of the North Cape lighthouse was not empty; it was heavy, a physical weight that pressed against his eardrums and settled in his bones. He was a man carved from the same granite as the cliff, weathered by salt spray and the relentless, howling wind that battered the tower’s white walls.\n\nEvery evening, as the sun bled out into the churning gray sea, Elias climbed the one hundred and twelve iron steps. His knees ached, a dull, familiar throb that served as a metronome for his existence. At the top, the lens waited. It was a massive, intricate eye of glass and brass, cold to the touch. He lit the wick, a ritual as sacred as prayer. The flame caught, dancing with a fierce, orange vitality, and then the great lens began its slow, hypnotic rotation. *Click-whir. Click-whir.* The beam swept out over the dark, treacherous waters, a lighthouse of hope cutting through the storm.\n\nOne night, the storm was particularly vicious. Lightning split the sky, illuminating the jagged rocks below. Elias watched the beam cut through the rain, a solitary finger pointing the way home for unseen ships. He felt a strange, profound connection to the darkness. He was not just keeping a light; he was holding back the void.\n\nThen, a small boat appeared, struggling against the waves. It was a fishing trawler, its lights flickering erratically. Elias gripped the railing, his knuckles white. He didn’t shout. He didn’t need to. He simply watched, his eyes fixed on the vessel, his presence a silent anchor. As the trawler limped into the harbor, safe and sound, Elias exhaled. The storm raged on, but the light held. In that moment, the silence in the tower wasn’t empty",
+ "sha": "adad345a9c",
+ "rounds": 196,
+ "accepted": 204,
+ "drafted": 392,
+ "tokens_per_round": 2.0408163265306123,
+ "arm": "dflash2",
+ "prompt": "story",
+ "rep": 1
+}
