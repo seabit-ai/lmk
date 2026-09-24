@@ -126,3 +126,11 @@ So IMO this is a must have feature." 裁决：**持久化到 SSD 的前缀 cache
 理由：API 的 prompt cache 几分钟过期、按量收费、有上限；本地 SSD 上几百 GB 的会话历史随时约 1 秒接上，重启也在——这是本地模型能赢 API 的少数几格之一。
 推论：Splash 那种"cache 只在 GPU 内存"（SPL-004）不是可选方案；若同机实测（`research/2026-09-24-splash/exp01`）证明内存热层命中明显快于磁盘还原，
 形态是**两层**（热的在内存、全量在 SSD），不是二选一。
+
+## 2026-09-24 补记：DFlash 2 与引擎升级（owner 推翻 exp07 的 no-go）
+exp07（SPD-011）在 M3 Ultra 上量到 DFlash2 code 1.26× < MTP 头 1.49×，我裁了 no-go。owner 不同意，理由三条，我认：① 客户的机器多是 48 GB 的 M4 Pro/Max，
+那里目标步慢、草稿开销摊薄（mlx-dspark 在 M4 Pro 报 2.30×），一台 M3 Ultra 的数不能代表；② DFlash2 三题逐字节一致（MTP 头散文分叉），是产品性质；
+③ 上游 mlx-vlm 0.6.16 已有 DFlash2，升级本身就该做（KV 量化与 Metal 泄漏修复、DSpark、Gemma 4 的草稿器），fork 落后越久越贵。
+裁决：**A. 引擎升级 mlx-vlm 到 0.6.16（或更高）→ B. DFlash2 作为第二种草稿器接进批处理路径。** 用户面：`speculative_decoding: true` 不变，
+新增 `model.draft: mtp | dflash2`，缺省由模型页决定（27B 先仍是 mtp，M4 Pro 的实测进来再改），用户可覆盖——"哪个草稿器"是我们封装的知识。
+M4 Pro 的数从早期用户的 `lmk bench` 行来（行里带开关，README 请贴 issue）。被否：等 Splash 修好 / 等更多机器再决定——等不来数据，先把路铺好。
