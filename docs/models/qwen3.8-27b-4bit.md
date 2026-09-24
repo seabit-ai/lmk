@@ -27,10 +27,9 @@ model:
   reasoning_effort: low       # its template knows low / medium / xhigh; the default (xhigh) scored worse on every test
   kv_cache_bits: 8            # halves what each token of context costs: 122k tokens on a 32 GB Mac instead of 85k.
                               # Scored the same as 16-bit with 60k tokens of context in front of every task (below)
+  speculative_decoding: true  # the model's own draft head (lmk pull fetches it): code answers come out identical,
+                              # 1.5x faster when one request is being answered; scored the same on our tests (below)
 ```
-
-Speculative decoding (`speculative_decoding: true`, the model's own draft head that `lmk pull` fetches) is
-measured but not recommended yet: see Tested.
 
 ## Thinking
 
@@ -83,7 +82,9 @@ makes every cached conversation cold once.
 - **`speculative_decoding: true`** (2026-09-23, `research/2026-09-23-speculative-decoding/exp03-engine-wiring/`):
   greedy decoding 39 → 58 tok/s on code and copy-editing (output identical), 39 → 46 tok/s on a story (output differs);
   with the model's default sampling 39 → 50 tok/s on code (69% of drafted tokens accepted). Chat tests with thinking
-  on and off pass with the draft loaded. Whether answers under default sampling score the same is being measured.
+  on and off pass with the draft loaded. With the draft on and the model's default sampling, one request at a time
+  (`research/2026-09-23-speculative-decoding/exp04-eval-with-draft/`): code 40/40, instruct 20/20, tools 10/10 —
+  the same as without; 86% of drafted tokens accepted, 7 s per answer instead of 9.
 
 
 ## Not tested

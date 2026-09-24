@@ -65,8 +65,10 @@ lmk 的引擎路线图归自己：**投机解码与磁盘 cache 同时有，KV �
     单测锁表照旧。否决一格两数（给工程师看的）。
   - k8v4：mlx-vlm 批处理路径的 uniform cache 只有一个 `bits`（K、V 同宽），分开要改 mlx-vlm 约十行——第二个补丁对象；
     turboquant 路径已支持分开但质量无数据。做法：长上下文评测臂多跑一个 k8v4 变体，有数再决定值不值得多背一个补丁。
-- **落地状态（09-23）**：fork 建好（owner），分支 `lmk` 上 KV 量化接线 d3650db；lmk 分支 `kv-cache-bits`。验收 2/3/4 过，
-  itest 8 位开关各 4/4 + 重启还原过；**第 1 条（长上下文评测臂）未做**，做完才写模型页推荐。数据 `research/2026-09-23-kv-cache-quant/`。
+- **落地状态（09-23 深夜）**：KV 量化验收四条全过（长上下文评测 kv8 40/40、20/20、10/10），27B-4bit 页推荐 `kv_cache_bits: 8`；
+  投机解码接线在引擎 `lmk` 分支 2839cfa（§5 方案照做，两处修正：Qwen 每个 prompt 都有 rope_deltas、验证前向要带 rope_deltas 而不是清位置状态），
+  验收两条全过（代码贪心逐字节相同；单流默认采样评测 40/40、20/20、10/10，接受率 86%），27B-4bit 页推荐 `speculative_decoding: true`。
+  **并发限制**：多请求时 mlx-vlm 批量回滚在行长不齐时出错，只单请求投机（backlog）。数据 `research/2026-09-23-speculative-decoding/exp03、exp04`。
 - **投机解码 SAD（09-23，四点全部已裁）**：
   1. 草稿器从哪来——**已裁 B**：Seabit 在 HF 发拆好的草稿器（`seabit-ai/Qwen3.8-27B-MTP-draft`，Apache 2.0 允许再分发），`lmk pull` 直接下。
      A（lmk pull 现场下原版分片拆）留作兜底；否决 C（让用户自己拆：把最难的一步推给用户）。**卡点：HF 上还没有 `seabit-ai` 组织**，

@@ -1,1 +1,1 @@
-draft stats {'rounds': 349, 'accepted': 425, 'drafted': 698}
+draft stats {'rounds': 14108, 'accepted': 24283, 'drafted': 28216}

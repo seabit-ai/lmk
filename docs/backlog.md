@@ -38,6 +38,10 @@
   `~/.cache/lmk-research/qwen3.8-27b-mtp-draft/`）→ 27B 模型页写推荐。本地测试用的草稿器已按 HF cache 目录结构摆在
   `models--seabit-ai--Qwen3.8-27B-MTP-draft/`（软链）。
   **真机结果（exp03）**：贪心下 code/copyedit 与普通解码逐字节一致，story 与 mlx-vlm 自己的循环同样分叉；采样 temp 1 接受率 87%。
+  **验收全过（exp03 + exp04）**：单流草稿开着、默认采样：code 40/40、instruct 20/20、tools 10/10，接受率 86%，7 s/答对 9 s。27B-4bit 页已写推荐
+  `speculative_decoding: true` 与 `kv_cache_bits: 8`（后者：exp02 长上下文 40/40、20/20、10/10）。引擎 `lmk` 分支已 ff 到 2839cfa，ENGINE_COMMIT 指过去。
+  **待 owner**：合并 lmk 分支 `speculative-decoding`；push 引擎 `lmk` 分支（先）再 push lmk；建 HF 组织 `seabit-ai` 后我上传草稿器
+  （在此之前 `lmk pull` 会说"could not fetch it"，`speculative_decoding: true` 启动即报错说去 pull）；tag v0.7.0。
   **并发限制**：两条请求行长不齐时 mlx-vlm 的批量回滚不对（同 prompt 正确、code+story 第 53 个 token 分叉），MVP 只在单请求解码时投机
   （`speculative.py` 的 `MAX_ROUND_ROWS = 1`），多请求退回普通解码；复现脚本 `pair_probe`（scratch，内容见 exp03 README 第 5 条）。查清再开。
 - 智能评测 `research/2026-09-23-intelligence-27b-vs-122b/`：三个 27B 臂已完（xhigh 最差、low 最好），122B-off 臂在跑；
