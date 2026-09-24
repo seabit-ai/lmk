@@ -24,16 +24,17 @@ With the draft on, code and copy-editing come out 1.5x faster and token for toke
 prose 15% faster, and there the answer can differ from plain decoding's after a few dozen tokens (greedy is
 exact up to floating-point ties, not bit-exact). See "Tested" for how this was measured.
 
-Two drafts exist for this model; `model.draft` picks one, the default is `mtp`:
+Two drafts exist for this model; `model.draft` picks one, the default is `dflash2`:
 
 | `draft:` | what it is | download | prose | code | copy-editing |
 |---|---|---|---|---|---|
-| `mtp` (default) | the model's own multi-token-prediction head, split out of the original weights | 0.8 GB | 45 tok/s (1.2x) | 60 (1.5x) | 59 (1.5x) |
-| `dflash2` | z-lab's DFlash 2, a block-diffusion drafter trained for this model, published by Inco AI | 4.0 GB | 40 (1.0x) | 59 (1.5x) | 72 (1.8x) |
+| `mtp` | the model's own multi-token-prediction head, split out of the original weights | 0.8 GB | 45 tok/s (1.2x) | 60 (1.5x) | 59 (1.5x) |
+| `dflash2` (default) | z-lab's DFlash 2, a block-diffusion drafter trained for this model (Inco AI), quantized by us to 4 bits | 1.1 GB | 47 (1.2x) | 68 (1.7x) | 80 (2.1x) |
 
-On the M3 Ultra they are a wash; on a Mac with less memory bandwidth (M4 Pro, 48 GB) DFlash 2 should pull ahead,
-because its draft step costs the same while the model's own step is slower — we have not measured that: a
-`lmk bench` row from such a Mac would settle it.
+Measured at 16-bit KV cache, greedy; with `kv_cache_bits: 8` the numbers are the same within 2%. On the M3 Ultra
+`dflash2` is faster on code and copy-editing and even on prose; the output is the same as with `mtp` (identical to
+plain decoding on code and copy-editing). On a Mac with less memory bandwidth (M4 Pro, 48 GB) it should pull further
+ahead — not measured: a `lmk bench` row from such a Mac would settle it.
 
 ## Recommended configuration
 
@@ -107,8 +108,9 @@ makes every cached conversation cold once.
   every engine version before). mlx-vlm's own bit-exact verifier was measured at 109 ms per 8-token block against 47 for a
   plain forward and is not used. Integration tests 5/5 with `kv_cache_bits: 8` and the draft; the on-disk cache written by
   the previous engine restores.
-- **`draft: dflash2`** (2026-09-24, `research/2026-09-23-speculative-decoding/exp12-dflash2-in-engine/`): greedy code and
-  copy-editing identical to plain decoding at 16 bits (1.51x and 1.83x), a story diverges (1.0x: on prose few guesses land);
+- **`draft: dflash2`** (2026-09-24, `research/2026-09-23-speculative-decoding/exp12-dflash2-in-engine/`, `exp14-dflash2-4bit/`):
+  the drafter at 4 bits gives code 1.71x and copy-editing 2.05x, the bf16 original 1.51x and 1.83x — same tokens accepted
+  per round, same output. Greedy code and copy-editing identical to plain decoding at 16 bits, a story diverges;
   with `kv_cache_bits: 8` code also diverges after some tokens. 81% of drafted tokens accepted on code with the model's
   default sampling. Integration tests 5/5 with the DFlash 2 draft and `kv_cache_bits: 8`. The drafter only sees the part of
   the prompt this request computed — a prefix that came back from the disk cache is not fed to it — which costs nothing

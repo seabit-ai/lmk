@@ -42,8 +42,7 @@
   `speculative_decoding: true` 与 `kv_cache_bits: 8`（后者：exp02 长上下文 40/40、20/20、10/10）。引擎 `lmk` 分支已 ff 到 2839cfa，ENGINE_COMMIT 指过去。
   `speculative-decoding` 已合 main（2026-09-24，bda4425）。**09-24 发现并修了：两个开关同开会崩**（exp05，SPD-009）——fork `lmk` 分支 7a1e17f，
   `ENGINE_COMMIT` 已指过去（分支 `config-example`）。owner 机器已按推荐配置在跑（kv8 + 草稿 + thinking off）。
-  **待 owner**：push 引擎 `lmk` 分支到 7a1e17f（先）再 push lmk；建 HF 组织 `seabit-ai` 后我上传草稿器
-  （在此之前 `lmk pull` 会说"could not fetch it"，`speculative_decoding: true` 启动即报错说去 pull）；tag v0.7.0。
+  草稿器已发布到 HF 组织 `seabit-ai`（见下）；v0.7.0 已打。
   **并发限制**：两条请求行长不齐时 mlx-vlm 的批量回滚不对（同 prompt 正确、code+story 第 53 个 token 分叉），MVP 只在单请求解码时投机
   （`speculative.py` 的 `MAX_ROUND_ROWS = 1`），多请求退回普通解码；复现脚本 `pair_probe`（scratch，内容见 exp03 README 第 5 条）。查清再开。
 - 智能评测 `research/2026-09-23-intelligence-27b-vs-122b/`：三个 27B 臂已完（xhigh 最差、low 最好），122B-off 臂在跑；
@@ -109,7 +108,9 @@
   分支 `dflash2`（研究 + `ENGINE_COMMIT` + 文档数）待 owner 合并；owner 机器已装、bench 60.1 code / 45.0 prose。
 - **B 做了**（分支 `dflash2-wiring`，fork `lmk-dflash` 3b493b5，SPD-018）：DFlash2 接进批处理路径，`model.draft: mtp | dflash2`，27B 页两种草稿器的数并列，缺省仍 mtp
   （M3 Ultra 上打平；M4 Pro 的数等用户的 bench 行）。待 owner 授权合并；合并后 fork `lmk` ff 到 3b493b5 再 push。
-- 没做：DFlash2 草稿器的 4 位版（1.1 GB 对 4 GB，速度不变，exp07）——要发布到 `seabit-ai` 的 HF 组织；`lmk up` 现在下的是 incoai 的 bf16。
+- **草稿器已发布**（2026-09-24）：HF 组织 `seabit-ai`（头像 `docs/brand/seabit-ai-logo.png`）；`seabit-ai/Qwen3.8-27B-MTP-draft`（0.8 GB）、
+  `seabit-ai/Qwen3.8-27B-DFlash2-4bit`（1.1 GB，exp14：比 bf16 快，code 1.71×）。两者 sha256 与本机一致，空 HF cache 里经 lmk 的下载路径都取得到。
+  27B-4bit 的缺省草稿器改成 `dflash2`（owner 2026-09-24；5/6/8 位版仍 mtp，DFlash2 只在 4 位上量过）。
   多行投机（两条请求同时投机）仍关着（MAX_ROUND_ROWS = 1）；散文接受率低时自动退回普通解码（own-engine 补记三的附带规则）没做。
 
 ## 已裁但还没做的

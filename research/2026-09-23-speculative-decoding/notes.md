@@ -72,3 +72,11 @@
   `dflash_round` 用 mlx-vlm 的 `draft_block` / 贪心 walk / 采样 walk，校验走普通前向 + 记录回滚（exp11），单行投机。M3 Ultra 上：code 1.51×（一致）、
   copyedit 1.83×（一致）、story 1.01×（分叉）——与 MTP 头打平（1.53 / 1.51 / 1.20）。kv8 下 code 分叉（量化注意力 L>1 与 L=1 不位级一致）。
   用户面 `model.draft: mtp | dflash2`，缺省按模型页（27B 先 mtp）。DFlash2 的 config `model_type` 写的是目标家族名（"qwen3"），种类看 `architectures` / `dflash_config`。
+- **SPD-019 本机校验价目表与一轮的账（2026-09-24，exp13，m3u 60 核，27B-4bit）**：一次前向校验 T 个 token，4k 上下文 T=1/3/5/8/16 = 29 / 40 / 57 / 87 / 149 ms（台阶状）；
+  32k 上 T=5 70 ms、**T=6 143 ms**（注意力掉出融合向量 SDPA，比 4k 同宽多 69 ms）。小批量内核（avlp12 fast_qmm）把 4k 的 T=6–8 压到 63 ms、T=9–16 压到 90 ms，
+  argmax 全同；但引擎现在的校验宽度是 MTP 3、DFlash2 5（mlx-vlm 的块大小自适应只看接受率，code 约 80% 时停在 5），都不进内核窗口 ⇒ 端到端 +0%，暂不进 fork。
+  引擎一轮：MTP 45.7 ms（校验 38.9）、DFlash2 70.9 ms（草稿 15.4 + 校验 54.5 + 回滚 0.7）。加宽后单 token 校验价更低（宽 3 约 13 ms/token → 宽 16 加内核约 5.6），
+  所以加宽（后缀草稿的长匹配、DFlash2 块 8）+ 内核 + SDPA 切块是一套，各自单上都不赚。
+- **SPD-020 DFlash2 的 4 位版在引擎路径上比 bf16 快（2026-09-24，exp14）**：code 1.71×（67.6 tok/s）、copyedit 2.05×、story 1.18×，接受与一致性同 bf16；
+  bf16 是 1.51 / 1.83 / 1.01。exp07 的"4 位不改速度"只在 exact verifier 占大头的循环里成立。M3 Ultra 上 4 位 DFlash2 赢 MTP 头（1.53 / 1.51 / 1.20）于 code 与复述。
+  发布为 `seabit-ai/Qwen3.8-27B-DFlash2-4bit`（本机 `~/.cache/lmk-research/qwen3.8-27b-dflash2-4bit`，模型卡与 SHA256SUMS 已备）。

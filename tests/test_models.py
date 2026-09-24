@@ -150,15 +150,17 @@ def _draft_in_cache(tmp_path, monkeypatch, complete=True):
 
 def test_the_27b_has_a_draft_and_other_sources_have_none(tmp_path, monkeypatch):
     from lmk.models import DraftNotDownloaded, draft_repo_for, resolve_draft
-    assert draft_repo_for(ModelSource("name", "qwen3.8-27b-4bit")) == "seabit-ai/Qwen3.8-27B-MTP-draft"
+    assert draft_repo_for(ModelSource("name", "qwen3.8-27b-4bit")) == "seabit-ai/Qwen3.8-27B-DFlash2-4bit"   # the page's default
+    assert draft_repo_for(ModelSource("name", "qwen3.8-27b-4bit"), "mtp") == "seabit-ai/Qwen3.8-27B-MTP-draft"
+    assert draft_repo_for(ModelSource("name", "qwen3.8-27b-8bit")) == "seabit-ai/Qwen3.8-27B-MTP-draft"       # measured with mtp only
     assert draft_repo_for(ModelSource("name", "gemma-4-e4b-4bit")) is None
     assert draft_repo_for(ModelSource("repo", "org/Some-Model")) is None
     assert resolve_draft(ModelSource("repo", "org/Some-Model")) is None
     monkeypatch.setattr("huggingface_hub.constants.HF_HUB_CACHE", str(tmp_path))
     with pytest.raises(DraftNotDownloaded, match="seabit-ai/Qwen3.8-27B-MTP-draft is not downloaded"):
-        resolve_draft(ModelSource("name", "qwen3.8-27b-4bit"))
+        resolve_draft(ModelSource("name", "qwen3.8-27b-4bit"), "mtp")
     _draft_in_cache(tmp_path, monkeypatch, complete=False)
     with pytest.raises(DraftNotDownloaded):
-        resolve_draft(ModelSource("name", "qwen3.8-27b-4bit"))
+        resolve_draft(ModelSource("name", "qwen3.8-27b-4bit"), "mtp")
     snap = _draft_in_cache(tmp_path, monkeypatch)
-    assert resolve_draft(ModelSource("name", "qwen3.8-27b-4bit")) == snap
+    assert resolve_draft(ModelSource("name", "qwen3.8-27b-4bit"), "mtp") == snap

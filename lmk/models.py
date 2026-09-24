@@ -58,9 +58,10 @@ class TestedModel:
 # Qwen3.8's own MTP draft head, split out of the original weights (the MLX conversions drop it);
 # one drafter serves every quantization of the 27B, compatibility is by hidden size and vocabulary.
 DRAFT_QWEN38_27B = "seabit-ai/Qwen3.8-27B-MTP-draft"
-# z-lab's DFlash 2 drafter for the same model (Inco AI publishes it; 2B parameters, bf16 4 GB): a
-# block-diffusion drafter that guesses more tokens per round than the MTP head (research exp07–exp12).
-DRAFT_QWEN38_27B_DFLASH2 = "incoai/Qwen3.8-27B-DFlash2"
+# z-lab's DFlash 2 drafter for the same model (Inco AI publishes the bf16 original, 4 GB), quantized by
+# us to 4 bits (1.1 GB): same acceptance, same output, same speed on the M3 Ultra (research exp07, exp14).
+# A block-diffusion drafter that guesses more tokens per round than the MTP head.
+DRAFT_QWEN38_27B_DFLASH2 = "seabit-ai/Qwen3.8-27B-DFlash2-4bit"
 DRAFTS_QWEN38_27B = {"mtp": DRAFT_QWEN38_27B, "dflash2": DRAFT_QWEN38_27B_DFLASH2}
 DRAFT_KINDS = ("mtp", "dflash2")
 
@@ -72,7 +73,7 @@ TESTED_MODELS: dict[str, TestedModel] = {
         thinking="on by default at the top level; set `reasoning_effort: low` — it tested best",
         good_for="the default; best-tested with `reasoning_effort: low`",
         fit=MemoryFit(14.95, 65536, 10240, 48, full_kv_bytes_per_token_8bit=34816), speed=Speed(323, 53_000, 39.5),
-        drafts=DRAFTS_QWEN38_27B, default_draft="mtp", kv_cache_bits=8),
+        drafts=DRAFTS_QWEN38_27B, default_draft="dflash2", kv_cache_bits=8),
     "qwen3.8-27b-8bit": TestedModel(
         repo="lmstudio-community/Qwen3.8-27B-MLX-8bit", size_gb=29.5, max_context=262_144, images=True,
         thinking="same as the 4-bit",
