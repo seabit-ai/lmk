@@ -59,7 +59,7 @@ class TestedModel:
 # one drafter serves every quantization of the 27B, compatibility is by hidden size and vocabulary.
 DRAFT_QWEN38_27B = "seabit-ai/Qwen3.8-27B-MTP-draft"
 # z-lab's DFlash 2 drafter for the same model (Inco AI publishes the bf16 original, 4 GB), quantized by
-# us to 4 bits (1.1 GB): same acceptance, same output, same speed on the M3 Ultra (research exp07, exp13).
+# us to 4 bits (1.1 GB): same acceptance, same output, same speed on the M3 Ultra (research exp07, exp14).
 # A block-diffusion drafter that guesses more tokens per round than the MTP head.
 DRAFT_QWEN38_27B_DFLASH2 = "seabit-ai/Qwen3.8-27B-DFlash2-4bit"
 DRAFTS_QWEN38_27B = {"mtp": DRAFT_QWEN38_27B, "dflash2": DRAFT_QWEN38_27B_DFLASH2}

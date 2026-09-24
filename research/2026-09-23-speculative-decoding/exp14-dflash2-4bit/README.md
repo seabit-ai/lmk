@@ -1,4 +1,4 @@
-# exp13：DFlash 2 草稿器 4 位版在引擎路径上——和 bf16 一样吗
+# exp14：DFlash 2 草稿器 4 位版在引擎路径上——和 bf16 一样吗
 
 日期 2026-09-24。m3u。fork `lmk` 3b493b5。草稿器 `~/.cache/lmk-research/qwen3.8-27b-dflash2-4bit`（`mlx_vlm.convert -q --q-bits 4`，4.5 bit，1.08 GB），
 要发布成 `seabit-ai/Qwen3.8-27B-DFlash2-4bit`。对照 exp12（bf16，同引擎、同脚本）。

@@ -1,4 +1,4 @@
-"""exp13 smoke: exp12 with the 4-bit DFlash 2 drafter (KV_BITS env: 8 to quantize the cache).
+"""exp14 smoke: exp12 with the 4-bit DFlash 2 drafter (KV_BITS env: 8 to quantize the cache).
 
 usage: smoke.py <out_dir>   (needs PYTHONPATH=<engine worktree>:<lmk>)
 Runs each prompt greedy without and with the drafter (B=1), the sampled acceptance rate, then two prompts at once (B=2).

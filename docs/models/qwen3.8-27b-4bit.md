@@ -108,7 +108,7 @@ makes every cached conversation cold once.
   every engine version before). mlx-vlm's own bit-exact verifier was measured at 109 ms per 8-token block against 47 for a
   plain forward and is not used. Integration tests 5/5 with `kv_cache_bits: 8` and the draft; the on-disk cache written by
   the previous engine restores.
-- **`draft: dflash2`** (2026-09-24, `research/2026-09-23-speculative-decoding/exp12-dflash2-in-engine/`, `exp13-dflash2-4bit/`):
+- **`draft: dflash2`** (2026-09-24, `research/2026-09-23-speculative-decoding/exp12-dflash2-in-engine/`, `exp14-dflash2-4bit/`):
   the drafter at 4 bits gives code 1.71x and copy-editing 2.05x, the bf16 original 1.51x and 1.83x — same tokens accepted
   per round, same output. Greedy code and copy-editing identical to plain decoding at 16 bits, a story diverges;
   with `kv_cache_bits: 8` code also diverges after some tokens. 81% of drafted tokens accepted on code with the model's
