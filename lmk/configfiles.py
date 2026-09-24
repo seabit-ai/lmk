@@ -21,7 +21,7 @@ _WHAT = {
     "reasoning_effort": "Qwen3.8: low / medium / xhigh (other models: their page); server-wide",
     "kv_cache_bits": "16 = the model's own precision; 8 = about twice the context on the same Mac",
     "speculative_decoding": "a draft guesses tokens, the model checks them (`lmk up` fetches the draft)",
-    "draft": "which drafter: mtp (the model's own head) or dflash2 (z-lab's, guesses more per round); default: the model page's",
+    "draft": "which drafter: mtp (the model's own head, 0.8 GB) or dflash2 (z-lab's, 1.1 GB, guesses more per round); default: the model page's",
     "thinking": "answer without thinking; default: the template's own (on for Qwen, off for Gemma)",
     "context_length": "default: the model's maximum, lowered if memory is short; `lmk status` shows the value in use",
     "draft_tokens": "advanced: tokens the draft guesses per round (default: the draft's own)",
