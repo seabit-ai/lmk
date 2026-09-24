@@ -19,7 +19,7 @@ from lmk.memory import get_current_memory
 from lmk.config import ConfigError, LmkConfig, app_dir, config_path, fingerprint, load_config
 from lmk.configfiles import refresh_example, seed_config
 from lmk.report import ISSUES_URL
-from lmk.models import TESTED_MODELS, ModelNotDownloaded, missing_weight_files, resolve_model
+from lmk.models import ModelNotDownloaded, missing_weight_files, resolve_model
 
 READY_TIMEOUT_S = 600  # a cold load of a large model from a slow disk; normally ~10s
 
@@ -62,6 +62,7 @@ def _tail(path: Path, lines: int) -> list[str]:
 # ---- pull ----
 
 def cmd_pull(_args) -> int:
+    """Download now, start later. `lmk up` downloads what is missing by itself (owner, 2026-09-24)."""
     cfg = _config()
     source = cfg.model.source
     if source.kind == "path":
@@ -70,70 +71,105 @@ def cmd_pull(_args) -> int:
     try:
         resolve_model(source)
         _say(f"✓ {source.repo} is already downloaded.")
-        return _pull_draft(source)
     except ModelNotDownloaded:
-        pass
+        code = _download_model(source, again="lmk pull")
+        if code:
+            return code
+    code = _download_draft(source, again="lmk pull", required=False)
+    if code:
+        return code
+    _say("  next:  lmk up")
+    return 0
 
-    # mlx-engine, once imported, replaces snapshot_download with a function that always
-    # raises. Nothing on the `lmk pull` path imports the engine; keep it that way.
-    from huggingface_hub import HfApi, snapshot_download
-    from huggingface_hub.constants import HF_HUB_CACHE
 
+def _download_model(source, again: str) -> int:
+    """The configured model into the shared HuggingFace cache, with one progress line.
+    `again` is the command that resumes an interrupted download. Returns an exit code, 0 = done.
+    Nothing on this path imports mlx-engine (it breaks huggingface_hub's download)."""
+    from lmk import pull
+
+    name = source.value if source.kind == "name" else source.repo
     try:
-        info = HfApi().model_info(source.repo, files_metadata=True)
+        total = pull.total_bytes(source.repo)
     except Exception as e:  # network, auth, a repo that does not exist: all end the same way for the user
         return _fail(f"✗ cannot reach {source.repo} on HuggingFace: {e}", 1)
-    total = sum(s.size or 0 for s in info.siblings)
-    Path(HF_HUB_CACHE).mkdir(parents=True, exist_ok=True)
-    free = shutil.disk_usage(HF_HUB_CACHE).free
+    cache = pull.repo_cache_dir(source.repo).parent
+    cache.mkdir(parents=True, exist_ok=True)
+    free = shutil.disk_usage(cache).free
     if free < total * 1.05:
-        return _fail(f"✗ not enough disk space: {source.repo} is {render.human_bytes(total)}, "
-                     f"{render.human_bytes(free)} free in {render.short_path(str(HF_HUB_CACHE))}", 1)
-    _say(f"Downloading {source.repo} — {render.human_bytes(total)} into {render.short_path(str(HF_HUB_CACHE))}\n"
-         "(the shared HuggingFace cache; interrupt any time, `lmk pull` picks up where it stopped)\n")
+        return _fail(f"✗ not enough disk space: {source.repo} is {pull.gb(total)}, "
+                     f"{pull.gb(free)} free in {render.short_path(str(cache))}", 1)
+    origin = "" if name == source.repo else f" from {source.repo}"
+    _say(f"{name} is not on this Mac yet — downloading {pull.gb(total)}{origin} into "
+         f"{render.short_path(str(cache))}\n(the shared HuggingFace cache; interrupt any time, `{again}` continues where it stopped)")
     try:
-        snapshot = Path(snapshot_download(source.repo))
+        snapshot = pull.download(source.repo, label=name, total=total, say=_say)
     except KeyboardInterrupt:
-        return _fail("\nstopped. `lmk pull` continues from here.", 130)
-    except Exception as e:
-        return _fail(f"\n✗ download failed: {e}\n  `lmk pull` continues from where it stopped.", 1)
+        return _fail(f"\nstopped. `{again}` continues from here.", 130)
+    except pull.DownloadFailed as e:
+        return _fail(f"✗ download failed: {e}\n  `{again}` continues from where it stopped.", 1)
     missing = missing_weight_files(snapshot)
     if missing:
-        return _fail(f"✗ the download finished but {len(missing)} weight file(s) are missing — run `lmk pull` again", 1)
-    _say(f"\n✓ downloaded {source.repo}")
-    return _pull_draft(source)
+        return _fail(f"✗ the download finished but {len(missing)} weight file(s) are missing — run `{again}` again", 1)
+    _say(f"✓ downloaded {source.repo}")
+    return 0
 
 
-def _pull_draft(source) -> int:
-    """The draft model for speculative decoding, when lmk publishes one for this model. Small
-    (under 1 GB); a failure is said, not fatal — the model works without it."""
+def _download_draft(source, again: str, required: bool) -> int:
+    """The draft model for speculative decoding, when lmk publishes one for this model (under
+    1 GB). `required`: the config has speculative_decoding on, so without it lmk cannot start."""
+    from lmk import pull
     from lmk.models import DraftNotDownloaded, draft_repo_for, resolve_draft
 
     repo = draft_repo_for(source)
     if repo is None:
-        _say("  next:  lmk up")
         return 0
     try:
         resolve_draft(source)
-        _say(f"✓ its draft model {repo} is downloaded too (speculative_decoding: true uses it).\n  next:  lmk up")
         return 0
     except DraftNotDownloaded:
         pass
-    from huggingface_hub import snapshot_download
-
-    _say(f"Downloading its draft model {repo} (under 1 GB; for speculative_decoding: true)")
     try:
-        snapshot_download(repo)
+        total = pull.total_bytes(repo)
+        pull.download(repo, label="its draft model (for speculative_decoding: true)", total=total, say=_say)
     except KeyboardInterrupt:
-        return _fail("\nstopped. `lmk pull` continues from here.", 130)
-    except Exception as e:  # noqa: BLE001 - not fatal: the model works without its draft
-        _say(f"  (could not fetch it: {e}\n   the model works without it; `lmk pull` again later)\n  next:  lmk up")
+        return _fail(f"\nstopped. `{again}` continues from here.", 130)
+    except Exception as e:  # noqa: BLE001 - the model works without its draft, unless the config demands it
+        if required:
+            return _fail(f"✗ speculative_decoding is on, but its draft model {repo} could not be downloaded: {e}\n"
+                         f"  try `{again}` again, or set speculative_decoding: false", 3)
+        _say(f"  (could not fetch the draft model {repo}: {e} — the model works without it; `{again}` again later)")
         return 0
-    _say(f"✓ downloaded {repo}\n  next:  lmk up")
+    _say(f"✓ downloaded {repo}")
     return 0
 
 
 # ---- up ----
+
+class _StopWithCode(Exception):
+    def __init__(self, code: int):
+        super().__init__(code)
+        self.code = code
+
+
+def _resolve_or_download(cfg: LmkConfig):
+    """The model directory; downloads the model (and, when the config needs it, its draft) first
+    when they are not on this Mac. Raises _StopWithCode with the exit code of a failed download."""
+    try:
+        resolved = resolve_model(cfg.model.source)
+    except ModelNotDownloaded as e:
+        if cfg.model.source.kind == "path":
+            raise
+        code = _download_model(cfg.model.source, again="lmk up")
+        if code:
+            raise _StopWithCode(code) from e
+        resolved = resolve_model(cfg.model.source)
+    if cfg.model.speculative_decoding:
+        code = _download_draft(cfg.model.source, again="lmk up", required=True)
+        if code:
+            raise _StopWithCode(code)
+    return resolved
+
 
 def _why_it_did_not_start(cfg: LmkConfig, since_ms: Optional[int] = None) -> str:
     """The log lines of THIS start. The previous life's LmkReady and its traceback are still in
@@ -199,12 +235,13 @@ def cmd_up(_args) -> int:
         return _fail("✗ this is a source checkout. The service must not run from a working tree (switching\n"
                      "  branches would take it down) — install it first:  make install", 2)
     try:
-        resolved = resolve_model(cfg.model.source)
+        resolved = _resolve_or_download(cfg)
     except ModelNotDownloaded as e:
-        tested = TESTED_MODELS.get(cfg.model.source.value) if cfg.model.source.kind == "name" else None
-        return _fail(render.not_downloaded_block(e.repo, e.why, tested.size_gb if tested else None), 3)
+        return _fail(f"✗ {e}", 3)
     except FileNotFoundError as e:
         return _fail(f"✗ {e}", 3)
+    except _StopWithCode as e:
+        return e.code
 
     from lmk.modelfit import why_it_does_not_fit
 
@@ -442,8 +479,8 @@ def _engine_commit_on_disk(app: Path) -> str:
 def main(argv: Optional[list[str]] = None) -> int:
     parser = argparse.ArgumentParser(prog="lmk", description="One local model, always on, for your agent.")
     sub = parser.add_subparsers(dest="command", required=True, metavar="command")
-    sub.add_parser("pull", help="download the configured model (explicit; nothing else ever downloads)")
-    sub.add_parser("up", help="start lmk now and at every login; returns when it answers")
+    sub.add_parser("pull", help="download the configured model now (lmk up does it too when the model is missing)")
+    sub.add_parser("up", help="start lmk now and at every login — downloads the model first if it is missing; returns when it answers")
     p = sub.add_parser("status", help="is it up, what each request is doing, memory, cache, the last few answers")
     p.add_argument("--json", action="store_true", help="the raw status document")
     p.add_argument("-w", "--watch", action="store_true", help="keep the screen up to date (macOS has no `watch`)")

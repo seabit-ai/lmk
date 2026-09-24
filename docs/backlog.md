@@ -92,6 +92,12 @@
 - 那 4 条 "Skipping prompt cache save" 警告：查清并修了（SPD-010，与 kv8 无关，是投机轮快照早一个 token）——fork e1239e1，lmk 分支 `spec-snapshot-fix`
   只改 `ENGINE_COMMIT` + 文档。owner 机器上装了，同题三次 0 条。待 owner 授权合并；push 顺序照旧（引擎先）。
 
+## 2026-09-24 OOBE 两步（owner："start long run"）：① `lmk up` 自动下载（分支 `auto-pull`，OOBE C6）→ ② brew tap → ③ DFlash2 spike
+- ① 做了：`lmk/pull.py`（一行进度：百分比、字节、实测速率、剩余时间；非终端每 10% 一行）；`lmk up` 缺模型/草稿器先下；`lmk pull` 保留。
+  待 owner 授权合并。② brew：`seabit-ai/homebrew-tap` 一个 formula（源码进 Cellar + `lmk` 壳，第一次运行用 install.sh 自举 `~/.lmk`）。
+  ③ DFlash2：mlx-vlm v0.6.16 已有 `drafters/dflash2`；先 spike 量 27B-4bit 在 M3 Ultra 上的一致性/接受长度/tok/s，再决定升级引擎 + 接第二种草稿器。
+- Splash 评论稿在会话里（#130），等 owner 用 bruce-claw 登 `gh` 后贴。
+
 ## 已裁但还没做的
 - **kitten 发 `X-Lmk-Purpose` / `X-Lmk-Ref-Id`**：2026-09-20 已在 kitten repo 的分支 `llm-call-identity` 上实现并验证
   （用途 `turn` / `compaction` / `groom`；refId = `<sessionId>/<actionRef>`，groom = `groom/<project>/<startMs>`；未声明的不发头）。

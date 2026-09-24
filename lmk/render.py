@@ -230,11 +230,6 @@ def connect_block(url: str, model: dict) -> str:
     ])
 
 
-def not_downloaded_block(repo: str, why: str, size_gb: Optional[float]) -> str:
-    size = f" ({size_gb:.0f} GB)" if size_gb else ""
-    return f"✗ model {why}: {repo}{size}\n  run:  lmk pull"
-
-
 def log_line(raw: str) -> str:
     """One line of lmk.jsonl → `HH:MM:SS LEVEL Event  message  key=value …`"""
     import datetime

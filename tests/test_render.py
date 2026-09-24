@@ -110,11 +110,6 @@ def test_connect_block_is_ready_to_paste():
     assert "about 3s per 1,000 tokens" in text
 
 
-def test_not_downloaded_names_the_one_command_to_run():
-    assert render.not_downloaded_block("org/m", "not downloaded", 16.1) == \
-        "✗ model not downloaded: org/m (16 GB)\n  run:  lmk pull"
-
-
 def test_a_wildcard_listen_address_is_shown_as_something_a_client_can_dial():
     assert render.base_url("0.0.0.0", 1235) == "http://127.0.0.1:1235"
     assert render.base_url("192.168.1.5", 80) == "http://192.168.1.5:80"

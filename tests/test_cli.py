@@ -21,16 +21,35 @@ def test_first_run_writes_the_two_config_files(home, capsys):
     assert "lmk is not running" in capsys.readouterr().out
 
 
-def test_up_refuses_to_start_without_the_model_and_names_the_command(home, capsys, monkeypatch):
+def test_up_downloads_a_missing_model_first_and_stops_with_the_download_error_if_it_fails(home, capsys, monkeypatch):
+    """Owner, 2026-09-24: the pull is not a step the user should have to know about, as long as
+    the wait shows as a percentage. `lmk pull` stays for downloading now and starting later."""
     from lmk.models import ModelNotDownloaded
 
-    def not_there(source):
-        raise ModelNotDownloaded(source.repo, "not downloaded")
+    calls = []
 
-    monkeypatch.setattr(cli, "resolve_model", not_there)
+    def resolve(source):
+        calls.append("resolve")
+        if calls.count("resolve") == 1:
+            raise ModelNotDownloaded(source.repo, "not downloaded")
+        raise FileNotFoundError("stop here: the rest of up needs a real model")
+
+    monkeypatch.setattr(cli, "resolve_model", resolve)
+    monkeypatch.setattr(cli, "_download_model", lambda source, again: calls.append(("download", source.repo, again)) or 0)
     assert cli.main(["up"]) == 3
-    assert capsys.readouterr().err == \
-        "✗ model not downloaded: lmstudio-community/Qwen3.8-27B-MLX-4bit (16 GB)\n  run:  lmk pull\n"
+    assert calls == ["resolve", ("download", "lmstudio-community/Qwen3.8-27B-MLX-4bit", "lmk up"), "resolve"]
+    assert "stop here" in capsys.readouterr().err
+    calls.clear()
+    monkeypatch.setattr(cli, "_download_model", lambda source, again: calls.append("download") or 1)   # the download failed
+    assert cli.main(["up"]) == 1
+    assert calls == ["resolve", "download"]                     # not resolved again, nothing started
+
+
+def test_up_with_a_model_path_that_is_missing_does_not_try_to_download(home, tmp_path, capsys):
+    home.mkdir(parents=True)
+    (home / "config.yaml").write_text(f"model: {{path: {tmp_path / 'nowhere'}}}\n")
+    assert cli.main(["up"]) == 3
+    assert "nowhere" in capsys.readouterr().err
 
 
 def test_up_names_whoever_holds_the_port_and_stops(home, tmp_path, capsys, monkeypatch):
