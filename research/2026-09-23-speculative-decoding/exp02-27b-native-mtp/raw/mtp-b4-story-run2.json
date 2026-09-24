@@ -1,0 +1,16 @@
+{
+ "prompt_tokens": 26,
+ "completion_tokens": 400,
+ "first_token_ms": 143.71995895635337,
+ "total_ms": 10236.603166966233,
+ "decode_tok_s": 39.532806610042506,
+ "text": "Elias had not spoken a full sentence in three years. The silence of the North Cape lighthouse was not empty; it was heavy, a physical weight that pressed against his eardrums and settled into the marrow of his bones. He was a man carved from the same granite as the cliff, weathered by salt and solitude, his eyes the pale, washed-out blue of a winter sea.\n\nEvery evening, as the sun bled out over the horizon, Elias climbed the one hundred and twelve iron steps to the lantern room. The climb was a ritual, a penance. His knees ached, a dull, persistent throb that served as a metronome for his existence. At the top, he polished the Fresnel lens until it gleamed like a diamond, catching the dying light of the day. Then, he struck the match. The flame caught, and the beam swept out into the darkness, a powerful, rhythmic pulse that cut through the fog.\n\nOne night, the storm came with a vengeance. The wind screamed like a dying animal, and the waves crashed against the base of the tower with the force of artillery. The light flickered, sputtering in the draft. Elias’s heart hammered against his ribs. He wasn’t afraid of the storm; he was afraid of the dark. He was afraid that if the light failed, the sea would swallow the world whole.\n\nHe huddled by the lens, shielding the flame with his body, his breath coming in ragged gasps. For hours, he fought the elements, a tiny human spark against the vast, indifferent ocean. When the dawn finally broke, painting the sky in bruises of purple and gold, the storm had passed. The sea lay still, a mirror reflecting the new day.\n\nElias descended the stairs, his legs trembling. He walked to the small radio in the kitchen, a device he rarely used. He pressed the transmit button, his voice cracking from dis",
+ "sha": "572686175c",
+ "rounds": 172,
+ "accepted": 227,
+ "drafted": 513,
+ "tokens_per_round": 2.3255813953488373,
+ "arm": "mtp-b4",
+ "prompt": "story",
+ "rep": 2
+}
