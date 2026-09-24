@@ -22,6 +22,7 @@ class MemoryFit:
     attention_bytes_per_context_per_step: int
     rotating_constant_gib: float = 0.0
     rotating_bytes_per_prefill_step_token: int = 0
+    full_kv_bytes_per_token_8bit: int = 0   # the probe's number with kv_cache_bits: 8; 0 = not measured
     measured_context_on_96gb: int = 0   # what the engine actually fitted on the M3 Ultra 96 GB, when it was less than the maximum
 
 
@@ -46,6 +47,7 @@ class TestedModel:
     fit: MemoryFit
     speed: Speed
     draft_repo: Optional[str] = None  # the draft model for speculative decoding lmk publishes for it, if any
+    kv_cache_bits: int = 16           # the model page's recommendation; the README table's ctx column uses it
 
     @property
     def loaded_gib(self) -> float:
@@ -63,7 +65,8 @@ TESTED_MODELS: dict[str, TestedModel] = {
         repo="lmstudio-community/Qwen3.8-27B-MLX-4bit", size_gb=16.1, max_context=262_144, images=True,
         thinking="on by default at the top level; set `reasoning_effort: low` — it tested best",
         good_for="the default; best-tested with `reasoning_effort: low`",
-        fit=MemoryFit(14.95, 65536, 10240, 48), speed=Speed(323, 53_000, 39.5), draft_repo=DRAFT_QWEN38_27B),
+        fit=MemoryFit(14.95, 65536, 10240, 48, full_kv_bytes_per_token_8bit=34816), speed=Speed(323, 53_000, 39.5),
+        draft_repo=DRAFT_QWEN38_27B, kv_cache_bits=8),
     "qwen3.8-27b-8bit": TestedModel(
         repo="lmstudio-community/Qwen3.8-27B-MLX-8bit", size_gb=29.5, max_context=262_144, images=True,
         thinking="same as the 4-bit",
@@ -139,7 +142,10 @@ def context_on(m: TestedModel, mac_gb: int) -> int:
     available = working_set - ENGINE_RESERVE_BYTES - fixed
     if available <= 0:
         return 0
-    per_token = f.full_kv_bytes_per_token + f.prompt_input_bytes_per_token + f.attention_bytes_per_context_per_step * SMALLEST_PREFILL_STEP
+    kv_bytes = f.full_kv_bytes_per_token
+    if m.kv_cache_bits == 8 and f.full_kv_bytes_per_token_8bit:
+        kv_bytes = f.full_kv_bytes_per_token_8bit
+    per_token = kv_bytes + f.prompt_input_bytes_per_token + f.attention_bytes_per_context_per_step * SMALLEST_PREFILL_STEP
     tokens = int(available // per_token) // ENGINE_ALLOCATION_STEP * ENGINE_ALLOCATION_STEP
     return min(m.max_context, max(ENGINE_MIN_CONTEXT, tokens))
 
@@ -178,6 +184,8 @@ def tested_models_markdown() -> str:
             m = TESTED_MODELS[name]
             default = " (default)" if name == DEFAULT_MODEL_NAME else ""
             ctx = " / ".join(_k(context_on(m, g)) for g in sizes)
+            if m.kv_cache_bits != 16:
+                ctx += f" with `kv_cache_bits: {m.kv_cache_bits}`"
             out.append(f"| [`{name}`](docs/models/{name}.md){default} | {m.good_for} | {ctx} tokens | "
                        f"{'yes' if m.images else 'no'} | "
                        f"{_k(m.speed.cached_prefill_tok_s)} / {m.speed.prefill_tok_s:,} / {m.speed.decode_tok_s:.0f} |")

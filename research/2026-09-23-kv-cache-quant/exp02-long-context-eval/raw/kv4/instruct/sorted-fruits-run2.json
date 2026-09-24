@@ -1,0 +1,14 @@
+{
+ "content": "apple\nbanana\ncherry\ndate",
+ "reasoning": "The user wants four fruits in alphabetical order, one per line, all lowercase, no numbering or bullets, nothing else.\n\nLet me pick four fruits and sort them alphabetically:\n- apple\n- banana\n- cherry\n- date\n\nThat's already alphabetical: a, b, c, d. Perfect.\n",
+ "tool_calls": [],
+ "finish": "stop",
+ "tokens": 76,
+ "ms": 9744,
+ "raw_message": {
+  "role": "assistant",
+  "content": "apple\nbanana\ncherry\ndate",
+  "reasoning_content": "The user wants four fruits in alphabetical order, one per line, all lowercase, no numbering or bullets, nothing else.\n\nLet me pick four fruits and sort them alphabetically:\n- apple\n- banana\n- cherry\n- date\n\nThat's already alphabetical: a, b, c, d. Perfect.\n"
+ },
+ "pass": true
+}

@@ -1,0 +1,14 @@
+{
+ "content": "<result>Canberra</result>",
+ "reasoning": "The user is asking for the capital of Australia, which is Canberra. They want it in <result></result> tags with nothing outside.\n",
+ "tool_calls": [],
+ "finish": "stop",
+ "tokens": 40,
+ "ms": 3706,
+ "raw_message": {
+  "role": "assistant",
+  "content": "<result>Canberra</result>",
+  "reasoning_content": "The user is asking for the capital of Australia, which is Canberra. They want it in <result></result> tags with nothing outside.\n"
+ },
+ "pass": true
+}

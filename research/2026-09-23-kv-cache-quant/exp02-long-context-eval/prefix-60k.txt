@@ -1,0 +1,4061 @@
+===== lmk/__init__.py =====
+"""lmk (lm-kitten): a local LLM server on the open-source mlx-engine."""
+
+===== lmk/__main__.py =====
+import sys
+
+from lmk.cli import main
+
+if __name__ == "__main__":
+    sys.exit(main())
+
+===== lmk/admission.py =====
+"""One queue in front of the engine, first come first served (design memory-guard §F).
+
+The request at the head passes four rules, in order, or stays at the head — and
+everyone behind it waits too:
+  1. fewer than max_parallel requests are being answered
+  2. nobody is being answered, or this request has little new prompt to read
+     (reading a long prompt stalls every request that is writing — research MG-006)
+  3. its tokens fit next to the ones already admitted
+  4. this Mac is not critically short of memory
+Nothing is sent to the client before admission, so a request that waited too long
+gets an honest 503.
+"""
+import threading
+from collections import deque
+from dataclasses import dataclass, field
+from typing import Optional
+
+from lmk import log
+from lmk.clock import get_current_clock
+from lmk.memory import get_current_memory
+
+# One prefill step of the engine (DEFAULT_PREFILL_STEP_SIZE): a prompt whose uncached
+# part fits in it is read in a single scheduler turn and stalls nobody.
+SHORT_PROMPT_TOKENS = 2048
+
+
+class QueueFull(Exception):
+    def __init__(self, waiting: int):
+        super().__init__(f"{waiting} requests are already waiting")
+        self.waiting = waiting
+
+
+class WaitedTooLong(Exception):
+    def __init__(self, waited_s: int, reason: str):
+        super().__init__(f"waited {waited_s}s and could not start: {reason}")
+        self.waited_s = waited_s
+        self.reason = reason
+
+
+@dataclass(eq=False)
+class Ticket:
+    purpose: Optional[str]
+    ref_id: Optional[str]
+    tokens: int                        # prompt + what it may generate: its share of the KV memory
+    uncached_tokens: Optional[int]     # None: unknown — treated as long
+    entered_mono_ms: int = 0
+    reason: str = ""
+    admitted: bool = field(default=False)
+
+
+class Admission:
+    def __init__(self, max_parallel: int, max_queue: int, max_wait_seconds: int,
+                 token_budget: Optional[int] = None, tick_seconds: float = 1.0):
+        self._max_parallel = max_parallel
+        self._max_queue = max_queue
+        self._max_wait_ms = max_wait_seconds * 1000
+        self._token_budget = token_budget    # None: the engine reported no memory fit; rule 3 is off
+        self._tick_seconds = tick_seconds    # rule 4 changes with the outside world: re-read while anyone waits
+        self._cond = threading.Condition()
+        self._queue: deque[Ticket] = deque()
+        self._admitted: list[Ticket] = []
+        self._was_critical = False
+        self._critical_since_ms = 0
+
+    def _blocked(self, t: Ticket) -> Optional[str]:
+        if len(self._admitted) >= self._max_parallel:
+            return f"{len(self._admitted)} requests are being answered (requests.max_parallel)"
+        if self._admitted and (t.uncached_tokens is None or t.uncached_tokens > SHORT_PROMPT_TOKENS):
+            new = "a long" if t.uncached_tokens is None else f"{t.uncached_tokens:,} tokens of"
+            return f"another request is being answered, and this one has {new} new prompt to read first"
+        if self._admitted and self._token_budget is not None:
+            in_use = sum(a.tokens for a in self._admitted)
+            if in_use + t.tokens > self._token_budget:
+                return (f"not enough memory for both: {in_use:,} tokens in use, this one needs {t.tokens:,}, "
+                        f"{self._token_budget:,} fit")
+        memory = get_current_memory().read()
+        self._note_pressure(memory.critical, memory.free_percent)
+        if memory.critical:
+            return f"this Mac is critically short of memory ({memory.free_percent}% free)"
+        return None
+
+    def _note_pressure(self, critical: bool, free_percent: int) -> None:
+        now = get_current_clock().mono_ms()
+        if critical and not self._was_critical:
+            self._critical_since_ms = now
+            log.warn("LmkMemoryCritical", "memory pressure is critical; new requests wait", freePercent=free_percent)
+        elif self._was_critical and not critical:
+            log.info("LmkMemoryRecovered", "memory pressure is no longer critical",
+                     lastedMs=now - self._critical_since_ms, freePercent=free_percent)
+        self._was_critical = critical
+
+    def enter(self, ticket: Ticket) -> None:
+        clock = get_current_clock()
+        with self._cond:
+            if len(self._queue) >= self._max_queue:
+                raise QueueFull(len(self._queue))
+            ticket.entered_mono_ms = clock.mono_ms()
+            self._queue.append(ticket)
+            try:
+                while True:
+                    if self._queue[0] is ticket:
+                        reason = self._blocked(ticket)
+                        if reason is None:
+                            self._queue.popleft()
+                            ticket.admitted = True
+                            ticket.reason = ""
+                            self._admitted.append(ticket)
+                            self._cond.notify_all()  # the next in line may fit too
+                            return
+                        ticket.reason = reason
+                    else:
+                        ticket.reason = "requests ahead of it are waiting"
+                    waited_ms = clock.mono_ms() - ticket.entered_mono_ms
+                    if waited_ms >= self._max_wait_ms:
+                        raise WaitedTooLong(waited_ms // 1000, ticket.reason)
+                    self._cond.wait(timeout=min(self._tick_seconds, (self._max_wait_ms - waited_ms) / 1000))
+            except BaseException:
+                if ticket in self._queue:
+                    self._queue.remove(ticket)
+                self._cond.notify_all()
+                raise
+
+    def leave(self, ticket: Ticket) -> None:
+        with self._cond:
+            if ticket in self._admitted:
+                self._admitted.remove(ticket)
+            self._cond.notify_all()
+
+    def counts(self) -> dict:
+        with self._cond:
+            return {"answering": len(self._admitted), "max_parallel": self._max_parallel,
+                    "waiting": len(self._queue), "max_queue": self._max_queue,
+                    "tokens_in_memory": sum(a.tokens for a in self._admitted), "token_budget": self._token_budget}
+
+    def waiting(self) -> list[dict]:
+        now = get_current_clock().mono_ms()
+        with self._cond:
+            return [{"purpose": t.purpose, "ref_id": t.ref_id, "reason": t.reason,
+                     "waited_ms": now - t.entered_mono_ms} for t in self._queue]
+
+===== lmk/bench.py =====
+"""`lmk bench`: the numbers a user feels, measured from outside against the running service.
+
+A warm-up first, then three probes, temperature 0, one at a time:
+  warm-up       — a tiny request. After hours idle, or after other models were loaded, the first
+                  touch of the weights pages them back in (measured: 37 s instead of 12.8 s for the
+                  cold probe, research/2026-09-22-more-models BNC-001). Reported on its own line.
+  cold prefill  — a fixed ~4k-token text behind a random number, so no cached prefix can match
+                  (the cache restores up to the longest common prefix; a fresh first token makes that zero)
+  cache hit     — the same request again: the whole prompt comes back from disk
+  decode        — a short prompt, 400 tokens out
+Timing is client-side (HTTP included): what an agent on this Mac would see.
+The result is one Markdown row for docs/benchmarks.md."""
+import json
+import random
+import subprocess
+import urllib.request
+from dataclasses import dataclass
+from typing import Callable, Optional
+
+from lmk.clock import get_current_clock
+
+TEMPLATE_SENTENCE = "The quick brown fox jumps over the lazy dog. "
+TEMPLATE_REPEATS = 400          # ~4,060 tokens on Qwen3.8 (research/2026-09-22-more-models exp01)
+DECODE_TOKENS = 400
+DECODE_PROMPT = "Write a 250-word story about a lighthouse keeper."
+
+
+def probe_prompt(nonce: str) -> str:
+    return f"Benchmark run {nonce}.\n{TEMPLATE_SENTENCE * TEMPLATE_REPEATS}Reply with the single word: done"
+
+
+def new_seed() -> int:
+    return random.randint(1, 999_999)
+
+
+def nonce_for(seed: int) -> str:
+    """Ten digits from the seed: fixed length, so the token count does not move. The same seed
+    gives the same prompt — run bench again with it after a restart and the cold probe hits the cache."""
+    rng = random.Random(seed)
+    return "".join(str(rng.randint(0, 9)) for _ in range(10))
+
+
+@dataclass
+class Probe:
+    prompt_tokens: int
+    cached_tokens: int
+    completion_tokens: int
+    first_token_ms: int
+    total_ms: int
+    restore_ms: Optional[int] = None   # server-side: the cached part coming back from disk (lmk's usage chunk)
+
+
+@dataclass
+class BenchResult:
+    seed: int
+    warmup: Probe
+    cold: Probe
+    hit: Probe
+    decode: Probe
+
+    @property
+    def cold_was_cold(self) -> bool:
+        """False when the seed was reused and the 'cold' prompt came back from the cache.
+        A few cached tokens are still cold: the turn header before the nonce is the same in every
+        prompt and some families' caches can hand back that much (Gemma: 10 tokens, exp05); the
+        cache works in 256-token blocks, so less than one block means nothing after the header matched."""
+        return self.cold.cached_tokens < 256
+
+    @property
+    def cold_prefill_tok_s(self) -> float:
+        return (self.cold.prompt_tokens - self.cold.cached_tokens) / self.cold.first_token_ms * 1000
+
+    @property
+    def hit_first_token_s(self) -> float:
+        return self.hit.first_token_ms / 1000
+
+    @property
+    def hit_tok_s(self) -> Optional[float]:
+        """How fast the cached part comes back from disk, from the server's own restore timing.
+        None when the server did not report it (an older lmk)."""
+        if self.hit.restore_ms is None or self.hit.cached_tokens == 0:
+            return None
+        return self.hit.cached_tokens / max(1, self.hit.restore_ms) * 1000
+
+    @property
+    def decode_tok_s(self) -> float:
+        return self.decode.completion_tokens / max(1, self.decode.total_ms - self.decode.first_token_ms) * 1000
+
+
+StreamFn = Callable[[dict], "list[tuple[int, dict]]"]   # body -> [(ms since start, chunk)]
+
+
+def stream_via_http(url: str, timeout_s: float = 900) -> StreamFn:
+    clock = get_current_clock()
+
+    def run(body: dict):
+        req = urllib.request.Request(f"{url}/v1/chat/completions", data=json.dumps(body).encode(), method="POST",
+                                     headers={"Content-Type": "application/json", "X-Lmk-Purpose": "bench"})
+        started = clock.mono_ms()
+        out = []
+        with urllib.request.urlopen(req, timeout=timeout_s) as r:
+            for line in r:
+                if line.startswith(b"data: ") and line.strip() != b"data: [DONE]":
+                    out.append((clock.mono_ms() - started, json.loads(line[6:])))
+        return out
+    return run
+
+
+def _probe(stream: StreamFn, model_id: str, messages: list, max_tokens: int) -> Probe:
+    chunks = stream({"model": model_id, "stream": True, "temperature": 0, "max_tokens": max_tokens, "messages": messages})
+    first = next(ms for ms, c in chunks
+                 if c.get("choices") and any(k in c["choices"][0]["delta"] for k in ("content", "reasoning_content")))
+    usage_chunk = next(c for _, c in chunks if c.get("usage"))
+    usage = usage_chunk["usage"]
+    return Probe(prompt_tokens=usage["prompt_tokens"],
+                 cached_tokens=(usage.get("prompt_tokens_details") or {}).get("cached_tokens", 0),
+                 completion_tokens=usage["completion_tokens"], first_token_ms=first, total_ms=chunks[-1][0],
+                 restore_ms=(usage_chunk.get("lmk") or {}).get("restore_ms"))
+
+
+def run_bench(stream: StreamFn, model_id: str, seed: Optional[int] = None,
+              say: Callable[[str], None] = lambda _: None) -> BenchResult:
+    seed = new_seed() if seed is None else seed
+    warmup = _probe(stream, model_id, [{"role": "user", "content": "Reply with the single word: ready"}], 8)
+    prompt = [{"role": "user", "content": probe_prompt(nonce_for(seed))}]
+    cold = _probe(stream, model_id, prompt, 32)
+    hit = _probe(stream, model_id, prompt, 32)
+    decode = _probe(stream, model_id, [{"role": "user", "content": DECODE_PROMPT}], DECODE_TOKENS)
+    return BenchResult(seed=seed, warmup=warmup, cold=cold, hit=hit, decode=decode)
+
+
+def machine() -> dict:
+    def sysctl(key: str) -> str:
+        try:
+            return subprocess.run(["sysctl", "-n", key], capture_output=True, text=True, timeout=5).stdout.strip()
+        except (OSError, subprocess.SubprocessError):
+            return "?"
+    mem = sysctl("hw.memsize")
+    return {"chip": sysctl("machdep.cpu.brand_string") or "?",
+            "memory_gb": round(int(mem) / 1024**3) if mem.isdigit() else None}
+
+
+ROW_HEADER = ("| chip | memory | model | context | prefill | cached prefill | decode | lmk | engine | date |\n"
+              "|---|---|---|---|---|---|---|---|---|---|")
+
+
+def markdown_row(r: BenchResult, m: dict, status: dict, date: str) -> str:
+    model = status["model"]
+    mem = f"{m['memory_gb']} GB" if m.get("memory_gb") else "?"
+    cold = (f"{r.cold_prefill_tok_s:.0f} tok/s ({r.cold.prompt_tokens - r.cold.cached_tokens:,} tokens)" if r.cold_was_cold
+            else f"— (seed reused: {r.cold.cached_tokens:,} cached)")
+    return (f"| {m['chip']} | {mem} | {model['id']} | {model['context_length']:,} | {cold} | "
+            f"{_k(r.hit_tok_s)} tok/s ({r.hit.cached_tokens:,} cached; first token {r.hit_first_token_s:.2f} s) | {r.decode_tok_s:.1f} tok/s | "
+            f"{status.get('build', '?')} | {str(status.get('engine', '?'))[:7]} | {date} |")
+
+
+def _k(tok_s: Optional[float]) -> str:
+    return "?" if tok_s is None else f"{tok_s / 1000:.0f}k"
+
+
+def human_block(r: BenchResult) -> str:
+    cold = (f"{r.cold_prefill_tok_s:>7.0f} tokens/s" if r.cold_was_cold
+            else f"      —           (seed {r.seed} reused and the cache still had it)")
+    hit = f"{_k(r.hit_tok_s):>7} tokens/s" if r.hit_tok_s is not None else "       ? tokens/s   (this lmk does not report restore time)"
+    lines = [f"  prefill          {cold}",
+             f"  cached prefill   {hit}   ({r.hit.cached_tokens:,} of {r.hit.prompt_tokens:,} from disk; "
+             f"first token {r.hit_first_token_s:.2f} s incl. the last partial block)",
+             f"  decode           {r.decode_tok_s:>7.1f} tokens/s"]
+    if r.warmup.first_token_ms > 3000:
+        lines.append(f"  (the warm-up request took {r.warmup.first_token_ms / 1000:.0f} s: the weights had to be paged back in; not counted)")
+    return "\n".join(lines)
+
+===== lmk/board.py =====
+"""What `lmk status` knows about requests: the ones running, the last few that finished,
+and the totals since start. One object, written by request threads, read by status.
+
+States of a running request, in order:
+  starting  admitted; the prompt's cached part is being brought back from disk
+  prefill   the uncached part of the prompt is being read (with progress)
+  decode    tokens are being produced. `part` — thinking / answering / tool call — is NOT
+            something the engine knows: to the model it is all tokens. lmk reads it off the
+            markers in the text (OutputSplitter), the same way it splits the API output.
+"""
+import threading
+from collections import deque
+from dataclasses import dataclass
+from typing import Optional
+
+from lmk.clock import get_current_clock
+
+RECENT_KEPT = 5
+
+
+@dataclass(eq=False)
+class Running:
+    purpose: Optional[str]
+    ref_id: Optional[str]
+    traceparent: Optional[str]
+    prompt_tokens: int
+    started_mono_ms: int
+    state: str = "starting"
+    part: Optional[str] = None
+    cached_tokens: Optional[int] = None          # known once the engine has looked
+    prefill: Optional[dict] = None               # {"processed", "total", "cached"}
+    completion_tokens: int = 0
+    first_token_mono_ms: Optional[int] = None
+
+    def on_prefill(self, progress: dict) -> None:
+        self.state, self.prefill = "prefill", progress
+        self.cached_tokens = progress["cached"]
+        self.prompt_tokens = max(self.prompt_tokens, progress["total"])
+
+    def on_decode(self, part: str, completion_tokens: int) -> None:
+        if self.first_token_mono_ms is None:
+            self.first_token_mono_ms = get_current_clock().mono_ms()
+        self.state, self.part, self.completion_tokens = "decode", part, completion_tokens
+
+    def decode_tokens_per_s(self, now_ms: int) -> Optional[float]:
+        if self.first_token_mono_ms is None or now_ms <= self.first_token_mono_ms or self.completion_tokens < 2:
+            return None
+        return round(self.completion_tokens / ((now_ms - self.first_token_mono_ms) / 1000), 1)
+
+
+@dataclass
+class Totals:
+    answered: int = 0
+    refused: int = 0      # 503: the queue was full, or the wait ran out
+    failed: int = 0       # 500: lmk or the engine fell over
+    cancelled: int = 0    # the client went away
+    prompt_tokens: int = 0
+    cached_tokens: int = 0
+
+
+class Board:
+    def __init__(self):
+        self._lock = threading.Lock()
+        self._running: list[Running] = []
+        self._recent: deque[dict] = deque(maxlen=RECENT_KEPT)
+        self._totals = Totals()
+
+    def begin(self, purpose, ref_id, traceparent, prompt_tokens: int) -> Running:
+        r = Running(purpose=purpose, ref_id=ref_id, traceparent=traceparent, prompt_tokens=prompt_tokens,
+                    started_mono_ms=get_current_clock().mono_ms())
+        with self._lock:
+            self._running.append(r)
+        return r
+
+    def refused(self) -> None:
+        with self._lock:
+            self._totals.refused += 1
+
+    def finish(self, r: Running, outcome: str, prompt_tokens: Optional[int] = None,
+               cached_tokens: Optional[int] = None, completion_tokens: Optional[int] = None) -> None:
+        """outcome: stop | tool call | length | warmed | cancelled | failed"""
+        now = get_current_clock().mono_ms()
+        if prompt_tokens is not None:
+            r.prompt_tokens, r.cached_tokens = prompt_tokens, cached_tokens
+        if completion_tokens is not None:
+            r.completion_tokens = completion_tokens
+        with self._lock:
+            if r in self._running:
+                self._running.remove(r)
+            if outcome == "failed":
+                self._totals.failed += 1
+            elif outcome == "cancelled":
+                self._totals.cancelled += 1
+            else:
+                self._totals.answered += 1
+            if outcome != "failed" and r.cached_tokens is not None:
+                # the denominator next to the numerator: whether the cache earns its disk is a ratio
+                self._totals.prompt_tokens += r.prompt_tokens
+                self._totals.cached_tokens += r.cached_tokens
+            self._recent.appendleft({
+                "purpose": r.purpose, "ref_id": r.ref_id, "outcome": outcome,
+                "prompt_tokens": r.prompt_tokens, "cached_tokens": r.cached_tokens,
+                "first_token_ms": None if r.first_token_mono_ms is None else r.first_token_mono_ms - r.started_mono_ms,
+                "completion_tokens": r.completion_tokens, "decode_tokens_per_s": r.decode_tokens_per_s(now),
+                "total_ms": now - r.started_mono_ms, "finished_mono_ms": now})
+
+    def snapshot(self) -> dict:
+        now = get_current_clock().mono_ms()
+        with self._lock:
+            running = [{"purpose": r.purpose, "ref_id": r.ref_id, "traceparent": r.traceparent,
+                        "state": r.state, "part": r.part, "prompt_tokens": r.prompt_tokens,
+                        "cached_tokens": r.cached_tokens, "prefill": r.prefill,
+                        "completion_tokens": r.completion_tokens,
+                        "decode_tokens_per_s": r.decode_tokens_per_s(now),
+                        "running_ms": now - r.started_mono_ms} for r in self._running]
+            recent = [{**{k: v for k, v in f.items() if k != "finished_mono_ms"},
+                       "ago_ms": now - f["finished_mono_ms"]} for f in self._recent]
+            totals = dict(vars(self._totals))
+        return {"in_flight": running, "recent": recent, "totals": totals}
+
+===== lmk/chat.py =====
+"""One chat completion, as a stream of OpenAI-shaped chunks (design §5).
+
+lmk's additions ride inside the shape so that stock OpenAI clients keep working:
+  - cache hits:        usage.prompt_tokens_details.cached_tokens  (the standard field)
+  - reasoning:         delta.reasoning_content
+  - prefill progress:  a chunk with `choices: []` and an `lmk.prefill` object
+"""
+import json
+import uuid
+from dataclasses import dataclass
+from typing import Callable, Optional
+
+from lmk import log
+from lmk.clock import get_current_clock
+from lmk.chatformat import ImageInputError, split_images
+from lmk.engine import Engine, Preflight
+from lmk.sampling import parse_sampling
+from lmk.splitter import Markers, OutputSplitter
+from lmk.stopmatch import StopMatcher
+
+
+@dataclass(frozen=True)
+class CallerIdentity:
+    """Who is calling and why (wish list WISH-007). All optional; absent is logged as absent."""
+    purpose: Optional[str] = None
+    ref_id: Optional[str] = None
+    traceparent: Optional[str] = None
+
+
+class ClientGone(Exception):
+    """Raised by the chunk sink when the client disconnected: that IS the cancel signal."""
+
+
+def prepare_messages(engine: Engine, body: dict) -> tuple[list[dict], list[str]]:
+    """Everything that can reject a request, done BEFORE any response byte is
+    sent (a streamed reply cannot turn into a 400 halfway)."""
+    messages, images = split_images(body.get("messages") or [])
+    if images and "image" not in engine.input_modalities():
+        raise ImageInputError("the resident model does not take images")
+    return messages, images
+
+
+@dataclass
+class PreparedChat:
+    """The request rendered and measured — everything the admission queue needs to know,
+    done once and handed on to run_chat / run_warmup."""
+    prompt: str
+    images: list
+    tools: Optional[list]
+    max_tokens: Optional[int]
+    preflight: Preflight
+    sampling: dict            # engine kwargs (lmk.sampling); never stop_strings — see stop_strings below
+    stop_strings: list[str]   # OpenAI `stop`, matched by lmk on the answer part only (lmk.stopmatch)
+    ignored_params: list[str]  # request fields lmk understood but cannot honour (logged, not refused)
+
+    def tokens_needed(self, context_length: int) -> int:
+        """Its share of the KV memory: the prompt plus what it may write, capped by the window."""
+        return min(self.preflight.prompt_tokens + (self.max_tokens or context_length), context_length)
+
+
+def prepare_chat(engine: Engine, body: dict, warmup: bool = False) -> PreparedChat:
+    messages, images = prepare_messages(engine, body)
+    tools = body.get("tools") or None
+    if warmup:
+        messages = list(messages)
+        if not messages or messages[-1].get("role") != "user":
+            # chat templates want a user turn to close on; keep it tiny so the fork
+            # point stays inside the last cache block
+            messages.append({"role": "user", "content": "."})
+    prompt = engine.chat_format().render(messages, tools)
+    max_tokens = 1 if warmup else (body.get("max_tokens") or body.get("max_completion_tokens"))
+    sampling, ignored = parse_sampling(body, engine.sampling_defaults())
+    stop_strings = sampling.pop("stop_strings", [])
+    return PreparedChat(prompt=prompt, images=images, tools=tools, max_tokens=max_tokens,
+                        preflight=engine.preflight(prompt, images), sampling=sampling, stop_strings=stop_strings,
+                        ignored_params=ignored)
+
+
+def run_chat(engine: Engine, body: dict, identity: CallerIdentity,
+             emit: Callable[[dict], None], on_progress: Callable[[dict], None] = lambda _: None,
+             prepared: Optional[PreparedChat] = None) -> dict:
+    clock = get_current_clock()
+    started = clock.mono_ms()
+    fmt = engine.chat_format()
+    prepared = prepared or prepare_chat(engine, body)
+    tools, max_tokens, images, prompt = prepared.tools, prepared.max_tokens, prepared.images, prepared.prompt
+
+    completion_id = "chatcmpl-" + uuid.uuid4().hex[:24]
+    base = {"id": completion_id, "created": clock.wall_ms() // 1000, "model": engine.loaded_model().id}
+    state = {"cancelled": False, "stopped": False, "first_ms": None, "calls": [], "text": [], "reasoning": [],
+             "generate_called_ms": None, "restore_ms": None}
+
+    def send(chunk: dict) -> None:
+        if state["cancelled"]:
+            return
+        try:
+            emit({**base, **chunk})
+        except ClientGone:
+            state["cancelled"] = True
+
+    def delta(d: dict, finish: Optional[str] = None) -> None:
+        if state["first_ms"] is None and ("content" in d or "reasoning_content" in d or "tool_calls" in d):
+            state["first_ms"] = clock.mono_ms() - started
+        send({"object": "chat.completion.chunk",
+              "choices": [{"index": 0, "delta": d, "finish_reason": finish}]})
+
+    def on_prefill(processed: int, total: int, cached: int) -> bool:
+        if state["restore_ms"] is None and state["generate_called_ms"] is not None:
+            # from handing the request to the engine until it starts reading the uncached part:
+            # the cached part coming back from disk (plus the wait for the engine's scheduler)
+            state["restore_ms"] = clock.mono_ms() - state["generate_called_ms"]
+        progress = {"processed": processed, "total": total, "cached": cached}
+        on_progress({"prefill": progress})
+        send({"object": "lmk.prefill", "choices": [], "lmk": {"prefill": progress}})
+        return not state["cancelled"]
+
+    def emit_text(t: str) -> None:
+        state["text"].append(t)
+        delta({"content": t})
+
+    stop_matcher = StopMatcher(prepared.stop_strings, emit_text)
+
+    def on_text(t: str) -> None:
+        if not state["stopped"] and stop_matcher.write(t):
+            state["stopped"] = True
+
+    def on_reasoning(t: str) -> None:
+        state["reasoning"].append(t)
+        delta({"reasoning_content": t})
+
+    def on_tool_block(block: str) -> None:
+        try:
+            state["calls"].append(fmt.parse_tool_call(block, tools))
+        except Exception as e:  # a malformed call must not vanish: surface what the model wrote
+            log.warn("LmkToolCallParseFailed", "could not parse a tool-call block; passing it through as text",
+                     refId=identity.ref_id, error=repr(e))
+            on_text(f"{fmt.tool_call_start}{block}{fmt.tool_call_end}")
+
+    request_id = identity.ref_id or completion_id
+    state["generate_called_ms"] = clock.mono_ms()
+    if prepared.ignored_params:
+        log.warn("LmkParamIgnored", "request fields the engine cannot honour", purpose=identity.purpose,
+                 refId=identity.ref_id, params=prepared.ignored_params)
+    generation = engine.generate(prompt, max_tokens=max_tokens, request_id=request_id, on_prefill=on_prefill,
+                                 images_b64=images, tokens=prepared.preflight.tokens, sampling=prepared.sampling)
+    delta({"role": "assistant"})
+    splitter = OutputSplitter(Markers(fmt.tool_call_start, fmt.tool_call_end, fmt.think_open, fmt.think_close),
+                              fmt.starts_in_reasoning(prompt), on_reasoning, on_text, on_tool_block)
+    for piece in generation:
+        splitter.write(piece)
+        on_progress({"decode": {"part": splitter.part, "completion_tokens": generation.stats.completion_tokens}})
+        if state["cancelled"] or state["stopped"]:
+            generation.pieces.close()  # stops the engine's generator
+            break
+    splitter.close()
+    if not state["stopped"]:
+        stop_matcher.close()
+
+    tool_calls = [{"index": i, "id": "call_" + uuid.uuid4().hex[:16], "type": "function",
+                   "function": {"name": c["name"], "arguments": json.dumps(c.get("arguments") or {}, ensure_ascii=False)}}
+                  for i, c in enumerate(state["calls"])]
+    for call in tool_calls:
+        delta({"tool_calls": [call]})
+    stats = generation.stats
+    if tool_calls:
+        finish = "tool_calls"
+    elif max_tokens and stats.completion_tokens >= max_tokens:
+        finish = "length"
+    else:
+        finish = "stop"
+    delta({}, finish)
+    usage = {"prompt_tokens": stats.prompt_tokens, "completion_tokens": stats.completion_tokens,
+             "total_tokens": stats.prompt_tokens + stats.completion_tokens,
+             "prompt_tokens_details": {"cached_tokens": stats.cached_tokens}}
+    # lmk's own timing next to the standard usage: how long the cached part took to come back
+    # from disk (what a client cannot see from outside; `lmk bench` reads it)
+    send({"object": "chat.completion.chunk", "choices": [], "usage": usage,
+          "lmk": {"restore_ms": state["restore_ms"], "first_token_ms": state["first_ms"]}})
+
+    total_ms = clock.mono_ms() - started
+    log.info("LmkChatDone", "chat completion finished",
+             purpose=identity.purpose, refId=identity.ref_id, traceparent=identity.traceparent,
+             promptTokens=stats.prompt_tokens, cachedTokens=stats.cached_tokens,
+             # what the queue believed before admission, next to what the engine then found: if these
+             # drift apart, rule 2 of the queue is judging "long" and "short" wrongly
+             uncachedEstimate=prepared.preflight.uncached_tokens,
+             uncachedActual=stats.prompt_tokens - stats.cached_tokens,
+             completionTokens=stats.completion_tokens, toolCalls=len(tool_calls),
+             restoreMs=state["restore_ms"], ttftMs=state["first_ms"], totalMs=total_ms, finishReason=finish, cancelled=state["cancelled"],
+             sampling=prepared.sampling, stop=prepared.stop_strings or None)
+    return {"id": completion_id, "finish_reason": finish, "usage": usage, "tool_calls": tool_calls,
+            "content": "".join(state["text"]), "reasoning_content": "".join(state["reasoning"]),
+            "base": base, "cancelled": state["cancelled"]}
+
+
+def run_warmup(engine: Engine, body: dict, identity: CallerIdentity,
+               prepared: Optional[PreparedChat] = None) -> dict:
+    """Prefill a prefix into the cache without generating an answer (wish list
+    WISH-019). The caller sends the part it wants warm — typically system +
+    tools. A later request that starts the same way restores from the largest
+    checkpointed 256-token boundary inside the shared prefix (research LMK-002).
+    """
+    clock = get_current_clock()
+    started = clock.mono_ms()
+    prepared = prepared or prepare_chat(engine, body, warmup=True)
+    request_id = identity.ref_id or "warmup-" + uuid.uuid4().hex[:16]
+    generation = engine.generate(prepared.prompt, max_tokens=1, request_id=request_id, on_prefill=lambda *_: True,
+                                 images_b64=prepared.images, tokens=prepared.preflight.tokens)
+    for _ in generation:
+        pass
+    stats = generation.stats
+    total_ms = clock.mono_ms() - started
+    log.info("LmkWarmupDone", "prefix warmed", purpose=identity.purpose or "warmup", refId=identity.ref_id,
+             traceparent=identity.traceparent, promptTokens=stats.prompt_tokens,
+             cachedTokens=stats.cached_tokens, totalMs=total_ms)
+    return {"prompt_tokens": stats.prompt_tokens, "cached_tokens": stats.cached_tokens, "total_ms": total_ms}
+
+===== lmk/chatformat.py =====
+"""The per-model-family seam (design §4): how messages + tools become a prompt,
+and how the model's tool-call text becomes structured data. Both halves come
+from open source — the model's own chat template and mlx-lm's tool parsers —
+selected once when the model loads. What differs between families beyond that
+(thinking markers, whether thinking is on unless asked, the shape tool results
+take) is a `Dialect`, chosen from the template text. Nothing outside this file
+knows a format.
+"""
+import importlib
+import json
+from dataclasses import dataclass
+from typing import Any, Callable, Optional, Protocol
+
+from lmk import log
+from lmk.splitter import Markers
+
+
+class ChatFormat(Protocol):
+    tool_call_start: Optional[str]
+    tool_call_end: Optional[str]
+    think_open: Optional[str]
+    think_close: Optional[str]
+
+    def render(self, messages: list[dict], tools: Optional[list[dict]]) -> str: ...
+    def starts_in_reasoning(self, prompt_text: str) -> bool: ...
+    def parse_tool_call(self, block: str, tools: Optional[list[dict]]) -> dict: ...
+
+
+@dataclass(frozen=True)
+class Dialect:
+    """What a model family does that its chat template and tool parser do not say for us."""
+    name: str
+    think_open: Optional[str]
+    think_close: Optional[str]
+    thinking_default: bool                       # with no enable_thinking passed, does the template turn thinking on?
+    prompt_decides_thinking: bool                # Qwen: the prompt opens or closes the think block, so on = every turn
+                                                 # thinks and off = none does. Gemma: the prompt only hints; the model
+                                                 # decides per turn either way (exp05 F1, F3).
+    starts_in_reasoning: Callable[[str], bool]   # does the rendered prompt end inside a think block?
+    for_template: Callable[[list[dict]], list[dict]]   # OpenAI wire messages → what this template iterates over
+
+
+def _qwen_starts_in_reasoning(prompt_text: str) -> bool:
+    # Qwen templates put the think-open tag in the generation prompt, so the output
+    # begins mid-reasoning (research LMK-003); with thinking off they close it first
+    return prompt_text.rstrip().endswith("<think>")
+
+
+def _gemma_for_template(messages: list[dict]) -> list[dict]:
+    """Gemma's template renders tool results from `tool_responses: [{name, response}]`
+    on the message, named after the function — OpenAI's wire carries only the call id.
+    A JSON-object result becomes a mapping (the template renders key:value); any other
+    text goes through as it is."""
+    names_by_call_id: dict[str, str] = {}
+    out = []
+    for message in messages:
+        if message.get("role") != "tool":
+            converted = _for_template(message)
+            for call in converted.get("tool_calls") or []:
+                if call.get("id"):
+                    names_by_call_id[call["id"]] = (call.get("function") or {}).get("name", "unknown")
+            out.append(converted)
+            continue
+        content = message.get("content")
+        response: Any = content if content is not None else ""
+        if isinstance(content, str):
+            try:
+                parsed = json.loads(content)
+                if isinstance(parsed, dict):
+                    response = parsed
+            except ValueError:
+                pass
+        out.append({"role": "tool", "tool_responses": [
+            {"name": names_by_call_id.get(message.get("tool_call_id") or "", "unknown"), "response": response}]})
+    return out
+
+
+QWEN = Dialect(name="qwen", think_open="<think>", think_close="</think>", thinking_default=True, prompt_decides_thinking=True,
+               starts_in_reasoning=_qwen_starts_in_reasoning,
+               for_template=lambda messages: [_for_template(m) for m in messages])
+
+# Gemma 4: thinking is off unless enable_thinking is passed; when on, the model opens its own
+# thought channel (the generation prompt is just the model turn); when off, the template closes an
+# empty channel for it — and the model may still open one (exp05 F3). The model's answer follows a
+# tool result in that same turn (the template adds no model turn after one).
+# Tool results: the current mlx-community template (2026-07, commit 0d77464) takes OpenAI's
+# `role: tool` + `tool_call_id` and resolves the function name itself; the earlier template only
+# knew `tool_responses: [{name, response}]` ("legacy" in the new one's own words). Which one a
+# model ships is read off the template.
+GEMMA4 = Dialect(name="gemma4", think_open="<|channel>thought\n", think_close="<channel|>", thinking_default=False,
+                 prompt_decides_thinking=False, starts_in_reasoning=lambda prompt: False,
+                 for_template=lambda messages: [_for_template(m) for m in messages])
+GEMMA4_LEGACY_TOOLS = Dialect(name="gemma4-legacy-tools", think_open=GEMMA4.think_open, think_close=GEMMA4.think_close,
+                              thinking_default=False, prompt_decides_thinking=False,
+                              starts_in_reasoning=lambda prompt: False, for_template=_gemma_for_template)
+
+# A template we do not know: no thinking split (everything is answer text or a tool call),
+# messages passed as OpenAI shapes them.
+PLAIN = Dialect(name="plain", think_open=None, think_close=None, thinking_default=False, prompt_decides_thinking=False,
+                starts_in_reasoning=lambda prompt: False,
+                for_template=lambda messages: [_for_template(m) for m in messages])
+
+
+def dialect_for_template(chat_template: Optional[str]) -> Dialect:
+    text = chat_template or ""
+    if "<|channel>thought" in text:
+        return GEMMA4 if "tool_call_id" in text else GEMMA4_LEGACY_TOOLS
+    if "<think>" in text:
+        return QWEN
+    return PLAIN
+
+
+class TemplateChatFormat:
+    def __init__(self, tokenizer: Any, template_kwargs: Optional[dict] = None):
+        """template_kwargs: server-level constants handed to the chat template on every render —
+        `enable_thinking`, `reasoning_effort`. The template renders them at the very start of the
+        prompt, so they must never vary per request or the whole conversation goes cold
+        (kitten design 2026-09-19-llm-call-flow-control §6.2)."""
+        from mlx_lm.tokenizer_utils import _infer_tool_parser
+
+        self._tokenizer = tokenizer
+        self._template_kwargs = dict(template_kwargs or {})
+        template = getattr(tokenizer, "chat_template", None)
+        parser_type = _infer_tool_parser(template)
+        self._parser = importlib.import_module(f"mlx_lm.tool_parsers.{parser_type}") if parser_type else None
+        self.tool_call_start = getattr(self._parser, "tool_call_start", None)
+        self.tool_call_end = getattr(self._parser, "tool_call_end", None)
+        self.parser_type = parser_type
+        self.dialect = dialect_for_template(template)
+        self.think_open, self.think_close = self.dialect.think_open, self.dialect.think_close
+        if self.dialect is PLAIN:
+            log.warn("LmkTemplateDialectUnknown", "this chat template is not one lmk knows: no thinking will be "
+                     "split out of the answer; tool calls follow mlx-lm's parser if any", toolParser=parser_type)
+
+    def render(self, messages, tools):
+        return self._tokenizer.apply_chat_template(
+            self.dialect.for_template(messages), tools=tools or None,
+            tokenize=False, add_generation_prompt=True, **self._template_kwargs)
+
+    def starts_in_reasoning(self, prompt_text):
+        return self.dialect.starts_in_reasoning(prompt_text)
+
+    def markers(self) -> Markers:
+        return Markers(self.tool_call_start, self.tool_call_end, self.think_open, self.think_close)
+
+    def parse_tool_call(self, block, tools):
+        if self._parser is None:
+            raise ValueError("this model's chat template declares no tool-call format")
+        return self._parser.parse_tool_call(block.strip(), tools)
+
+
+class ImageInputError(ValueError):
+    pass
+
+
+def split_images(messages: list[dict]) -> tuple[list[dict], list[str]]:
+    """OpenAI image parts → what the engine wants: `{"type": "image"}` placeholders
+    in the conversation (the template turns them into vision tokens) plus the
+    images as base64, in order of appearance. Only inline `data:` URLs — the
+    server never fetches a URL on a client's say-so."""
+    images: list[str] = []
+    out = []
+    for message in messages:
+        content = message.get("content")
+        if not isinstance(content, list):
+            out.append(message)
+            continue
+        parts = []
+        for part in content:
+            if part.get("type") != "image_url":
+                parts.append(part)
+                continue
+            url = (part.get("image_url") or {}).get("url") or ""
+            head, sep, payload = url.partition(";base64,")
+            if not (head.startswith("data:image/") and sep and payload):
+                raise ImageInputError("images must be inline data:image/...;base64,... URLs")
+            images.append(payload)
+            parts.append({"type": "image"})
+        out.append({**message, "content": parts})
+    return out, images
+
+
+def _for_template(message: dict) -> dict:
+    """OpenAI wire → what chat templates iterate over: tool-call arguments are a
+    JSON string on the wire but templates expect a mapping."""
+    out = dict(message)
+    if out.get("content") is None:
+        out["content"] = ""
+    calls = out.get("tool_calls")
+    if calls:
+        converted = []
+        for call in calls:
+            fn = dict(call.get("function") or {})
+            args = fn.get("arguments")
+            if isinstance(args, str):
+                try:
+                    fn["arguments"] = json.loads(args) if args.strip() else {}
+                except json.JSONDecodeError:
+                    fn["arguments"] = {}
+            converted.append({**call, "function": fn})
+        out["tool_calls"] = converted
+    return out
+
+===== lmk/cli.py =====
+"""lmk pull / up / status / logs / down  (design OOBE §A, §E).
+
+One machine, one model, always on. Downloading is its own explicit command;
+`up` returns only when the server answers a real request.
+"""
+import argparse
+import json
+import os
+import shutil
+import sys
+import urllib.error
+import urllib.request
+from pathlib import Path
+from typing import Optional
+
+from lmk import render, service
+from lmk.clock import get_current_clock
+from lmk.config import ConfigError, LmkConfig, app_dir, config_path, fingerprint, load_config
+from lmk.configfiles import refresh_example, seed_config
+from lmk.models import TESTED_MODELS, ModelNotDownloaded, missing_weight_files, resolve_model
+
+READY_TIMEOUT_S = 600  # a cold load of a large model from a slow disk; normally ~10s
+
+
+def _say(text: str = "") -> None:
+    print(text, flush=True)
+
+
+def _fail(text: str, code: int) -> int:
+    print(text, file=sys.stderr, flush=True)
+    return code
+
+
+def _config() -> LmkConfig:
+    if seed_config(config_path()):
+        _say(f"  wrote {render.short_path(str(config_path()))} (all comments — lmk runs fine without touching it)")
+    refresh_example(config_path())
+    return load_config()
+
+
+def _get_status(cfg: LmkConfig, timeout: float = 2.0) -> Optional[dict]:
+    try:
+        with urllib.request.urlopen(f"{render.base_url(cfg.host, cfg.port)}/lmk/v1/status", timeout=timeout) as r:
+            body = json.loads(r.read())
+    except (OSError, ValueError):
+        return None
+    return body if isinstance(body, dict) and "model" in body and "in_flight" in body else None
+
+
+def _tail(path: Path, lines: int) -> list[str]:
+    try:
+        with open(path, "rb") as f:
+            f.seek(0, os.SEEK_END)
+            f.seek(max(0, f.tell() - 65536))
+            return f.read().decode(errors="replace").splitlines()[-lines:]
+    except OSError:
+        return []
+
+
+# ---- pull ----
+
+def cmd_pull(_args) -> int:
+    cfg = _config()
+    source = cfg.model.source
+    if source.kind == "path":
+        _say(f"model.path points at a directory on this disk ({source.path}) — there is nothing to download.")
+        return 0
+    try:
+        resolve_model(source)
+        _say(f"✓ {source.repo} is already downloaded.\n  next:  lmk up")
+        return 0
+    except ModelNotDownloaded:
+        pass
+
+    # mlx-engine, once imported, replaces snapshot_download with a function that always
+    # raises. Nothing on the `lmk pull` path imports the engine; keep it that way.
+    from huggingface_hub import HfApi, snapshot_download
+    from huggingface_hub.constants import HF_HUB_CACHE
+
+    try:
+        info = HfApi().model_info(source.repo, files_metadata=True)
+    except Exception as e:  # network, auth, a repo that does not exist: all end the same way for the user
+        return _fail(f"✗ cannot reach {source.repo} on HuggingFace: {e}", 1)
+    total = sum(s.size or 0 for s in info.siblings)
+    Path(HF_HUB_CACHE).mkdir(parents=True, exist_ok=True)
+    free = shutil.disk_usage(HF_HUB_CACHE).free
+    if free < total * 1.05:
+        return _fail(f"✗ not enough disk space: {source.repo} is {render.human_bytes(total)}, "
+                     f"{render.human_bytes(free)} free in {render.short_path(str(HF_HUB_CACHE))}", 1)
+    _say(f"Downloading {source.repo} — {render.human_bytes(total)} into {render.short_path(str(HF_HUB_CACHE))}\n"
+         "(the shared HuggingFace cache; interrupt any time, `lmk pull` picks up where it stopped)\n")
+    try:
+        snapshot = Path(snapshot_download(source.repo))
+    except KeyboardInterrupt:
+        return _fail("\nstopped. `lmk pull` continues from here.", 130)
+    except Exception as e:
+        return _fail(f"\n✗ download failed: {e}\n  `lmk pull` continues from where it stopped.", 1)
+    missing = missing_weight_files(snapshot)
+    if missing:
+        return _fail(f"✗ the download finished but {len(missing)} weight file(s) are missing — run `lmk pull` again", 1)
+    _say(f"\n✓ downloaded {source.repo}\n  next:  lmk up")
+    return 0
+
+
+# ---- up ----
+
+def _why_it_did_not_start(cfg: LmkConfig) -> str:
+    out = []
+    events = [render.log_line(l) for l in _tail(cfg.log_dir / "lmk.jsonl", 8)]
+    if events:
+        out += [f"  last events ({render.short_path(str(cfg.log_dir / 'lmk.jsonl'))}):"] + [f"    {l}" for l in events]
+    stderr = _tail(cfg.log_dir / "lmk.stderr.log", 15)
+    if stderr:
+        out += [f"  last output ({render.short_path(str(cfg.log_dir / 'lmk.stderr.log'))}):"] + [f"    {l}" for l in stderr]
+    return "\n".join(out)
+
+
+def _smoke(cfg: LmkConfig) -> Optional[str]:
+    body = json.dumps({"model": cfg.model.id, "max_tokens": 8, "stream": False,
+                       "messages": [{"role": "user", "content": "Say OK."}]}).encode()
+    req = urllib.request.Request(f"{render.base_url(cfg.host, cfg.port)}/v1/chat/completions", data=body,
+                                 headers={"Content-Type": "application/json", "X-Lmk-Purpose": "smoke"})
+    try:
+        with urllib.request.urlopen(req, timeout=300) as r:
+            json.loads(r.read())["choices"][0]
+    except (OSError, ValueError, KeyError, IndexError) as e:
+        return str(e)
+    return None
+
+
+def cmd_up(_args) -> int:
+    clock = get_current_clock()
+    cfg = _config()
+    if (app_dir() / ".git").exists():
+        return _fail("✗ this is a source checkout. The service must not run from a working tree (switching\n"
+                     "  branches would take it down) — install it first:  make install", 2)
+    try:
+        resolved = resolve_model(cfg.model.source)
+    except ModelNotDownloaded as e:
+        tested = TESTED_MODELS.get(cfg.model.source.value) if cfg.model.source.kind == "name" else None
+        return _fail(render.not_downloaded_block(e.repo, e.why, tested.size_gb if tested else None), 3)
+    except FileNotFoundError as e:
+        return _fail(f"✗ {e}", 3)
+
+    from lmk.modelfit import why_it_does_not_fit
+
+    too_big = why_it_does_not_fit(resolved.path)
+    if too_big:
+        return _fail(f"✗ {too_big}", 3)
+
+    url = render.base_url(cfg.host, cfg.port)
+    running = _get_status(cfg)
+    if running is not None and running.get("config_fingerprint") == fingerprint(cfg, resolved.revision):
+        _say(render.status_block(running, url) + "\n\n" + render.connect_block(url, running["model"]))
+        return 0
+    if running is None:
+        owner = service.port_owner(cfg.port)
+        if owner and not service.is_registered():
+            return _fail(f"✗ port {cfg.port} is taken by {owner}.\n  Stop that, or pick another port under "
+                         f"listen: in {render.short_path(str(config_path()))}", 4)
+
+    if running is not None or service.is_registered():
+        _say("Restarting lmk — the code or the configuration changed since it started." if running is not None
+             else "lmk is registered but not answering; starting it again.")
+        if running is not None and running.get("in_flight"):
+            _say(f"  ({len(running['in_flight'])} request(s) in progress will be cut off)")
+        from lmk.persistcache import model_identity
+
+        was = Path(((running or {}).get("cache") or {}).get("dir") or "").name
+        now = model_identity(resolved.path, repo=cfg.model.source.repo, revision=resolved.revision,
+                             kv_cache_bits=cfg.model.kv_cache_bits)
+        if was and was != now and not (cfg.cache_dir / now).is_dir():
+            _say("  The prompt cache starts empty for this model: the first request of each conversation\n"
+                 "  reads its whole prompt again (about 3s per 1,000 tokens).")
+        if not service.stop(clock.sleep_s):
+            return _fail("✗ the running lmk did not stop within two minutes — see `lmk logs`", 5)
+
+    service.start(app_dir(), cfg.log_dir, dict(os.environ))
+    started = clock.mono_ms()
+    live = sys.stdout.isatty()  # a counter that rewrites its line is noise in a pipe or a log
+    if not live:
+        _say(f"  loading {cfg.model.id} …")
+    while True:
+        status = _get_status(cfg)
+        if status is not None:
+            break
+        waited = (clock.mono_ms() - started) // 1000
+        if not service.is_registered():
+            return _fail("✗ lmk exited while starting.\n" + _why_it_did_not_start(cfg), 5)
+        if waited > READY_TIMEOUT_S:
+            return _fail(f"✗ lmk did not answer within {READY_TIMEOUT_S}s.\n" + _why_it_did_not_start(cfg), 5)
+        if live:
+            print(f"\r  loading {cfg.model.id} … {waited}s", end="", flush=True)
+        clock.sleep_s(1)
+    if live:
+        print("\r" + " " * 60 + "\r", end="")
+
+    problem = _smoke(cfg)
+    if problem:
+        return _fail(f"✗ lmk started but a test request failed: {problem}\n" + _why_it_did_not_start(cfg), 5)
+    status = _get_status(cfg) or status
+    _say(render.status_block(status, url) + "\n\n" + render.connect_block(url, status["model"]))
+    return 0
+
+
+# ---- status / logs / down ----
+
+def _status_text(cfg: LmkConfig) -> tuple[str, bool]:
+    status = _get_status(cfg)
+    if status is not None:
+        return render.status_block(status, render.base_url(cfg.host, cfg.port)), True
+    if service.is_registered():
+        return ("… lmk is starting (or failing to) — it is registered but not answering yet.\n"
+                "  watch it:  lmk logs -f"), False
+    return "✗ lmk is not running.\n  start it:  lmk up", False
+
+
+def cmd_status(args) -> int:
+    cfg = _config()
+    if args.json:
+        status = _get_status(cfg)
+        _say(json.dumps(status, indent=2, ensure_ascii=False))
+        return 0 if status else 1
+    if not args.watch:
+        text, up = _status_text(cfg)
+        _say(text)
+        return 0 if up else 1
+    clock = get_current_clock()
+    try:
+        while True:
+            text, _ = _status_text(cfg)
+            # home + clear-to-end, then the text: no flicker, and a shorter screen leaves nothing behind
+            print("\033[H\033[J" + text + "\n\n  refreshing every second — ctrl-c to leave", flush=True)
+            clock.sleep_s(1)
+    except KeyboardInterrupt:
+        return 0
+
+
+def cmd_logs(args) -> int:
+    cfg = _config()
+    path = cfg.log_dir / ("lmk.stderr.log" if args.raw else "lmk.jsonl")
+    show = (lambda l: l.rstrip("\n")) if args.raw else render.log_line
+    if not path.exists():
+        return _fail(f"no log yet at {path}", 1)
+    for line in _tail(path, args.lines):
+        _say(show(line))
+    if not args.follow:
+        return 0
+    clock = get_current_clock()
+    with open(path, "r", errors="replace") as f:
+        f.seek(0, os.SEEK_END)
+        try:
+            while True:
+                line = f.readline()
+                if line:
+                    _say(show(line))
+                else:
+                    clock.sleep_s(0.5)
+        except KeyboardInterrupt:
+            return 0
+
+
+def cmd_down(_args) -> int:
+    if not service.is_registered() and not service.plist_path().exists():
+        _say("lmk is not running, and not set to start at login. Nothing to do.")
+        return 0
+    if not service.stop(get_current_clock().sleep_s):
+        return _fail("✗ lmk did not stop within two minutes — see `lmk logs`", 5)
+    service.remove_plist()
+    _say("✓ lmk is stopped and will not start at login.\n"
+         "  Your model, prompt cache and configuration are kept.  Start again:  lmk up")
+    return 0
+
+
+def cmd_bench(args) -> int:
+    import datetime
+
+    from lmk import bench
+
+    if args.url:
+        url = args.url.rstrip("/")
+        try:
+            with urllib.request.urlopen(f"{url}/lmk/v1/status", timeout=2) as r:
+                status = json.loads(r.read())
+        except (OSError, ValueError):
+            return _fail(f"✗ no lmk answers at {url}", 1)
+    else:
+        cfg = load_config()
+        url = render.base_url(cfg.host, cfg.port)
+        status = _get_status(cfg)
+        if status is None:
+            return _fail("✗ lmk is not running.  Start it:  lmk up", 1)
+    if status.get("in_flight") or status.get("waiting"):
+        return _fail("✗ lmk is busy; a benchmark needs it to itself.  See:  lmk status", 1)
+    model = status["model"]
+    m = bench.machine()
+    _say(f"{model['id']} on {m['chip']} {m['memory_gb']} GB — measuring, about a minute")
+    result = bench.run_bench(bench.stream_via_http(url), model["id"], seed=args.seed)
+    _say(bench.human_block(result))
+    _say("")
+    _say(f"  seed {result.seed}   ·   row for docs/benchmarks.md:")
+    _say(bench.markdown_row(result, m, status, datetime.date.today().isoformat()))
+    return 0
+
+
+def main(argv: Optional[list[str]] = None) -> int:
+    parser = argparse.ArgumentParser(prog="lmk", description="One local model, always on, for your agent.")
+    sub = parser.add_subparsers(dest="command", required=True, metavar="command")
+    sub.add_parser("pull", help="download the configured model (explicit; nothing else ever downloads)")
+    sub.add_parser("up", help="start lmk now and at every login; returns when it answers")
+    p = sub.add_parser("status", help="is it up, what each request is doing, memory, cache, the last few answers")
+    p.add_argument("--json", action="store_true", help="the raw status document")
+    p.add_argument("-w", "--watch", action="store_true", help="keep the screen up to date (macOS has no `watch`)")
+    p = sub.add_parser("logs", help="recent events")
+    p.add_argument("-f", "--follow", action="store_true")
+    p.add_argument("-n", "--lines", type=int, default=40)
+    p.add_argument("--raw", action="store_true", help="the model runtime's own output instead of lmk's events")
+    sub.add_parser("down", help="stop lmk and do not start it at login")
+    p = sub.add_parser("bench", help="measure prefill, cache-hit and decode speed on this Mac; prints a row for docs/benchmarks.md")
+    p.add_argument("--url", help="an lmk other than the configured one (default: this Mac's)")
+    p.add_argument("--seed", type=int, help="reuse a seed from an earlier run: the cold probe then tests whether "
+                                            "the cache still holds that prompt (default: a fresh one, so it is cold)")
+    sub.add_parser("serve", help=argparse.SUPPRESS)  # what launchd runs
+
+    args = parser.parse_args(argv)
+    try:
+        if args.command == "serve":
+            from lmk.serve import serve
+
+            return serve()
+        return {"pull": cmd_pull, "up": cmd_up, "status": cmd_status, "logs": cmd_logs, "down": cmd_down,
+                "bench": cmd_bench}[args.command](args)
+    except ConfigError as e:
+        return _fail(f"✗ {render.short_path(str(config_path()))}: {e}", 2)
+
+===== lmk/clock.py =====
+"""Injectable time, so nothing in lmk reads the wall clock directly (tests swap it)."""
+import time
+
+
+class SystemClock:
+    def wall_ms(self) -> int:
+        return int(time.time() * 1000)
+
+    def mono_ms(self) -> int:
+        return int(time.monotonic() * 1000)
+
+    def sleep_s(self, seconds: float) -> None:
+        time.sleep(seconds)
+
+
+_current = SystemClock()
+
+
+def get_current_clock():
+    return _current
+
+
+def set_current_clock(clock) -> None:
+    global _current
+    _current = clock
+
+===== lmk/config.py =====
+"""~/.lmk/config.yaml — every key is optional (design OOBE §C).
+
+Defaults live here, in code. The seeded config.yaml is all comments, so no
+default value is ever frozen onto the user's disk.
+"""
+import hashlib
+import os
+import re
+from dataclasses import dataclass
+from pathlib import Path
+from typing import Optional
+
+import yaml
+
+from lmk.models import DEFAULT_MODEL_NAME, TESTED_MODELS
+
+DEFAULT_HOST = "127.0.0.1"
+DEFAULT_PORT = 1235
+DEFAULT_CACHE_MAX_SIZE = "200G"
+# Why these numbers: docs/design/2026-09-20-memory-guard.md §F.
+# What running side by side gains depends on how long the conversations are (research MG-006, MG-008):
+# two tiny prompts together reach 1.7x the speed of one; two 27k-token conversations reach 1.0x.
+DEFAULT_MAX_PARALLEL = 2
+DEFAULT_MAX_QUEUE = 16           # six sessions, each with a turn and a background call, and room to spare
+DEFAULT_MAX_WAIT_SECONDS = 600   # behind one 100k-token cold prompt (~5 min) plus one 8k-token answer (~4 min)
+
+
+def lmk_home() -> Path:
+    return Path(os.environ.get("LMK_HOME") or Path.home() / ".lmk")
+
+
+def config_path() -> Path:
+    return lmk_home() / "config.yaml"
+
+
+class ConfigError(Exception):
+    pass
+
+
+@dataclass(frozen=True)
+class ModelSource:
+    """Exactly one way of naming the model: a tested name, any HF repo, or a local directory."""
+    kind: str  # "name" | "repo" | "path"
+    value: str
+
+    @property
+    def repo(self) -> Optional[str]:
+        if self.kind == "name":
+            return TESTED_MODELS[self.value].repo
+        return self.value if self.kind == "repo" else None
+
+    @property
+    def path(self) -> Optional[Path]:
+        return Path(self.value).expanduser() if self.kind == "path" else None
+
+
+KV_CACHE_BITS = (16, 8, 4)  # what the engine's batched path quantizes to; 16 means no quantization
+
+
+@dataclass(frozen=True)
+class ModelConfig:
+    id: str  # what clients put in "model": the tested name, or the repo / directory name in lower case
+    source: ModelSource
+    context_length: Optional[int]  # None: the model's own maximum
+    thinking: Optional[bool]       # None: the template's default (Qwen: on). False: the model answers without thinking
+    reasoning_effort: Optional[str]  # for templates that know it (Qwen3.8: low / medium / xhigh); None: the template's default
+    kv_cache_bits: int = 16        # 16 = the model's own precision; 8 / 4 quantize the KV cache (more context, same memory)
+
+    def template_kwargs(self) -> dict:
+        kwargs = {}
+        if self.thinking is not None:
+            kwargs["enable_thinking"] = self.thinking
+        if self.reasoning_effort is not None:
+            kwargs["reasoning_effort"] = self.reasoning_effort
+        return kwargs
+
+
+@dataclass(frozen=True)
+class RequestsConfig:
+    max_parallel: int       # answered at the same time
+    max_queue: int          # waiting for their turn; one more is refused at once
+    max_wait_seconds: int   # a request that could not start by then is refused
+
+
+@dataclass(frozen=True)
+class LmkConfig:
+    model: ModelConfig
+    host: str
+    port: int
+    cache_dir: Path
+    cache_max_bytes: int
+    log_dir: Path
+    requests: RequestsConfig = RequestsConfig(DEFAULT_MAX_PARALLEL, DEFAULT_MAX_QUEUE, DEFAULT_MAX_WAIT_SECONDS)
+
+
+_SIZE = re.compile(r"^\s*(\d+(?:\.\d+)?)\s*([KMGT])?I?B?\s*$", re.IGNORECASE)
+_UNIT = {None: 1, "K": 1024, "M": 1024**2, "G": 1024**3, "T": 1024**4}
+
+
+def parse_size(text) -> int:
+    m = _SIZE.match(str(text))
+    if not m:
+        raise ConfigError(f"cannot read size {text!r} — write it like 200G or 500M")
+    return int(float(m.group(1)) * _UNIT[m.group(2).upper() if m.group(2) else None])
+
+
+def _section(raw: dict, key: str) -> dict:
+    value = raw.get(key)
+    if value is None:
+        return {}
+    if not isinstance(value, dict):
+        raise ConfigError(f"{key} must be a section with keys under it, not {value!r}")
+    return value
+
+
+def _positive_int(section: dict, where: str, key: str, default: int) -> int:
+    value = section.get(key)
+    if value is None:
+        return default
+    if isinstance(value, bool) or not isinstance(value, int) or value < 1:
+        raise ConfigError(f"{where}.{key} must be a whole number, 1 or more (found {value!r})")
+    return value
+
+
+def _model_source(model: dict) -> ModelSource:
+    named = [k for k in ("name", "repo", "path") if model.get(k)]
+    if len(named) > 1:
+        raise ConfigError(f"model: name, repo and path each say which model to load, so keep only one of them (found {', '.join(named)})")
+    if not named:
+        return ModelSource("name", DEFAULT_MODEL_NAME)
+    kind, value = named[0], str(model[named[0]])
+    if kind == "name" and value not in TESTED_MODELS:
+        raise ConfigError(f"model.name {value!r} is not in the tested list ({', '.join(TESTED_MODELS)}) — "
+                          "for any other HuggingFace model use model.repo")
+    return ModelSource(kind, value)
+
+
+def _default_model_id(source: ModelSource) -> str:
+    if source.kind == "name":
+        return source.value
+    return Path(source.value).name.lower()
+
+
+def load_config(path: Optional[Path] = None) -> LmkConfig:
+    path = path or config_path()
+    raw = {}
+    if path.exists():
+        raw = yaml.safe_load(path.read_text()) or {}
+        if not isinstance(raw, dict):
+            raise ConfigError(f"{path} must be a YAML mapping")
+    model, listen, cache, log, requests = (_section(raw, k) for k in ("model", "listen", "cache", "log", "requests"))
+    source = _model_source(model)
+    context_length = model.get("context_length")
+    if context_length is not None:
+        context_length = int(context_length)
+        if context_length <= 0:
+            raise ConfigError("model.context_length must be positive")
+    if "id" in model:
+        raise ConfigError("model.id is gone (2026-09-22): the name clients use is always the model's name — "
+                          f"here that is {_default_model_id(source)!r}. Remove the id: line")
+    thinking = model.get("thinking")
+    if thinking is not None and not isinstance(thinking, bool):
+        raise ConfigError("model.thinking must be true or false")
+    effort = model.get("reasoning_effort")
+    if effort is not None and (not isinstance(effort, str) or not effort):
+        raise ConfigError("model.reasoning_effort must be a word the model's chat template knows, such as low / medium / xhigh")
+    kv_bits = model.get("kv_cache_bits", 16)
+    if isinstance(kv_bits, bool) or not isinstance(kv_bits, int) or kv_bits not in KV_CACHE_BITS:
+        raise ConfigError(f"model.kv_cache_bits must be one of {', '.join(map(str, KV_CACHE_BITS))} "
+                          f"(16 = the model's own precision; 8 halves what each token of context costs in memory) — got {kv_bits!r}")
+    return LmkConfig(
+        model=ModelConfig(id=_default_model_id(source), source=source,
+                          context_length=context_length, thinking=thinking, reasoning_effort=effort,
+                          kv_cache_bits=int(kv_bits)),
+        host=str(listen.get("host") or DEFAULT_HOST),
+        port=int(listen.get("port") or DEFAULT_PORT),
+        cache_dir=Path(str(cache.get("dir") or lmk_home() / "cache")).expanduser(),
+        cache_max_bytes=parse_size(cache.get("max_size") or DEFAULT_CACHE_MAX_SIZE),
+        log_dir=Path(str(log.get("dir") or lmk_home() / "logs")).expanduser(),
+        requests=RequestsConfig(
+            max_parallel=_positive_int(requests, "requests", "max_parallel", DEFAULT_MAX_PARALLEL),
+            max_queue=_positive_int(requests, "requests", "max_queue", DEFAULT_MAX_QUEUE),
+            max_wait_seconds=_positive_int(requests, "requests", "max_wait_seconds", DEFAULT_MAX_WAIT_SECONDS)),
+    )
+
+
+def app_dir() -> Path:
+    return Path(__file__).resolve().parent.parent
+
+
+def build_id() -> str:
+    """Written by the installer. A running service reports the build it was started
+    from, so `lmk up` can tell that the code on disk is newer."""
+    try:
+        return (app_dir() / "BUILD").read_text().strip() or "dev"
+    except OSError:
+        return "dev"
+
+
+def fingerprint(cfg: LmkConfig, revision: Optional[str]) -> str:
+    """Everything a running service was started with. `lmk up` compares the running
+    one's with what the files on disk say now; different means restart."""
+    return hashlib.sha256(f"{build_id()}|{cfg!r}|{revision}".encode()).hexdigest()[:16]
+
+===== lmk/configfiles.py =====
+"""The two config files lmk writes (design OOBE §C, the same scheme as kitten's):
+
+  config.yaml          seeded once as a REAL config — every value written out, nothing
+                       commented away (owner, 2026-09-22) — then never touched: it is the user's.
+  config.yaml.example  ours: rewritten whenever its content differs, so it is always
+                       the current full reference, including the tested-model list.
+"""
+import os
+import textwrap
+from pathlib import Path
+
+from lmk.config import (DEFAULT_CACHE_MAX_SIZE, lmk_home, DEFAULT_HOST, DEFAULT_MAX_PARALLEL, DEFAULT_MAX_QUEUE,
+                        DEFAULT_MAX_WAIT_SECONDS, DEFAULT_PORT)
+from lmk.models import DEFAULT_MODEL_NAME, TESTED_MODELS, smallest_mac_gb
+
+def _seed_text() -> str:
+    home = _home_for_humans()
+    return textwrap.dedent(f"""\
+    # lmk configuration — these are the values in use. After a change: `lmk up` (it restarts the service).
+    # The full reference, with every option and the tested models, is config.yaml.example next to this file.
+
+    model:
+      name: {DEFAULT_MODEL_NAME}       # a tested model; the list is in config.yaml.example
+      # For a model that is not in the tested list, replace the name: line with ONE of these:
+      # repo: mlx-community/Qwen3-30B-A3B-4bit   # its HuggingFace address after huggingface.co/ (any MLX model;
+      #                                          # `lmk pull` downloads it; whether it works, we have not checked)
+      # path: /Users/me/models/Some-Model-MLX    # a model folder already on this Mac (nothing to download)
+      # context_length: 131072               # default: the model's own maximum, lowered if memory is short
+      # thinking: false                      # answer without thinking (default: the template's own — on for Qwen)
+      # reasoning_effort: low                # low / medium / xhigh where the model's template knows it; server-wide,
+      #                                      # never per request (it sits at the start of every prompt)
+      # kv_cache_bits: 8                     # 8 halves what each token of context costs in memory: about twice the
+      #                                      # context on the same Mac, answers may differ slightly on very long
+      #                                      # prompts. Default 16 (the model's own precision); 4 is accepted too
+
+    listen:
+      host: {DEFAULT_HOST}
+      port: {DEFAULT_PORT}
+
+    cache:                        # prompts already processed, kept on disk: a conversation continues
+      dir: {home}/cache           # in about a second — also after a reboot
+      max_size: {DEFAULT_CACHE_MAX_SIZE}              # when full, what was used longest ago is dropped first
+
+    requests:
+      max_parallel: {DEFAULT_MAX_PARALLEL}             # answered at the same time (see config.yaml.example for what it gains)
+      max_queue: {DEFAULT_MAX_QUEUE}               # waiting for their turn; one more is refused at once
+      max_wait_seconds: {DEFAULT_MAX_WAIT_SECONDS}       # a request that could not start by then is refused, and told why
+
+    log:
+      dir: {home}/logs
+    """)
+
+
+_TEMPLATE = f"""\
+# lmk configuration. Everything is optional: with nothing uncommented, lmk serves
+# {DEFAULT_MODEL_NAME} on http://{DEFAULT_HOST}:{DEFAULT_PORT}. After a change: `lmk up` (it restarts the service).
+#
+# model:
+#   # Name the model in exactly ONE of these three ways:
+#   name: {DEFAULT_MODEL_NAME}              # a tested model — the list is in config.yaml.example
+#   repo: mlx-community/Qwen3-30B-A3B-4bit   # its HuggingFace address after huggingface.co/ — any MLX
+#                                            # model; `lmk pull` downloads it; untested by us
+#   path: /Users/me/models/Some-Model-MLX    # a model folder already on this Mac; nothing to download
+#   # Clients send that name as "model" (for repo / path: the last part, in lower case).
+#
+#   context_length: 131072     # default: the model's own maximum. If this Mac is short of
+#                              # memory lmk lowers it; `lmk status` shows the value in use.
+#   thinking: false            # answer without thinking (default: the template's own — on for Qwen)
+#   reasoning_effort: low      # low / medium / xhigh where the model's template knows it; a server-wide
+#                              # constant, never per request: it sits at the start of every prompt
+#   kv_cache_bits: 8           # 8 halves what each token of context costs in memory: about twice the context
+#                              # on the same Mac; answers may differ slightly on very long prompts. Default 16
+#                              # (the model's own precision). 4 quarters it, at a larger cost to precision.
+#                              # Changing it starts the prompt cache empty for this model. Each model page
+#                              # says whether we tested it with 8.
+#
+# listen:
+#   host: {DEFAULT_HOST}
+#   port: {DEFAULT_PORT}
+#
+# cache:                       # lmk keeps the prompts it has already processed on disk, so a
+#   dir: ~/.lmk/cache          # conversation continues in about a second — also after a reboot
+#   max_size: {DEFAULT_CACHE_MAX_SIZE}             # when full, what was used longest ago is dropped first
+#
+# requests:
+#   max_parallel: {DEFAULT_MAX_PARALLEL}            # answered at the same time. What that gains depends on how long the
+#                              # conversations are. Measured on an M3 Ultra with the default model:
+#                              #   prompts of a few dozen tokens:  2 at once = 1.7x the speed of one, 4 = 2.2x
+#                              #   27k-token conversations:        2 at once = 1.0x (each runs at half speed)
+#                              # With 1, a request waits for the one before it and then runs at full speed.
+#   max_queue: {DEFAULT_MAX_QUEUE}              # waiting for their turn; one more is refused at once
+#   max_wait_seconds: {DEFAULT_MAX_WAIT_SECONDS}      # a request that could not start by then is refused, and told why
+#                              # (`lmk status` shows who is waiting, and for what)
+#
+# log:
+#   dir: ~/.lmk/logs
+"""
+
+_EXAMPLE_HEADER = """\
+# config.yaml.example — the full configuration reference, maintained by lmk and
+# refreshed automatically whenever a new version changes it.
+# Do not edit this file (it gets overwritten); copy the entries you want into
+# config.yaml in this directory.
+#
+"""
+
+
+def _model_list() -> str:
+    lines = ["#", "# Tested models (model.name). We ran each one with a real agent: tool calls, thinking, images,",
+             "# and the on-disk prompt cache all work. `lmk pull` downloads the one you configured into the",
+             "# shared HuggingFace cache (~/.cache/huggingface/hub), where other tools can use it too."]
+    lines.append("# Grouped by the smallest Mac each should run on (expected from memory measured on a 96 GB Mac).")
+    tiers: dict[int, list[str]] = {}
+    for name, m in TESTED_MODELS.items():
+        tiers.setdefault(smallest_mac_gb(m), []).append(name)
+    for gb in sorted(tiers):
+        lines.append(f"#   -- needs at least {gb} GB --")
+        for name in tiers[gb]:
+            m = TESTED_MODELS[name]
+            lines.append(f"#   {name:<24} {m.size_gb:>5.1f} GB download, {m.loaded_gib:.0f} GiB loaded   {m.repo}")
+            lines.append(f"#   {'':<24} {m.good_for}. Thinking: {m.thinking}")
+    return "\n".join(lines) + "\n"
+
+
+def example_text() -> str:
+    return _EXAMPLE_HEADER + _TEMPLATE + _model_list()
+
+
+def _write_atomically(path: Path, text: str) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp = path.with_name(path.name + ".tmp")
+    tmp.write_text(text)
+    os.replace(tmp, path)
+
+
+def _home_for_humans() -> str:
+    """`~/.lmk` when it is the default home, else the real path (a test or trial install)."""
+    home = lmk_home()
+    return "~/.lmk" if home == Path.home() / ".lmk" else str(home)
+
+
+def seed_config(path: Path) -> bool:
+    """Returns True when the file was created."""
+    if path.exists():
+        return False
+    _write_atomically(path, _seed_text())
+    return True
+
+
+def refresh_example(config_path: Path) -> bool:
+    """Compares content, not mtime: a no-op start leaves the file untouched."""
+    example = config_path.with_name(config_path.name + ".example")
+    want = example_text()
+    if example.exists() and example.read_text() == want:
+        return False
+    _write_atomically(example, want)
+    return True
+
+===== lmk/engine.py =====
+"""The one seam between lmk and mlx-engine (design §1: keep the engine-facing
+part behind a narrow interface). Everything above this file is testable with
+FakeEngine — no GPU, no model."""
+from dataclasses import dataclass, field
+from pathlib import Path
+from typing import Callable, Iterator, Optional, Protocol
+
+from lmk.chatformat import ChatFormat
+
+
+@dataclass(frozen=True)
+class LoadedModel:
+    id: str
+    path: Path
+    context_length: int  # the value in use — the engine may fit it to the memory it finds
+    requested_context_length: Optional[int] = None
+    kv_cache_bits: int = 16
+
+
+@dataclass
+class GenerationStats:
+    prompt_tokens: int = 0
+    cached_tokens: int = 0
+    completion_tokens: int = 0
+
+
+@dataclass
+class Preflight:
+    """What can be known about a request before it is admitted (design memory-guard §B2, §C)."""
+    prompt_tokens: int
+    uncached_tokens: Optional[int]   # None: could not be told (images, or no index yet)
+    tokens: Optional[list] = None    # handed back to generate() so the prompt is tokenized once
+
+
+# on_prefill(processed, total, cached) -> keep going?  False cancels during prefill.
+PrefillCallback = Callable[[int, int, int], bool]
+
+
+@dataclass
+class Generation:
+    """One streamed generation: iterate for text pieces; stats fill in as it runs."""
+    pieces: Iterator[str]
+    stats: GenerationStats = field(default_factory=GenerationStats)
+
+    def __iter__(self):
+        return self.pieces
+
+
+class Engine(Protocol):
+    def loaded_model(self) -> LoadedModel: ...
+    def input_modalities(self) -> list[str]: ...
+    def chat_format(self) -> ChatFormat: ...
+    def cache_stats(self) -> Optional[dict]: ...
+    def sampling_defaults(self) -> dict:
+        """Engine kwargs used when a request names no sampling parameter (see lmk.sampling)."""
+        ...
+    def thinking_enabled(self) -> bool:
+        """What every prompt says about thinking: the configured constant, else the family's default."""
+        ...
+    def preflight(self, prompt_text: str, images_b64: Optional[list[str]] = None) -> Preflight: ...
+    def token_budget(self) -> Optional[int]: ...
+    def gpu_memory_bytes(self) -> int: ...
+    def gpu_memory_peak_bytes(self) -> int: ...
+    def generate(self, prompt_text: str, *, max_tokens: Optional[int], request_id: str,
+                 on_prefill: PrefillCallback, images_b64: Optional[list[str]] = None,
+                 sampling: Optional[dict] = None, tokens: Optional[list] = None) -> Generation: ...
+
+
+class MlxEngine:
+    """Loads the resident model at construction: there is no lazy / just-in-time
+    loading in lmk (design §6.7)."""
+
+    def __init__(self, model_id: str, model_path: Path, context_length: Optional[int] = None, *,
+                 cache_dir: Optional[Path] = None, cache_max_bytes: Optional[int] = None,
+                 repo: Optional[str] = None, revision: Optional[str] = None, max_parallel: int = 2,
+                 template_kwargs: Optional[dict] = None, kv_cache_bits: int = 16):
+        from mlx_engine.generate import get_runtime_load_info, load_model  # heavy import, kept out of module scope
+
+        if not model_path.exists():
+            raise FileNotFoundError(f"model path does not exist: {model_path}")
+        from lmk.chatformat import TemplateChatFormat
+        from lmk.models import native_context_length
+
+        requested = context_length or native_context_length(model_path)
+        if requested is None:
+            raise ValueError(f"{model_path}/config.json does not say how long the model's context is — "
+                             "set model.context_length")
+        self._cache_stores: list = []
+        if cache_dir is not None:
+            _install_persistent_cache(cache_dir, cache_max_bytes, model_path, repo, revision, self._cache_stores,
+                                      kv_cache_bits=kv_cache_bits)
+        # lmk's own queue enforces max_parallel where people can see who waits and why;
+        # the engine gets the same number as a backstop
+        self._kit = load_model(model_path, max_kv_size=requested, max_seq_nums=max_parallel,
+                               kv_bits=None if kv_cache_bits == 16 else kv_cache_bits)
+        in_use = get_runtime_load_info(self._kit).get("context_length") or requested
+        self._model = LoadedModel(id=model_id, path=model_path, context_length=in_use,
+                                  requested_context_length=requested, kv_cache_bits=kv_cache_bits)
+        self._format = TemplateChatFormat(self._kit.tokenizer, template_kwargs)
+        self._thinking = bool((template_kwargs or {}).get("enable_thinking", self._format.dialect.thinking_default))
+        from lmk.sampling import model_defaults
+        self._sampling_defaults = model_defaults(model_path)
+
+    def loaded_model(self) -> LoadedModel:
+        return self._model
+
+    def sampling_defaults(self) -> dict:
+        return dict(self._sampling_defaults)
+
+    def thinking_enabled(self) -> bool:
+        return self._thinking
+
+    def chat_format(self) -> ChatFormat:
+        return self._format
+
+    def input_modalities(self) -> list[str]:
+        # the engine picks its vision kit for models whose config has vision_config
+        return ["text", "image"] if "Vision" in type(self._kit).__name__ else ["text"]
+
+    def cache_stats(self) -> Optional[dict]:
+        return self._cache_stores[-1].stats() if self._cache_stores else None
+
+    def preflight(self, prompt_text, images_b64=None) -> Preflight:
+        from mlx_engine.generate import tokenize
+
+        tokens = tokenize(self._kit, prompt_text)
+        uncached = None
+        store = getattr(self._kit, "_prompt_cache_store", None)
+        if not images_b64 and store is not None:  # image spans are part of the cache key; not reproduced here
+            try:
+                # reads the store's in-memory index only. The index belongs to the engine's cache
+                # I/O thread; a read that collides with a write is answered "unknown", which the
+                # queue treats as a long prompt — the cautious side.
+                plan = store.plan_longest_prefix_restore(tokens, [])
+                uncached = len(tokens) - (plan.cached_prefix_len if plan is not None else 0)
+            except Exception as e:  # noqa: BLE001
+                from lmk import log
+
+                log.warn("LmkPreflightLookupFailed", "could not tell how much of the prompt is cached", error=repr(e))
+        return Preflight(prompt_tokens=len(tokens), uncached_tokens=uncached, tokens=tokens)
+
+    def token_budget(self) -> Optional[int]:
+        """How many tokens of KV cache fit this Mac next to the weights, from the coefficients
+        the engine measured at load (context_fit.py). None when it made no fit."""
+        fit = getattr(self._kit, "_context_fit_result", None)
+        per_token = getattr(getattr(fit, "profile", None), "full_kv_bytes_per_token", 0)
+        if not per_token:
+            return None
+        return max(0, (fit.safe_ceiling_bytes - fit.baseline_bytes) // per_token)
+
+    def gpu_memory_bytes(self) -> int:
+        import mlx.core as mx
+
+        return int(mx.get_active_memory() + mx.get_cache_memory())
+
+    def gpu_memory_peak_bytes(self) -> int:
+        import mlx.core as mx
+
+        return int(mx.get_peak_memory())
+
+    def close(self) -> None:
+        """Drains the engine's cache I/O thread: records still queued for disk
+        are written before the process goes away."""
+        from mlx_engine.generate import unload
+
+        unload(self._kit)
+
+    def generate(self, prompt_text, *, max_tokens, request_id, on_prefill, images_b64=None, sampling=None,
+                 tokens=None) -> Generation:
+        from mlx_engine.generate import create_generator, tokenize
+        from mlx_engine.utils.prompt_progress_reporter import PromptProgressReporter
+
+        if tokens is None:
+            tokens = tokenize(self._kit, prompt_text)
+        stats = GenerationStats(prompt_tokens=len(tokens))
+
+        class Reporter(PromptProgressReporter):
+            def begin(self, is_draft, cached_tokens, total_prompt_tokens, prefill_tokens_processed):
+                stats.cached_tokens = cached_tokens
+                # with images the text-only count misses the expanded vision tokens;
+                # the engine's own total is the one that was actually prefilled
+                stats.prompt_tokens = max(stats.prompt_tokens, total_prompt_tokens)
+                return on_prefill(prefill_tokens_processed, total_prompt_tokens, cached_tokens)
+
+            def update(self, is_draft, prefill_tokens_processed):
+                return on_prefill(prefill_tokens_processed, stats.prompt_tokens, stats.cached_tokens)
+
+            def finish(self, is_draft, prefill_tokens_processed=None):
+                return True
+
+        kwargs = {"prompt_progress_reporter": Reporter(), "request_id": request_id}
+        if max_tokens:
+            kwargs["max_tokens"] = max_tokens
+        if images_b64:
+            kwargs["images_b64"] = images_b64
+        kwargs.update(sampling or {})  # the engine's own names: temp, top_p, top_k, seed
+
+        def pieces():
+            for result in create_generator(self._kit, tokens, **kwargs):
+                stats.completion_tokens += len(result.tokens)
+                if result.text:
+                    yield result.text
+
+        return Generation(pieces=pieces(), stats=stats)
+
+
+def engine_commit() -> str:
+    return (Path(__file__).resolve().parent.parent / "ENGINE_COMMIT").read_text().strip()
+
+
+def _install_persistent_cache(cache_dir: Path, max_bytes: Optional[int], model_path: Path, repo: Optional[str],
+                              revision: Optional[str], created: list, kv_cache_bits: int = 16) -> None:
+    """The engine constructs its cache store itself (model_kit.py), with the
+    directory hard-coded; the one way in is to swap the class it names."""
+    import mlx_engine.model_kit.batched_vision.model_kit as vision_kit
+
+    from lmk.persistcache import make_persistent_store_class, model_identity, prepare_cache_root
+
+    identity = model_identity(model_path, repo=repo, revision=revision, kv_cache_bits=kv_cache_bits)
+    if max_bytes is None:
+        max_bytes = 1 << 62  # no limit of ours; the engine's own budget still applies
+    live_budget = prepare_cache_root(cache_dir, identity, max_bytes)
+    vision_kit.VlmPromptCacheStore = make_persistent_store_class(cache_dir / identity, live_budget,
+                                                                 engine_commit(), created)
+
+
+class FakeEngine:
+    """Scripted engine for unit tests: replays text pieces and reports the given stats."""
+
+    def __init__(self, model: LoadedModel, chat_format: Optional[ChatFormat] = None,
+                 script: Optional[list[str]] = None, stats: Optional[GenerationStats] = None,
+                 prefill_steps: Optional[list[int]] = None, modalities: Optional[list[str]] = None,
+                 cache: Optional[dict] = None, token_budget: Optional[int] = None, gpu_bytes: int = 0,
+                 sampling_defaults: Optional[dict] = None, thinking: bool = True):
+        self._model = model
+        self._sampling_defaults = sampling_defaults or {}
+        self._thinking = thinking
+        self._format = chat_format
+        self._script = script or []
+        self._stats = stats or GenerationStats()
+        self._prefill_steps = prefill_steps or []
+        self._modalities = modalities or ["text"]
+        self._cache = cache
+        self._token_budget = token_budget
+        self._gpu_bytes = gpu_bytes
+        self.requests: list[dict] = []
+
+    def preflight(self, prompt_text, images_b64=None) -> Preflight:
+        uncached = None if images_b64 else self._stats.prompt_tokens - self._stats.cached_tokens
+        return Preflight(prompt_tokens=self._stats.prompt_tokens, uncached_tokens=uncached)
+
+    def token_budget(self) -> Optional[int]:
+        return self._token_budget
+
+    def gpu_memory_bytes(self) -> int:
+        return self._gpu_bytes
+
+    def gpu_memory_peak_bytes(self) -> int:
+        return self._gpu_bytes
+
+    def cache_stats(self) -> Optional[dict]:
+        return self._cache
+
+    def loaded_model(self) -> LoadedModel:
+        return self._model
+
+    def sampling_defaults(self) -> dict:
+        return dict(self._sampling_defaults)
+
+    def thinking_enabled(self) -> bool:
+        return self._thinking
+
+    def chat_format(self) -> ChatFormat:
+        return self._format
+
+    def input_modalities(self) -> list[str]:
+        return self._modalities
+
+    def generate(self, prompt_text, *, max_tokens, request_id, on_prefill, images_b64=None, sampling=None,
+                 tokens=None) -> Generation:
+        self.requests.append({"prompt": prompt_text, "max_tokens": max_tokens, "request_id": request_id,
+                              "images_b64": images_b64, "sampling": sampling})
+        stats = GenerationStats(**vars(self._stats))
+
+        def pieces():
+            on_prefill(0, stats.prompt_tokens, stats.cached_tokens)
+            for processed in self._prefill_steps:
+                if not on_prefill(processed, stats.prompt_tokens, stats.cached_tokens):
+                    return
+            yield from self._script
+
+        return Generation(pieces=pieces(), stats=stats)
+
+===== lmk/log.py =====
+"""Structured logs: one JSON object per line, every line carries `event`.
+
+Same contract as kitten's Go side (xklib): a line without an event name is
+unsearchable. Written to stderr AND to a file that survives a reboot.
+"""
+import json
+import sys
+import threading
+from pathlib import Path
+
+from lmk.clock import get_current_clock
+
+_lock = threading.Lock()
+_file = None
+
+
+def open_log_file(log_dir: Path) -> None:
+    global _file
+    log_dir.mkdir(parents=True, exist_ok=True)
+    _file = open(log_dir / "lmk.jsonl", "a", buffering=1)
+
+
+def _emit(level: str, event: str, msg: str, fields: dict) -> None:
+    record = {"time_ms": get_current_clock().wall_ms(), "level": level, "event": event, "msg": msg}
+    record.update(fields)
+    line = json.dumps(record, ensure_ascii=False, default=str)
+    with _lock:
+        print(line, file=sys.stderr, flush=True)
+        if _file is not None:
+            _file.write(line + "\n")
+
+
+def info(event: str, msg: str, **fields) -> None:
+    _emit("INFO", event, msg, fields)
+
+
+def warn(event: str, msg: str, **fields) -> None:
+    _emit("WARN", event, msg, fields)
+
+
+def error(event: str, msg: str, **fields) -> None:
+    _emit("ERROR", event, msg, fields)
+
+===== lmk/memory.py =====
+"""The memory numbers lmk reports and acts on (design memory-guard §E): what macOS itself
+says about the whole machine. Numbers only — lmk does not know who is using the memory,
+so it never says."""
+import ctypes
+import ctypes.util
+from dataclasses import dataclass
+
+_PRESSURE = {1: "normal", 2: "warning", 4: "critical"}
+
+
+@dataclass(frozen=True)
+class MemoryReading:
+    pressure: str       # "normal" | "warning" | "critical" — the line in Activity Monitor's memory graph
+    free_percent: int   # macOS's own figure for the whole machine
+    total_bytes: int
+
+    @property
+    def critical(self) -> bool:
+        return self.pressure == "critical"
+
+
+def _sysctl_int(name: str, size: int) -> int:
+    libc = ctypes.CDLL(ctypes.util.find_library("c"), use_errno=True)
+    buf = ctypes.c_uint64(0) if size == 8 else ctypes.c_uint32(0)
+    length = ctypes.c_size_t(ctypes.sizeof(buf))
+    if libc.sysctlbyname(name.encode(), ctypes.byref(buf), ctypes.byref(length), None, 0) != 0:
+        raise OSError(ctypes.get_errno(), f"sysctl {name}")
+    return int(buf.value)
+
+
+class SystemMemory:
+    def read(self) -> MemoryReading:
+        level = _sysctl_int("kern.memorystatus_vm_pressure_level", 4)
+        return MemoryReading(pressure=_PRESSURE.get(level, "normal"),
+                             free_percent=_sysctl_int("kern.memorystatus_level", 4),
+                             total_bytes=_sysctl_int("hw.memsize", 8))
+
+
+_current = SystemMemory()
+
+
+def get_current_memory():
+    return _current
+
+
+def set_current_memory(memory) -> None:
+    global _current
+    _current = memory
+
+===== lmk/modelfit.py =====
+"""Refuse a model whose weights alone do not fit this Mac (design memory-guard §D).
+
+Only the weights are compared. A model that fits but leaves little room has its
+context lowered by the engine, and `lmk status` says so. There is no override: a
+switch that turns a guard off gets turned off."""
+from pathlib import Path
+from typing import Callable, Optional
+
+from lmk.render import human_bytes
+
+# The reserve mlx-engine's own context fit keeps free (context_fit.py: "The fixed 3 GiB
+# reserve covers the largest measured residual between this formula and actual prefill peaks").
+RESERVE_BYTES = 3 * 1024**3
+
+
+def weights_bytes(model_dir: Path) -> int:
+    return sum(f.stat().st_size for f in model_dir.glob("*.safetensors"))
+
+
+def gpu_working_set_bytes() -> tuple[int, int]:
+    """(what macOS lets the GPU use, installed memory). Reads the device; loads no model."""
+    import mlx.core as mx
+
+    info = mx.device_info()
+    return int(info["max_recommended_working_set_size"]), int(info["memory_size"])
+
+
+def why_it_does_not_fit(model_dir: Path, device: Callable[[], tuple[int, int]] = gpu_working_set_bytes) -> Optional[str]:
+    weights = weights_bytes(model_dir)
+    working_set, installed = device()
+    if weights + RESERVE_BYTES <= working_set:
+        return None
+    return ("this model does not fit this Mac.\n"
+            f"  it needs about {human_bytes(weights)} for its weights; this Mac can give a model {human_bytes(working_set)}\n"
+            f"  (macOS keeps the rest of the {human_bytes(installed)} for everything else, and lmk leaves "
+            f"{human_bytes(RESERVE_BYTES)} of headroom).\n"
+            "  Pick a smaller model, or a lower-bit version of this one.")
+
+===== lmk/models.py =====
+"""The tested-model list, and finding a model on disk.
+
+lmk owns no model directory (design OOBE §B): HuggingFace models live in the
+shared HF cache, where every other tool can see them too. Downloading is its
+own explicit command (`lmk pull`), never a side effect of starting.
+"""
+import json
+from dataclasses import dataclass
+from pathlib import Path
+from typing import Optional
+
+
+@dataclass(frozen=True)
+class MemoryFit:
+    """The engine's context-fit coefficients for this model, read off its load log on the M3 Ultra
+    ("Model context auto-fit: ... baseline=... full_kv=... prompt_inputs=... attention_coefficient=...
+    rotating_constant=... rotating_per_step=..."). With them, mlx-engine's own formula
+    (batched_vision/context_fit.py, `_context_fit_for_step`) says what context fits on any Mac."""
+    baseline_gib: float            # GPU memory right after loading, before any conversation
+    full_kv_bytes_per_token: int
+    prompt_input_bytes_per_token: int
+    attention_bytes_per_context_per_step: int
+    rotating_constant_gib: float = 0.0
+    rotating_bytes_per_prefill_step_token: int = 0
+    measured_context_on_96gb: int = 0   # what the engine actually fitted on the M3 Ultra 96 GB, when it was less than the maximum
+
+
+@dataclass(frozen=True)
+class Speed:
+    """Measured with `lmk bench` on the M3 Ultra 96 GB, one request at a time (docs/benchmarks.md)."""
+    prefill_tok_s: int         # a prompt lmk has never seen
+    cached_prefill_tok_s: int  # the cached part coming back from disk
+    decode_tok_s: float        # writing
+
+
+@dataclass(frozen=True)
+class TestedModel:
+    __test__ = False  # not a pytest class
+
+    repo: str
+    size_gb: float       # the download
+    max_context: int
+    images: bool
+    thinking: str        # one line: what the switch does on this model
+    good_for: str        # one line: why someone would pick it
+    fit: MemoryFit
+    speed: Speed
+
+    @property
+    def loaded_gib(self) -> float:
+        return self.fit.baseline_gib
+
+
+# Models we have run end to end with a real agent. config.yaml.example and README.md print this
+# list, so the one-liners are written for someone choosing a model, not for us.
+TESTED_MODELS: dict[str, TestedModel] = {
+    "qwen3.8-27b-4bit": TestedModel(
+        repo="lmstudio-community/Qwen3.8-27B-MLX-4bit", size_gb=16.1, max_context=262_144, images=True,
+        thinking="on by default at the top level; set `reasoning_effort: low` — it tested best",
+        good_for="the default; best-tested with `reasoning_effort: low`",
+        fit=MemoryFit(14.95, 65536, 10240, 48), speed=Speed(323, 53_000, 39.5)),
+    "qwen3.8-27b-8bit": TestedModel(
+        repo="lmstudio-community/Qwen3.8-27B-MLX-8bit", size_gb=29.5, max_context=262_144, images=True,
+        thinking="same as the 4-bit",
+        good_for="the 27B with less quantization loss, 40% slower decode",
+        fit=MemoryFit(27.48, 65536, 10240, 48), speed=Speed(319, 44_000, 23.1)),
+    "qwen3.8-27b-5bit": TestedModel(
+        repo="lmstudio-community/Qwen3.8-27B-MLX-5bit", size_gb=19.4, max_context=262_144, images=True,
+        thinking="same as the 4-bit", good_for="the 27B between 4- and 8-bit: 19 GB, 20% slower decode than 4-bit",
+        fit=MemoryFit(18.08, 65536, 10240, 48), speed=Speed(315, 57_000, 31.6)),
+    "qwen3.8-27b-6bit": TestedModel(
+        repo="lmstudio-community/Qwen3.8-27B-MLX-6bit", size_gb=22.8, max_context=262_144, images=True,
+        thinking="same as the 4-bit", good_for="the 27B at 6-bit: 23 GB, 30% slower decode than 4-bit",
+        fit=MemoryFit(21.22, 65536, 10240, 48), speed=Speed(315, 53_000, 28.1)),
+    "qwen3.5-122b-a10b-4bit": TestedModel(
+        repo="mlx-community/Qwen3.5-122B-A10B-4bit", size_gb=69.6, max_context=262_144, images=True,
+        thinking="on/off only; **use `thinking: false`** — on, it can think for thousands of tokens on a small task",
+        good_for="the biggest here; MoE, faster than the 27B but not smarter on our tests",
+        fit=MemoryFit(64.82, 24576, 6144, 64, measured_context_on_96gb=165_888), speed=Speed(753, 89_000, 60.5)),
+    "qwen3.5-122b-a10b-48gb": TestedModel(
+        repo="baa-ai/Qwen3.5-122B-A10B-RAM-48GB-MLX", size_gb=47.2, max_context=262_144, images=True,
+        thinking="same as the 4-bit: use `thinking: false`",
+        good_for="the 122B for 64 GB Macs (2–3 bit experts, community quant)",
+        fit=MemoryFit(43.92, 24576, 6144, 64), speed=Speed(746, 89_000, 53.7)),
+    "gemma-4-26b-a4b-4bit": TestedModel(
+        repo="mlx-community/gemma-4-26b-a4b-it-4bit", size_gb=15.6, max_context=262_144, images=True,
+        thinking="off by default; `thinking: true` lets the model decide per turn, and even off it sometimes thinks briefly",
+        good_for="fastest here by far; MoE, 4B active",
+        fit=MemoryFit(14.29, 20480, 5632, 32, 0.20, 204800), speed=Speed(1_833, 83_000, 119.5)),
+    "gemma-4-e4b-4bit": TestedModel(
+        repo="lmstudio-community/gemma-4-E4B-it-MLX-4bit", size_gb=6.8, max_context=131_072, images=True,
+        thinking="off by default; same as the 26B-A4B",
+        good_for="the small one; 7 GB",
+        fit=MemoryFit(6.33, 16384, 26624, 16, 0.02, 40960), speed=Speed(2_199, 183_000, 93.5)),
+    "gemma-4-31b-4bit": TestedModel(
+        repo="lmstudio-community/gemma-4-31B-it-MLX-4bit", size_gb=18.4, max_context=262_144, images=True,
+        thinking="off by default; same as the 26B-A4B",
+        good_for="Gemma at the 27B's size; slower, shorter ctx",
+        fit=MemoryFit(17.15, 81920, 10752, 64, 0.78, 819200), speed=Speed(252, 26_000, 33.0)),
+}
+DEFAULT_MODEL_NAME = "qwen3.8-27b-4bit"
+
+
+def model_page_url(name: str) -> str:
+    """Each tested model has a page: what fits, how fast, the recommended config, what to know."""
+    return f"https://github.com/seabit-ai/lmk/blob/main/docs/models/{name}.md"
+
+
+# Apple gives the GPU about this share of unified memory (macOS's default wired limit): on the
+# M3 Ultra 96 GB the engine reports a 77.76 GiB working set = 0.81. Other sizes are assumed alike.
+GPU_SHARE_OF_MEMORY = 0.81
+GIB = 1024 ** 3
+ENGINE_RESERVE_BYTES = 3 * GIB           # context_fit.MIN_RUNTIME_RESERVE_BYTES
+ENGINE_MIN_CONTEXT = 4_096               # context_fit.MIN_FITTED_CONTEXT_TOKENS
+ENGINE_ALLOCATION_STEP = 256
+SMALLEST_PREFILL_STEP = 512              # the engine keeps the largest context its smallest step allows
+# A model that loads with room for only a few thousand tokens is no use to an agent.
+MIN_USEFUL_CONTEXT = 32_768
+MAC_MEMORY_SIZES_GB = (16, 24, 32, 48, 64, 96, 128, 192, 256, 512)
+
+
+def context_on(m: TestedModel, mac_gb: int) -> int:
+    """The context mlx-engine would fit on a Mac with this much memory: its own formula with this
+    model's measured coefficients (one small term it does not log is left out; on the 122B this
+    gives 168k where the engine fitted 165,888). 0 = does not load. Expected, not measured, except
+    on the 96 GB Mac everything was measured on."""
+    f = m.fit
+    if not f.baseline_gib:
+        return 0          # coefficients not measured yet: nothing to say
+    if mac_gb == 96 and f.measured_context_on_96gb:
+        return f.measured_context_on_96gb
+    working_set = mac_gb * GPU_SHARE_OF_MEMORY * GIB
+    fixed = f.baseline_gib * GIB + f.rotating_constant_gib * GIB + f.rotating_bytes_per_prefill_step_token * SMALLEST_PREFILL_STEP
+    available = working_set - ENGINE_RESERVE_BYTES - fixed
+    if available <= 0:
+        return 0
+    per_token = f.full_kv_bytes_per_token + f.prompt_input_bytes_per_token + f.attention_bytes_per_context_per_step * SMALLEST_PREFILL_STEP
+    tokens = int(available // per_token) // ENGINE_ALLOCATION_STEP * ENGINE_ALLOCATION_STEP
+    return min(m.max_context, max(ENGINE_MIN_CONTEXT, tokens))
+
+
+def smallest_mac_gb(m: TestedModel) -> int:
+    """The smallest Mac this model is worth running on: the engine's fit leaves at least
+    MIN_USEFUL_CONTEXT tokens. Expected, not measured: we have run everything on one 96 GB Mac."""
+    for gb in MAC_MEMORY_SIZES_GB:
+        if context_on(m, gb) >= MIN_USEFUL_CONTEXT:
+            return gb
+    return MAC_MEMORY_SIZES_GB[-1]
+
+
+def _k(n: int) -> str:
+    return f"{n // 1000}k" if n >= 1000 else str(n)
+
+
+def tested_models_markdown() -> str:
+    """The "Models" section of README.md: one table per Mac size, smallest first, written for
+    someone choosing a model. A unit test holds the README to it, and another holds every row to a
+    page under docs/models/."""
+    tiers: dict[int, list[str]] = {}
+    for name, m in TESTED_MODELS.items():
+        tiers.setdefault(smallest_mac_gb(m), []).append(name)
+    out = []
+    for gb in sorted(tiers):
+        # Mac sizes from this group's minimum up to where every model in it reaches its maximum context
+        sizes = [g for g in MAC_MEMORY_SIZES_GB if g >= gb]
+        last = max(next((i for i, g in enumerate(sizes) if context_on(TESTED_MODELS[n], g) >= TESTED_MODELS[n].max_context),
+                        len(sizes) - 1) for n in tiers[gb])
+        sizes = sizes[:last + 1]
+        out += [f"### Needs at least {gb} GB", "",
+                f"| model | good for | ctx size on {' / '.join(f'{g} GB' for g in sizes)} | images | tok/s: cache hit / miss / decode |",
+                "|---|---|---|---|---|"]
+        for name in tiers[gb]:
+            m = TESTED_MODELS[name]
+            default = " (default)" if name == DEFAULT_MODEL_NAME else ""
+            ctx = " / ".join(_k(context_on(m, g)) for g in sizes)
+            out.append(f"| [`{name}`](docs/models/{name}.md){default} | {m.good_for} | {ctx} tokens | "
+                       f"{'yes' if m.images else 'no'} | "
+                       f"{_k(m.speed.cached_prefill_tok_s)} / {m.speed.prefill_tok_s:,} / {m.speed.decode_tok_s:.0f} |")
+        out.append("")
+    return "\n".join(out).rstrip("\n")
+
+
+class ModelNotDownloaded(Exception):
+    def __init__(self, repo: str, why: str):
+        super().__init__(f"{repo}: {why}")
+        self.repo = repo
+        self.why = why
+
+
+@dataclass(frozen=True)
+class ResolvedModel:
+    path: Path
+    revision: Optional[str]  # the HF commit hash; None for a local directory
+
+
+def missing_weight_files(model_dir: Path) -> list[str]:
+    """A snapshot directory appears as soon as a download starts; the weight
+    index says which shards must be there before the model can load."""
+    index = model_dir / "model.safetensors.index.json"
+    if not index.exists():
+        return [] if any(model_dir.glob("*.safetensors")) else ["*.safetensors"]
+    shards = set(json.loads(index.read_text())["weight_map"].values())
+    return sorted(s for s in shards if not (model_dir / s).exists())
+
+
+def _hf_snapshot_dir(repo: str) -> Optional[Path]:
+    """Reads the HF cache layout directly (models--org--name/refs/main names the commit
+    under snapshots/). Not huggingface_hub.snapshot_download(local_files_only=True):
+    importing mlx-engine replaces that function with one that always raises, so it
+    would work or fail depending on what the process happened to import first."""
+    from huggingface_hub.constants import HF_HUB_CACHE
+
+    repo_dir = Path(HF_HUB_CACHE) / ("models--" + repo.replace("/", "--"))
+    try:
+        commit = (repo_dir / "refs" / "main").read_text().strip()
+    except OSError:
+        return None
+    snapshot = repo_dir / "snapshots" / commit
+    return snapshot if snapshot.is_dir() else None
+
+
+def resolve_model(source) -> ResolvedModel:
+    """source: lmk.config.ModelSource. Never touches the network."""
+    if source.kind == "path":
+        if not source.path.is_dir():
+            raise FileNotFoundError(f"model.path does not exist: {source.path}")
+        return ResolvedModel(path=source.path, revision=None)
+
+    snapshot = _hf_snapshot_dir(source.repo)
+    if snapshot is None:
+        raise ModelNotDownloaded(source.repo, "not downloaded")
+    missing = missing_weight_files(snapshot)
+    if missing:
+        raise ModelNotDownloaded(source.repo, f"download incomplete ({len(missing)} weight file(s) missing)")
+    return ResolvedModel(path=snapshot, revision=snapshot.name)
+
+
+def native_context_length(model_dir: Path) -> Optional[int]:
+    """The model's own maximum, from its config.json (VLMs keep it under text_config)."""
+    try:
+        cfg = json.loads((model_dir / "config.json").read_text())
+    except (OSError, ValueError):
+        return None
+    for holder in (cfg.get("text_config") or {}, cfg):
+        value = holder.get("max_position_embeddings")
+        if isinstance(value, int) and value > 0:
+            return value
+    return None
+
+===== lmk/persistcache.py =====
+"""A prefix cache that survives a model reload and a reboot (wish list WISH-001).
+
+mlx-engine keeps its cache in an unnamed temporary file with the index in
+memory, so every reload starts cold. This module swaps in two pieces with the
+engine's own interfaces:
+
+  PersistentBlobStore   — one file per record; "the file exists" IS "the record
+                          exists". Write-to-temp + rename, so a crash leaves at
+                          worst a stray temp file, never a half record.
+  PersistentPromptCacheStore — the engine's store, plus: restore the index from
+                          what is on disk at startup; keep the files on close.
+
+The cache directory is keyed by the model's weights and by OUR record format
+version — not by the engine commit (design OOBE §E′): an engine upgrade that
+leaves the records readable must not cost the user a 100 GB cache. Whether it
+does is settled by an integration test at upgrade time; if it fails, bump
+CACHE_FORMAT_VERSION.
+"""
+import hashlib
+import json
+import os
+import shutil
+import subprocess
+from pathlib import Path
+from typing import Any, Callable, Optional
+
+from lmk import log
+
+CACHE_FORMAT_VERSION = 1
+_LAYOUT_FILE = "layout.json"
+_SUFFIX = ".safetensors"
+
+
+def model_identity(model_path: Path, repo: Optional[str] = None, revision: Optional[str] = None,
+                   kv_cache_bits: int = 16) -> str:
+    """Changes whenever the weights or the model config change. A HuggingFace
+    snapshot is named by its commit hash; a local directory has no such name,
+    so its files are fingerprinted. A quantized KV cache writes records of another
+    shape, so it gets its own directory; 16 leaves the identity as it always was."""
+    h = hashlib.sha256()
+    h.update(f"lmk-cache-v{CACHE_FORMAT_VERSION}|".encode())
+    if kv_cache_bits != 16:
+        h.update(f"kv{kv_cache_bits}|".encode())
+    if revision:
+        h.update(f"hf:{repo}@{revision}".encode())
+    else:
+        for f in sorted(model_path.iterdir()):
+            if f.suffix in (".safetensors", ".json") and f.is_file():
+                st = f.stat()
+                h.update(f"{f.name}:{st.st_size}:{st.st_mtime_ns}|".encode())
+    return h.hexdigest()[:24]
+
+
+_CACHEDIR_TAG = "Signature: 8a477f597d28d172789f06886806bc55\n# This directory holds lmk's prompt cache. It can be deleted; lmk rebuilds it.\n"
+
+
+def _exclude_from_time_machine(directory: Path) -> None:
+    try:
+        subprocess.run(["tmutil", "addexclusion", str(directory)], check=False, capture_output=True, timeout=10)
+    except (OSError, subprocess.SubprocessError):
+        pass  # not macOS, or tmutil unavailable: the tag file still marks it for other backup tools
+
+
+def _dir_bytes_and_last_use(directory: Path) -> tuple[int, int]:
+    total, newest = 0, 0
+    for f in directory.rglob("*"):
+        if f.is_file():
+            st = f.stat()
+            total += st.st_size
+            newest = max(newest, st.st_mtime_ns)
+    return total, newest
+
+
+MIN_FREE_DISK_BYTES = 10 * 1024**3
+
+
+def cache_budget(max_bytes: int, used_bytes: int, free_disk_bytes: int) -> int:
+    """cache.max_size IS the limit (design OOBE §C2, revised). One guard on top of it:
+    the disk keeps MIN_FREE_DISK_BYTES free — below that the cache stops growing and
+    gives space back, least recently used first.
+
+    Deliberately NOT the engine's own budget (one full context's worth, at most a quarter
+    of the free disk): that sizes a temporary cache for one conversation. Ours is
+    persistent and shared by weeks of conversations, and a limit the user wrote down
+    must not be silently undercut by a formula."""
+    return max(0, min(max_bytes, used_bytes + free_disk_bytes - MIN_FREE_DISK_BYTES))
+
+
+def prepare_cache_root(cache_root: Path, live_identity: str, max_bytes: int,
+                       exclude_from_backup: Callable[[Path], None] = _exclude_from_time_machine) -> int:
+    """One size limit for the whole cache directory (design OOBE §C2). Directories
+    of other identities — a model used before, a retired record format — are
+    never touched again, so they are the least recently used: they go first,
+    whole, until the directory fits. Returns what is left for the live model."""
+    cache_root.mkdir(parents=True, exist_ok=True)
+    tag = cache_root / "CACHEDIR.TAG"
+    if not tag.exists():
+        tag.write_text(_CACHEDIR_TAG)
+        exclude_from_backup(cache_root)
+
+    live_bytes = _dir_bytes_and_last_use(cache_root / live_identity)[0] if (cache_root / live_identity).is_dir() else 0
+    others = []
+    for d in cache_root.iterdir():
+        if d.is_dir() and d.name != live_identity:
+            size, last_use = _dir_bytes_and_last_use(d)
+            others.append((last_use, size, d))
+    others.sort()
+    others_bytes = sum(size for _, size, _ in others)
+    while others and live_bytes + others_bytes > max_bytes:
+        _, size, d = others.pop(0)
+        shutil.rmtree(d, ignore_errors=True)
+        others_bytes -= size
+        log.info("LmkCacheOrphanDropped", "dropped the cache of a model no longer in use to fit cache.max_size",
+                 dir=str(d), mib=round(size / 1048576, 1))
+    return max(0, max_bytes - others_bytes)
+
+
+# Keys look like "record:<sha256>:<kind>", and kinds contain underscores
+# (state_checkpoint), so ":" maps to a character that appears in neither.
+_KEY_SEP_IN_FILE = "@"
+
+
+def _file_name(key: str) -> str:
+    return key.replace(":", _KEY_SEP_IN_FILE) + _SUFFIX
+
+
+def _key_of(file_name: str) -> str:
+    return file_name[: -len(_SUFFIX)].replace(_KEY_SEP_IN_FILE, ":")
+
+
+class PersistentBlobStore:
+    """Same surface as the engine's TemporarySafetensorBlobStore. Not
+    thread-safe, like the original: access is owned by the cache I/O thread."""
+
+    def __init__(self, directory: Path):
+        self._dir = directory
+        self._dir.mkdir(parents=True, exist_ok=True)
+        for stray in self._dir.glob("*.tmp"):
+            stray.unlink(missing_ok=True)
+
+    def keys_oldest_first(self) -> list[str]:
+        files = [f for f in self._dir.iterdir() if f.name.endswith(_SUFFIX)]
+        files.sort(key=lambda f: f.stat().st_mtime_ns)
+        return [_key_of(f.name) for f in files]
+
+    def put(self, key: str, arrays: dict[str, Any], safetensor_metadata: dict[str, str]) -> int:
+        import mlx.core as mx
+
+        path = self._dir / _file_name(key)
+        if path.exists():
+            return path.stat().st_size
+        tmp = path.with_suffix(".tmp")
+        # mx.save_safetensors appends ".safetensors" to a bare path; hand it a file object
+        with open(tmp, "wb") as f:
+            mx.save_safetensors(f, arrays, safetensor_metadata)
+            f.flush()
+            os.fsync(f.fileno())
+        os.replace(tmp, path)
+        return path.stat().st_size
+
+    def load_record(self, key: str) -> list[Any]:
+        from mlx_engine.model_kit.batched_vision.prompt_cache.blob_store import _load_record_from_file
+
+        with open(self._dir / _file_name(key), "rb") as f:
+            return _load_record_from_file(f)
+
+    def exists(self, key: str) -> bool:
+        return (self._dir / _file_name(key)).exists()
+
+    def size(self, key: str) -> int:
+        return (self._dir / _file_name(key)).stat().st_size
+
+    def touch(self, key: str) -> None:
+        try:
+            os.utime(self._dir / _file_name(key))
+        except FileNotFoundError:
+            pass
+
+    def delete(self, key: str) -> None:
+        (self._dir / _file_name(key)).unlink(missing_ok=True)
+
+    def close(self) -> None:
+        pass  # the whole point: the records stay
+
+
+def _layout_to_json(layout, engine_commit: str) -> dict:
+    return {"written_by_engine_commit": engine_commit,  # for the record only; not part of the identity
+            "layer_kinds": list(layout.layer_kinds),
+            "layer_indices_by_kind": {k: list(v) for k, v in layout.layer_indices_by_kind.items()},
+            "rotating_window_size": layout.rotating_window_size}
+
+
+def make_persistent_store_class(directory: Path, max_bytes: int, engine_commit: str, created: list):
+    """Build the store class the engine will instantiate in place of its own.
+    A class (not an instance) because the engine constructs it itself; the
+    instance is appended to `created` so lmk can report its size."""
+    from mlx_engine.model_kit.batched_vision.prompt_cache.cache_store import VlmPromptCacheStore
+    from mlx_engine.model_kit.batched_vision.prompt_cache.types import PromptCacheLayout, PromptCacheRecordMetadata
+
+    class PersistentPromptCacheStore(VlmPromptCacheStore):
+        def __init__(self, max_kv_size: Optional[int] = None, enable_disk_cache: bool = True):
+            super().__init__(max_kv_size=max_kv_size, enable_disk_cache=False)  # skip the temp-file store
+            self._base_dir = directory
+            self._blob_store = PersistentBlobStore(directory)
+            self._empirical_budget_set = False
+            self._max_cache_store_bytes = max_bytes  # _restore_index evicts against the real budget below
+            self._restore_index()
+            created.append(self)
+
+        def _free_disk_bytes(self) -> int:
+            return shutil.disk_usage(directory).free
+
+        def commit_budget_update(self, max_cache_store_bytes: int) -> None:
+            # the engine's estimate is ignored on purpose: see cache_budget
+            super().commit_budget_update(cache_budget(max_bytes, self._total_bytes, self._free_disk_bytes()))
+
+        def _evict_if_needed(self) -> None:
+            self._max_cache_store_bytes = cache_budget(max_bytes, self._total_bytes, self._free_disk_bytes())
+            super()._evict_if_needed()
+
+        def stats(self) -> dict:
+            return {"dir": str(directory), "used_bytes": self._total_bytes, "max_bytes": max_bytes,
+                    "records": len(self._record_metadata_by_key),
+                    "disk_low": self._free_disk_bytes() < MIN_FREE_DISK_BYTES}
+
+        def _restore_index(self) -> None:
+            layout_path = directory / _LAYOUT_FILE
+            keys = self._blob_store.keys_oldest_first()
+            if not layout_path.exists():
+                # records without a layout cannot be interpreted: start clean
+                for key in keys:
+                    self._blob_store.delete(key)
+                log.info("LmkCacheRestored", "no prior cache for this model", dir=str(directory), records=0)
+                return
+            raw = json.loads(layout_path.read_text())
+            self._layout = PromptCacheLayout(layer_kinds=raw["layer_kinds"],
+                                             layer_indices_by_kind=raw["layer_indices_by_kind"],
+                                             rotating_window_size=raw["rotating_window_size"])
+            for key in keys:  # oldest first → LRU order is rebuilt as we touch
+                _, chunk_key, record_kind = key.split(":", 2)
+                self._record_metadata_by_key[key] = PromptCacheRecordMetadata(
+                    chunk_key=chunk_key, record_kind=record_kind,
+                    layer_indices=list(self._layout.layer_indices_by_kind.get(record_kind, [])))
+                super()._touch_cache_entry(key)
+            log.info("LmkCacheRestored", "prefix cache restored from disk", dir=str(directory),
+                     records=len(keys), mib=round(self._total_bytes / 1048576, 1))
+            self._evict_if_needed()
+
+        def commit_pending_save(self, pending_save) -> None:
+            had_layout = self._layout is not None
+            super().commit_pending_save(pending_save)
+            if not had_layout and self._layout is not None:
+                tmp = directory / (_LAYOUT_FILE + ".tmp")
+                tmp.write_text(json.dumps(_layout_to_json(self._layout, engine_commit)))
+                os.replace(tmp, directory / _LAYOUT_FILE)
+
+        def _touch_cache_entry(self, key: str) -> None:
+            super()._touch_cache_entry(key)
+            self._blob_store.touch(key)  # mtime carries the LRU order across restarts
+
+        def close(self) -> None:
+            pass  # keep index and files; the process is going away anyway
+
+    return PersistentPromptCacheStore
+
+===== lmk/render.py =====
+"""What the person at the terminal reads. Pure functions: status JSON in, text out.
+
+Written for someone who runs an agent and has never read lmk's source: say what
+is happening and what to type next, in words that need no glossary.
+"""
+import json
+from pathlib import Path
+from typing import Optional
+
+from lmk.models import TESTED_MODELS, model_page_url
+from lmk.sampling import describe as describe_sampling
+
+FIRST_REQUEST_NOTE = (
+    "The first request of a new conversation reads its whole prompt (about 3s per 1,000 tokens).\n"
+    "  After that every step starts in about a second — also after a reboot.")
+
+
+def human_bytes(n: int) -> str:
+    value = float(n)
+    for unit in ("B", "KB", "MB", "GB"):
+        if value < 1024:
+            return f"{value:.0f} {unit}" if unit in ("B", "KB") else f"{value:.1f} {unit}"
+        value /= 1024
+    return f"{value:.1f} TB"
+
+
+def human_duration(ms: int) -> str:
+    s = ms // 1000
+    if s < 60:
+        return f"{s}s"
+    if s < 3600:
+        return f"{s // 60}m {s % 60}s"
+    if s < 86400:
+        return f"{s // 3600}h {s % 3600 // 60}m"
+    return f"{s // 86400}d {s % 86400 // 3600}h"
+
+
+def short_path(path: str) -> str:
+    home = str(Path.home())
+    return "~" + path[len(home):] if path.startswith(home) else path
+
+
+def base_url(host: str, port: int) -> str:
+    return f"http://{'127.0.0.1' if host in ('0.0.0.0', '::') else host}:{port}"
+
+
+UNNAMED = "(unnamed)"
+UNNAMED_NOTE = ("  (unnamed): the client did not say who it is. It can, with two optional request headers —\n"
+                "  X-Lmk-Purpose (turn, groom, …) and X-Lmk-Ref-Id (its own reference for the call).")
+
+
+def _who(r: dict) -> str:
+    return " · ".join(x for x in (r.get("purpose"), r.get("ref_id")) if x) or UNNAMED
+
+
+def _prompt(r: dict) -> str:
+    cached = r.get("cached_tokens")
+    return f"{r.get('prompt_tokens', 0):,} prompt" + (f" ({cached:,} cached)" if cached is not None else "")
+
+
+def _rate(r: dict) -> str:
+    rate = r.get("decode_tokens_per_s")
+    return f"{r.get('completion_tokens', 0):,} tokens" + (f" at {rate:.0f}/s" if rate else "")
+
+
+def _request_rows(status: dict) -> list[tuple[str, str, str, str]]:
+    """(state, detail, who, what) for every request lmk holds: running first, then the queue."""
+    rows = []
+    for r in status.get("in_flight") or []:
+        state, took = r.get("state") or "starting", human_duration(r.get("running_ms", 0))
+        prefill = r.get("prefill")
+        if state == "prefill" and prefill and prefill.get("total"):
+            done, total = prefill["processed"], prefill["total"]
+            rows.append(("prefill", f"{done * 100 // total}%", _who(r),
+                         f"{done:,} / {total:,} · {prefill.get('cached', 0):,} cached · {took}"))
+        elif state == "decode":
+            rows.append(("decode", r.get("part") or "", _who(r), f"{_prompt(r)} · {_rate(r)} · {took}"))
+        else:
+            rows.append((state, "", _who(r), f"{_prompt(r)} · {took}"))
+    for w in status.get("waiting") or []:
+        rows.append(("queued", "", _who(w), f"{human_duration(w.get('waited_ms', 0))} · {w.get('reason')}"))
+    return rows
+
+
+def _finished_line(f: dict, who_width: int) -> str:
+    first = f.get("first_token_ms")
+    parts = [_prompt(f)]
+    if first is not None:
+        parts.append(f"first token {first / 1000:.1f}s")
+    if f.get("completion_tokens"):
+        parts.append(_rate(f))
+    parts += [f.get("outcome") or "?", f"{human_duration(f.get('ago_ms', 0))} ago"]
+    return f"  {_who(f):<{who_width}}  " + " · ".join(parts)
+
+
+def status_block(status: dict, url: str) -> str:
+    model = status["model"]
+    context = f"{model['context_length']:,} tokens"
+    requested = model.get("requested_context_length")
+    if requested and model["context_length"] < requested:
+        context += f" (asked for {requested:,}; lowered to fit this Mac's memory)"
+    lines = [f"✓ lmk is up    {url}/v1   (OpenAI-compatible)",
+             f"  model      {model['id']} · {', '.join(model.get('input_modalities') or ['text'])} in · {context}"
+             + (f" · thinking {'on' if model['thinking'] else 'off'}" if "thinking" in model else "")
+             + (f" · KV cache {model['kv_cache_bits']}-bit" if model.get("kv_cache_bits", 16) != 16 else "")]
+    if model["id"] in TESTED_MODELS:
+        lines.append(f"  about it   {model_page_url(model['id'])}")
+    if "sampling_defaults" in status:
+        lines.append(f"  sampling   {describe_sampling(status['sampling_defaults'])}   "
+                     "(the model's generation_config; a request may override)")
+    memory = status.get("memory")
+    if memory:
+        lines.append(f"  memory     pressure: {memory['pressure']} · {memory['free_percent']}% of "
+                     f"{human_bytes(memory['total_bytes'])} free · lmk holds {human_bytes(memory['lmk_gpu_bytes'])}")
+    cache, totals = status.get("cache"), status.get("totals") or {}
+    if cache:
+        line = (f"  cache      {human_bytes(cache['used_bytes'])} of {human_bytes(cache['max_bytes'])} in "
+                f"{short_path(str(Path(cache['dir']).parent))}")
+        if totals.get("prompt_tokens"):
+            # a ratio, with both of its numbers: the size of the cache alone does not say whether it works
+            line += (f" · since start {totals['cached_tokens'] * 100 // totals['prompt_tokens']}% of prompt tokens "
+                     f"came from it ({totals['cached_tokens']:,} of {totals['prompt_tokens']:,})")
+        lines.append(line)
+        if cache.get("disk_low"):
+            lines.append("             the disk has less than 10 GB free — lmk has stopped adding to the cache")
+    requests = status.get("requests")
+    if requests:
+        line = (f"  requests   answering {requests['answering']} of {requests['max_parallel']} · "
+                f"waiting {requests['waiting']} of {requests['max_queue']}")
+        if requests.get("token_budget"):
+            line += f" · tokens in memory {requests['tokens_in_memory']:,} of {requests['token_budget']:,}"
+        lines.append(line)
+    since = [f"{totals[k]:,} {k}" for k in ("answered", "refused", "failed", "cancelled") if k in totals]
+    lines.append("  since start  " + " · ".join(since + [f"up {human_duration(status.get('uptime_ms', 0))}",
+                                                           f"build {status.get('build', '?')}"]))
+    lines.append("")
+    rows = _request_rows(status)
+    if rows:
+        who_width = min(40, max(len(r[2]) for r in rows))
+        lines += [f"  {state:<8} {detail:<10} {who:<{who_width}}  {what}" for state, detail, who, what in rows]
+    else:
+        lines.append("  idle — no requests")
+    recent = status.get("recent") or []
+    if recent:
+        who_width = min(40, max(len(_who(f)) for f in recent))
+        lines += ["", "  just finished"] + [_finished_line(f, who_width) for f in recent]
+    everyone = (status.get("in_flight") or []) + (status.get("waiting") or []) + recent
+    if any(_who(r) == UNNAMED for r in everyone):
+        lines += ["", UNNAMED_NOTE]
+    return "\n".join(lines)
+
+
+# One observed agent step wrote 15,698 tokens, thinking included (research/2026-09-20-thinking-length, THK-004);
+# the 8192 in OpenClaw's own local-model template would have cut it off.
+OPENCLAW_MAX_TOKENS = 32768
+
+
+def connect_block(url: str, model: dict) -> str:
+    """`model` is the `model` object of /lmk/v1/status."""
+    model_id = model["id"]
+    modalities = ", ".join(f'"{m}"' for m in (model.get("input_modalities") or ["text"]))
+    return "\n".join([
+        "  Point your agent at it — any OpenAI-compatible client:",
+        f"    base URL   {url}/v1",
+        f"    model      {model_id}",
+        "    API key    anything (lmk does not check it)",
+        "",
+        "  OpenClaw — merge this into ~/.openclaw/openclaw.json, then pick the model "
+        f"lmk/{model_id}:",
+        "    models: {",
+        '      mode: "merge",',
+        "      providers: {",
+        "        lmk: {",
+        f'          baseUrl: "{url}/v1",',
+        '          apiKey: "lmk",',
+        '          api: "openai-completions",',
+        "          models: [{",
+        f'            id: "{model_id}",',
+        f'            name: "{model_id} (lmk)",',
+        "            reasoning: false,",
+        f"            input: [{modalities}],",
+        "            cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },",
+        f"            contextWindow: {model['context_length']},",
+        f"            maxTokens: {OPENCLAW_MAX_TOKENS},",
+        "          }],",
+        "        },",
+        "      },",
+        "    },",
+        "",
+        "  kitten — put this in .kitten/config.yaml:",
+        "    providers:",
+        "      lmk:",
+        f"        base_url: {url}",
+        "    model_aliases:",
+        f'      local: "lmk:{model_id}"',
+        "",
+        f"  {FIRST_REQUEST_NOTE}",
+        "  It starts by itself at login. Check on it: lmk status   Stop it: lmk down",
+    ])
+
+
+def not_downloaded_block(repo: str, why: str, size_gb: Optional[float]) -> str:
+    size = f" ({size_gb:.0f} GB)" if size_gb else ""
+    return f"✗ model {why}: {repo}{size}\n  run:  lmk pull"
+
+
+def log_line(raw: str) -> str:
+    """One line of lmk.jsonl → `HH:MM:SS LEVEL Event  message  key=value …`"""
+    import datetime
+
+    try:
+        rec = json.loads(raw)
+    except ValueError:
+        return raw.rstrip("\n")
+    when = datetime.datetime.fromtimestamp(rec.pop("time_ms", 0) / 1000).strftime("%H:%M:%S")
+    level, event, msg = rec.pop("level", "INFO"), rec.pop("event", "?"), rec.pop("msg", "")
+    rest = "  ".join(f"{k}={v}" for k, v in rec.items())
+    return f"{when} {level:<5} {event}  {msg}" + (f"  {rest}" if rest else "")
+
+===== lmk/sampling.py =====
+"""Sampling parameters: OpenAI's names in, the engine's names out.
+
+The engine's own default is greedy (temp 0, sampling.py in mlx-engine) and it
+never reads the model's generation_config.json; lmk does, so that with no
+parameters in the request the model runs the way its authors shipped it
+(THK-001, research/2026-09-20-thinking-length)."""
+import json
+from pathlib import Path
+from typing import Optional
+
+
+class SamplingError(ValueError):
+    def __init__(self, param: str, message: str):
+        super().__init__(f"{param} must be {message}")
+        self.param = param
+
+
+# generation_config.json key -> engine kwarg
+_MODEL_CONFIG_KEYS = {"temperature": "temp", "top_p": "top_p", "top_k": "top_k"}
+
+# OpenAI request field -> engine kwarg. `stop` is handled apart (list shape); `seed` is
+# accepted by the engine's signature but ignored on the batched path lmk runs on
+# (generate.py: "Seed arg is ignored for batched gen"), so it is reported, not passed.
+_REQUEST_KEYS = {"temperature": "temp", "top_p": "top_p", "top_k": "top_k", "min_p": "min_p",
+                 "repetition_penalty": "repetition_penalty"}
+IGNORED_KEYS = ("seed",)
+MAX_STOP_STRINGS = 4  # OpenAI's limit; the engine has none
+
+
+def model_defaults(model_path: Path) -> dict:
+    """What the model's authors shipped in generation_config.json, as engine kwargs.
+    do_sample: false means greedy; a missing or unreadable file means "no opinion"."""
+    try:
+        cfg = json.loads((model_path / "generation_config.json").read_text())
+    except (OSError, ValueError):
+        return {}
+    if not isinstance(cfg, dict):
+        return {}
+    if cfg.get("do_sample") is False:
+        return {"temp": 0.0}
+    return {engine_key: cfg[key] for key, engine_key in _MODEL_CONFIG_KEYS.items()
+            if isinstance(cfg.get(key), (int, float)) and not isinstance(cfg.get(key), bool)}
+
+
+def parse_sampling(body: dict, defaults: dict) -> tuple[dict, list[str]]:
+    """Returns (engine kwargs, request fields that were understood but ignored).
+    Fields absent or null fall back to `defaults`; unknown fields are ignored silently, as OpenAI does."""
+    sampling = dict(defaults)
+    for field, engine_key in _REQUEST_KEYS.items():
+        value = body.get(field)
+        if value is None:
+            continue
+        sampling[engine_key] = _checked_number(field, value)
+    stop = body.get("stop")
+    if stop is not None:
+        sampling["stop_strings"] = _checked_stop(stop)
+    ignored = [k for k in IGNORED_KEYS if body.get(k) is not None]
+    return sampling, ignored
+
+
+def _checked_number(field: str, value):
+    is_number = isinstance(value, (int, float)) and not isinstance(value, bool)
+    if field == "top_k":
+        if not (isinstance(value, int) and not isinstance(value, bool)) or value < 0:
+            raise SamplingError(field, "an integer of 0 or more")
+        return value
+    if not is_number:
+        raise SamplingError(field, "a number")
+    if field == "temperature" and not 0 <= value <= 2:
+        raise SamplingError(field, "between 0 and 2")
+    if field == "top_p" and not 0 < value <= 1:
+        raise SamplingError(field, "between 0 (exclusive) and 1")
+    if field == "min_p" and not 0 <= value <= 1:
+        raise SamplingError(field, "between 0 and 1")
+    if field == "repetition_penalty" and not value > 0:
+        raise SamplingError(field, "greater than 0")
+    return float(value)
+
+
+def _checked_stop(stop) -> list[str]:
+    items = [stop] if isinstance(stop, str) else stop
+    if not isinstance(items, list) or not all(isinstance(s, str) for s in items):
+        raise SamplingError("stop", "a string or a list of strings")
+    if len(items) > MAX_STOP_STRINGS:
+        raise SamplingError("stop", f"at most {MAX_STOP_STRINGS} strings")
+    if any(s == "" for s in items):
+        raise SamplingError("stop", "non-empty strings")
+    return items
+
+
+def describe(sampling: Optional[dict]) -> str:
+    """One line for humans: `temp 1.0 · top_p 0.95 · top_k 20`; `greedy` when temp is 0."""
+    if not sampling:
+        return "engine default (greedy)"
+    if sampling.get("temp", None) == 0:
+        return "greedy (temp 0)"
+    return " · ".join(f"{k} {v}" for k, v in sampling.items() if k != "stop_strings")
+
+===== lmk/serve.py =====
+"""`lmk serve` — the foreground server. launchd runs this; people run `lmk up`."""
+import errno
+import signal
+
+from lmk import log
+from lmk.config import ConfigError, build_id, config_path, fingerprint, load_config
+from lmk.configfiles import refresh_example, seed_config
+from lmk.models import ModelNotDownloaded, resolve_model
+
+# launchd restarts us after a non-zero exit. Problems a restart cannot fix must
+# therefore end in a CLEAN exit, or the service spins forever in the background.
+EXIT_WILL_NOT_FIX_ITSELF = 0
+
+
+def serve() -> int:
+    seed_config(config_path())
+    refresh_example(config_path())
+    try:
+        cfg = load_config()
+    except ConfigError as e:
+        log.error("LmkConfigInvalid", str(e), path=str(config_path()))
+        return EXIT_WILL_NOT_FIX_ITSELF
+    log.open_log_file(cfg.log_dir)
+    try:
+        resolved = resolve_model(cfg.model.source)
+    except (ModelNotDownloaded, FileNotFoundError) as e:
+        log.error("LmkModelMissing", f"{e} — run `lmk pull`, then `lmk up`")
+        return EXIT_WILL_NOT_FIX_ITSELF
+
+    from lmk.modelfit import why_it_does_not_fit
+
+    too_big = why_it_does_not_fit(resolved.path)
+    if too_big:
+        log.error("LmkModelDoesNotFit", too_big.replace("\n  ", " "), path=str(resolved.path))
+        return EXIT_WILL_NOT_FIX_ITSELF
+
+    from lmk.engine import MlxEngine
+    from lmk.server import LmkServer
+
+    log.info("LmkStarting", "loading the resident model", model=cfg.model.id, path=str(resolved.path),
+             requestedContextLength=cfg.model.context_length, build=build_id())
+    engine = MlxEngine(cfg.model.id, resolved.path, cfg.model.context_length, cache_dir=cfg.cache_dir,
+                       cache_max_bytes=cfg.cache_max_bytes, repo=cfg.model.source.repo, revision=resolved.revision,
+                       max_parallel=cfg.requests.max_parallel, template_kwargs=cfg.model.template_kwargs(),
+                       kv_cache_bits=cfg.model.kv_cache_bits)
+    try:
+        # a value the template rejects (Qwen3.8 accepts exactly xhigh / medium / low for reasoning_effort)
+        # must stop the start with a clean exit, not the first request with a 500 — and not a restart loop
+        engine.chat_format().render([{"role": "user", "content": "probe"}], None)
+    except Exception as e:  # noqa: BLE001 - the template raises its own exception type
+        log.error("LmkConfigInvalid", f"the model's chat template rejects model.thinking / model.reasoning_effort: {e}",
+                  path=str(config_path()), templateKwargs=cfg.model.template_kwargs())
+        engine.close()
+        return EXIT_WILL_NOT_FIX_ITSELF
+    model = engine.loaded_model()
+    if model.context_length < (model.requested_context_length or 0):
+        log.warn("LmkContextLowered", "not enough memory for the requested context; using a shorter one",
+                 requested=model.requested_context_length, inUse=model.context_length)
+    try:
+        server = LmkServer(engine, cfg.host, cfg.port, build=build_id(),
+                           config_fingerprint=fingerprint(cfg, resolved.revision), requests=cfg.requests)
+    except OSError as e:
+        if e.errno != errno.EADDRINUSE:
+            raise
+        log.error("LmkPortTaken", f"{cfg.host}:{cfg.port} is already in use — `lmk up` says by whom")
+        engine.close()
+        return EXIT_WILL_NOT_FIX_ITSELF
+    log.info("LmkReady", "serving", host=cfg.host, port=server.port, model=cfg.model.id,
+             contextLength=model.context_length, maxParallel=cfg.requests.max_parallel,
+             tokenBudget=engine.token_budget())
+
+    def stop(signum, _frame):  # launchd stops us with SIGTERM
+        raise KeyboardInterrupt
+
+    signal.signal(signal.SIGTERM, stop)
+    try:
+        server.serve_forever()
+    except KeyboardInterrupt:
+        log.info("LmkStopping", "shutting down; flushing the prompt cache to disk")
+        server.shutdown()
+        engine.close()
+    return 0
+
+===== lmk/server.py =====
+"""HTTP surface. OpenAI-shaped where a shape exists (design §5); lmk's own
+endpoints live under /lmk/v1. State is answered on request — no subscriptions."""
+import json
+import threading
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+
+from lmk import log
+from lmk.admission import Admission, QueueFull, Ticket, WaitedTooLong
+from lmk.board import Board, Running
+from lmk.chat import CallerIdentity, ClientGone, prepare_chat, run_chat, run_warmup
+from lmk.chatformat import ImageInputError
+from lmk.clock import get_current_clock
+from lmk.config import RequestsConfig
+from lmk.engine import Engine, engine_commit
+from lmk.sampling import SamplingError
+from lmk.memory import get_current_memory
+
+
+class LmkServer:
+    def __init__(self, engine: Engine, host: str, port: int, build: str = "dev", config_fingerprint: str = "",
+                 requests: RequestsConfig = RequestsConfig(2, 16, 600), admission: Admission = None):
+        self._engine = engine
+        self._admission = admission or Admission(requests.max_parallel, requests.max_queue,
+                                                 requests.max_wait_seconds, token_budget=engine.token_budget())
+        self._build = build
+        self._config_fingerprint = config_fingerprint
+        self._started_ms = get_current_clock().mono_ms()
+        self._board = Board()
+        outer = self
+
+        class Handler(BaseHTTPRequestHandler):
+            protocol_version = "HTTP/1.1"
+
+            def log_message(self, fmt, *args):  # stdlib's access log → ours is structured
+                pass
+
+            def do_GET(self):
+                outer._route_get(self)
+
+            def do_POST(self):
+                outer._route_post(self)
+
+        self._httpd = ThreadingHTTPServer((host, port), Handler)
+        self._httpd.daemon_threads = True
+
+    @property
+    def port(self) -> int:
+        return self._httpd.server_address[1]
+
+    def serve_forever(self) -> None:
+        self._httpd.serve_forever()
+
+    def shutdown(self) -> None:
+        self._httpd.shutdown()
+        self._httpd.server_close()
+
+    # ---- routes ----
+
+    def _route_get(self, h: BaseHTTPRequestHandler) -> None:
+        if h.path == "/lmk/v1/status":
+            _send_json(h, 200, self.status())
+        elif h.path == "/v1/models":
+            m = self._engine.loaded_model()
+            _send_json(h, 200, {"object": "list", "data": [{"id": m.id, "object": "model", "owned_by": "lmk"}]})
+        else:
+            _send_json(h, 404, {"error": {"type": "not_found", "message": f"no route for GET {h.path}"}})
+
+    def _route_post(self, h: BaseHTTPRequestHandler) -> None:
+        if h.path not in ("/v1/chat/completions", "/lmk/v1/warmup"):
+            _send_json(h, 404, {"error": {"type": "not_found", "message": f"no route for POST {h.path}"}})
+            return
+        try:
+            body = json.loads(h.rfile.read(int(h.headers.get("Content-Length") or 0)) or b"{}")
+        except (ValueError, json.JSONDecodeError):
+            _send_json(h, 400, {"error": {"type": "invalid_request", "message": "request body is not valid JSON"}})
+            return
+        resident = self._engine.loaded_model().id
+        if body.get("model") != resident:
+            # lmk serves exactly one resident model and never loads another on demand (design §6.7)
+            _send_json(h, 404, {"error": {"type": "model_not_found", "param": "model",
+                       "message": f"model {body.get('model')!r} is not served here; the resident model is {resident!r}"}})
+            return
+        warmup = h.path == "/lmk/v1/warmup"
+        try:
+            prepared = prepare_chat(self._engine, body, warmup=warmup)
+        except ImageInputError as e:
+            _send_json(h, 400, {"error": {"type": "invalid_request", "param": "messages", "message": str(e)}})
+            return
+        except SamplingError as e:
+            _send_json(h, 400, {"error": {"type": "invalid_request", "param": e.param, "message": str(e)}})
+            return
+        identity = CallerIdentity(purpose=h.headers.get("X-Lmk-Purpose"), ref_id=h.headers.get("X-Lmk-Ref-Id"),
+                                  traceparent=h.headers.get("traceparent"))
+        ticket = Ticket(purpose=identity.purpose, ref_id=identity.ref_id,
+                        tokens=prepared.tokens_needed(self._engine.loaded_model().context_length),
+                        uncached_tokens=prepared.preflight.uncached_tokens)
+        # Nothing has been sent yet, and nothing is until the queue lets the request in:
+        # one that cannot start gets a plain 503 with the reason, not a broken stream.
+        try:
+            self._admission.enter(ticket)
+        except QueueFull as e:
+            self._board.refused()
+            log.warn("LmkQueueFull", "request refused: the queue is full", purpose=identity.purpose,
+                     refId=identity.ref_id, waiting=e.waiting)
+            _send_json(h, 503, {"error": {"type": "queue_full", "message": f"lmk is busy: {e}. Try again shortly."}})
+            return
+        except WaitedTooLong as e:
+            self._board.refused()
+            log.warn("LmkWaitedTooLong", "request refused: it could not start in time", purpose=identity.purpose,
+                     refId=identity.ref_id, waitedS=e.waited_s, reason=e.reason)
+            _send_json(h, 503, {"error": {"type": "waited_too_long", "message": f"lmk {e}"}})
+            return
+        running = self._board.begin(identity.purpose, identity.ref_id, identity.traceparent,
+                                    prepared.preflight.prompt_tokens)
+        outcome, stats = "failed", {}
+        try:
+            if warmup:
+                running.state = "prefill"
+                result = run_warmup(self._engine, body, identity, prepared)
+                outcome, stats = "warmed", {"prompt_tokens": result["prompt_tokens"],
+                                            "cached_tokens": result["cached_tokens"]}
+                _send_json(h, 200, result)
+            else:
+                result = self._chat_tracked(h, body, identity, running, prepared)
+                usage = result["usage"]
+                outcome = "cancelled" if result["cancelled"] else result["finish_reason"].replace("tool_calls", "tool call")
+                stats = {"prompt_tokens": usage["prompt_tokens"], "completion_tokens": usage["completion_tokens"],
+                         "cached_tokens": usage["prompt_tokens_details"]["cached_tokens"]}
+        except ClientGone:
+            outcome = "cancelled"
+        except Exception as e:  # noqa: BLE001 - the engine fell over; say so instead of dropping the connection
+            log.error("LmkRequestFailed", "request failed inside lmk", purpose=identity.purpose,
+                      refId=identity.ref_id, error=repr(e))
+            if not getattr(h, "lmk_response_started", False):
+                _send_json(h, 500, {"error": {"type": "internal_error", "message": f"lmk failed on this request: {e}"}})
+            h.close_connection = True
+        finally:
+            # the one way out: whatever happened above, the place is given back and the request leaves the board
+            self._admission.leave(ticket)
+            self._board.finish(running, outcome, **stats)
+
+    def _chat_tracked(self, h, body: dict, identity: CallerIdentity, running: Running, prepared) -> dict:
+        def on_progress(event: dict) -> None:
+            if "prefill" in event:
+                running.on_prefill(event["prefill"])
+            else:
+                running.on_decode(event["decode"]["part"], event["decode"]["completion_tokens"])
+
+        if body.get("stream"):
+            h.send_response(200)
+            h.send_header("Content-Type", "text/event-stream")
+            h.send_header("Cache-Control", "no-cache")
+            h.send_header("Connection", "close")
+            h.end_headers()
+            h.lmk_response_started = True
+
+            def emit(chunk: dict) -> None:
+                try:
+                    h.wfile.write(b"data: " + json.dumps(chunk, ensure_ascii=False).encode() + b"\n\n")
+                    h.wfile.flush()
+                except (BrokenPipeError, ConnectionResetError) as e:
+                    raise ClientGone() from e
+
+            result = run_chat(self._engine, body, identity, emit, on_progress, prepared)
+            if not result["cancelled"]:
+                try:
+                    h.wfile.write(b"data: [DONE]\n\n")
+                    h.wfile.flush()
+                except (BrokenPipeError, ConnectionResetError):
+                    pass
+            h.close_connection = True
+            return result
+        result = run_chat(self._engine, body, identity, lambda _chunk: None, on_progress, prepared)
+        message = {"role": "assistant", "content": result["content"] or None}
+        if result["reasoning_content"]:
+            message["reasoning_content"] = result["reasoning_content"]
+        if result["tool_calls"]:
+            message["tool_calls"] = [{k: v for k, v in c.items() if k != "index"} for c in result["tool_calls"]]
+        _send_json(h, 200, {**result["base"], "object": "chat.completion", "usage": result["usage"],
+                            "choices": [{"index": 0, "message": message, "finish_reason": result["finish_reason"]}]})
+        return result
+
+    @property
+    def engine(self) -> Engine:
+        return self._engine
+
+    def status(self) -> dict:
+        m = self._engine.loaded_model()
+        board = self._board.snapshot()
+        return {
+            "build": self._build,
+            "engine": engine_commit(),
+            "config_fingerprint": self._config_fingerprint,
+            "model": {"id": m.id, "path": str(m.path), "context_length": m.context_length,
+                      "requested_context_length": m.requested_context_length,
+                      "input_modalities": self._engine.input_modalities(),
+                      "thinking": self._engine.thinking_enabled(),
+                      "kv_cache_bits": m.kv_cache_bits},
+            "sampling_defaults": self._engine.sampling_defaults(),
+            "cache": self._engine.cache_stats(),
+            "memory": self._memory(),
+            "requests": self._admission.counts(),
+            "totals": board["totals"],
+            "in_flight": board["in_flight"],
+            "waiting": self._admission.waiting(),
+            "recent": board["recent"],
+            "uptime_ms": get_current_clock().mono_ms() - self._started_ms,
+        }
+
+    def _memory(self) -> dict:
+        reading = get_current_memory().read()
+        return {"pressure": reading.pressure, "free_percent": reading.free_percent,
+                "total_bytes": reading.total_bytes, "lmk_gpu_bytes": self._engine.gpu_memory_bytes(),
+                # MLX's peak counts memory in use only, while lmk_gpu_bytes also counts its buffers: the two are
+                # not comparable (seen live: "holds 23.3 GB (peak 20.9 GB)"), so the name says which it is
+                "lmk_gpu_peak_in_use_bytes": self._engine.gpu_memory_peak_bytes()}
+
+
+def _send_json(h: BaseHTTPRequestHandler, status: int, body: dict) -> None:
+    raw = json.dumps(body, ensure_ascii=False).encode()
+    h.lmk_response_started = True
+    h.send_response(status)
+    h.send_header("Content-Type", "application/json")
+    h.send_header("Content-Length", str(len(raw)))
+    h.end_headers()
+    h.wfile.write(raw)
+
+===== lmk/service.py =====
+"""The resident service: one LaunchAgent, installed by `lmk up`, removed by `lmk down`
+(design OOBE §E). There is no "stopped but still registered" state."""
+import os
+import plistlib
+import subprocess
+from pathlib import Path
+from typing import Optional
+
+LABEL = "ai.kitten.lmk"
+
+
+def plist_path() -> Path:
+    return Path.home() / "Library" / "LaunchAgents" / f"{LABEL}.plist"
+
+
+def _domain() -> str:
+    return f"gui/{os.getuid()}"
+
+
+def build_plist(app_dir: Path, log_dir: Path, env: dict) -> dict:
+    environment = {"PYTHONPATH": f"{app_dir}/.engine/mlx-engine:{app_dir}"}
+    # where config and models were found when `lmk up` ran is where the service must look too
+    for key in ("LMK_HOME", "HF_HOME", "HF_HUB_CACHE"):
+        if env.get(key):
+            environment[key] = env[key]
+    return {
+        "Label": LABEL,
+        "ProgramArguments": [f"{app_dir}/.venv/bin/python", "-P", "-m", "lmk", "serve"],
+        "WorkingDirectory": str(app_dir),
+        "EnvironmentVariables": environment,
+        "RunAtLoad": True,
+        # Restart after a crash, never after a clean exit: `lmk serve` exits 0 when it
+        # cannot start for a reason a restart will not fix (bad config, model missing,
+        # port taken), so launchd does not spin on it.
+        "KeepAlive": {"SuccessfulExit": False},
+        "ThrottleInterval": 30,
+        "StandardOutPath": str(log_dir / "lmk.stdout.log"),
+        "StandardErrorPath": str(log_dir / "lmk.stderr.log"),
+    }
+
+
+def is_registered() -> bool:
+    return subprocess.run(["launchctl", "print", f"{_domain()}/{LABEL}"], capture_output=True).returncode == 0
+
+
+def start(app_dir: Path, log_dir: Path, env: dict) -> None:
+    log_dir.mkdir(parents=True, exist_ok=True)
+    path = plist_path()
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with open(path, "wb") as f:
+        plistlib.dump(build_plist(app_dir, log_dir, env), f)
+    subprocess.run(["launchctl", "bootstrap", _domain(), str(path)], check=True, capture_output=True)
+
+
+def stop(sleep, wait_s: int = 120) -> bool:
+    """Returns once the old instance is gone — it flushes its cache on the way out, and
+    registering a new one before that fails with "Input/output error"."""
+    subprocess.run(["launchctl", "bootout", f"{_domain()}/{LABEL}"], capture_output=True)
+    for _ in range(wait_s):
+        if not is_registered():
+            return True
+        sleep(1)
+    return False
+
+
+def remove_plist() -> None:
+    plist_path().unlink(missing_ok=True)
+
+
+def parse_lsof_listener(output: str) -> Optional[str]:
+    """`lsof -Fpc` prints p<pid> and c<command> lines."""
+    pid = command = None
+    for line in output.splitlines():
+        if line.startswith("p") and pid is None:
+            pid = line[1:]
+        elif line.startswith("c") and command is None:
+            command = line[1:]
+    return f"{command or 'a process'} (pid {pid})" if pid else None
+
+
+def port_owner(port: int) -> Optional[str]:
+    try:
+        out = subprocess.run(["lsof", "-nP", f"-iTCP:{port}", "-sTCP:LISTEN", "-Fpc"],
+                             capture_output=True, text=True, timeout=10).stdout
+    except (OSError, subprocess.SubprocessError):
+        return None
+    return parse_lsof_listener(out)
+
+===== lmk/splitter.py =====
+"""Streaming three-way split of raw model output: reasoning / answer text /
+tool-call blocks. The engine emits plain text (research LMS-014); which markers
+delimit a tool call or a thought is the model family's business and arrives from
+outside (design §4, lmk.chatformat.Dialect) — this file knows no marker of its own.
+"""
+from dataclasses import dataclass
+
+_WS = " \t\r\n"
+
+
+@dataclass(frozen=True)
+class Markers:
+    tool_call_start: str | None
+    tool_call_end: str | None
+    think_open: str | None      # None: this family has no thinking block; everything is text or tool
+    think_close: str | None
+
+
+class OutputSplitter:
+    def __init__(self, markers: Markers, starts_in_reasoning, on_reasoning, on_text, on_tool_block):
+        self._tool_start = markers.tool_call_start
+        self._tool_end = markers.tool_call_end
+        self._think_open = markers.think_open
+        self._think_close = markers.think_close
+        self._on_reasoning = on_reasoning
+        self._on_text = on_text
+        self._on_tool_block = on_tool_block
+        # "leading": nothing decided yet (the model may or may not open a think block itself)
+        self._phase = "reasoning" if starts_in_reasoning else ("leading" if self._think_open else "text")
+        self._pending = ""
+
+    @property
+    def part(self) -> str:
+        """What the model is writing right now, for `lmk status`."""
+        return {"reasoning": "thinking", "tool": "tool call"}.get(self._phase, "answering")
+
+    def write(self, fragment: str) -> None:
+        self._pending += fragment
+        while self._step():
+            pass
+
+    def close(self) -> None:
+        if self._phase == "reasoning":
+            self._emit(self._on_reasoning, self._pending)
+        elif self._phase in ("leading", "text"):
+            self._emit(self._on_text, self._pending)
+        # "gap": only whitespace was held. "tool": an unfinished call is dropped, never parsed.
+        self._pending = ""
+
+    def _step(self) -> bool:
+        p = self._pending
+        if self._phase == "leading":
+            trimmed = p.lstrip(_WS)
+            if not trimmed:
+                return False
+            if trimmed.startswith(self._think_open):
+                self._pending, self._phase = trimmed[len(self._think_open):], "reasoning"
+                return True
+            if self._think_open.startswith(trimmed):
+                return False
+            self._phase = "text"
+            return True
+        if self._phase == "reasoning":
+            return self._until(self._think_close, self._on_reasoning, "gap")
+        if self._phase == "gap":
+            self._pending = p.lstrip(_WS)
+            if not self._pending:
+                return False
+            self._phase = "text"
+            return True
+        if self._phase == "text":
+            # a tool call or another think block may begin anywhere in the answer: Gemma 4 opens
+            # thought channels mid-turn, even a second, empty one right before a tool call (exp06)
+            return self._until_any([(self._tool_start, "tool"), (self._think_open, "reasoning")], self._on_text)
+        # "tool": hold everything until the end marker, then hand over the whole block
+        i = p.find(self._tool_end)
+        if i < 0:
+            return False
+        self._on_tool_block(p[:i])
+        self._pending, self._phase = p[i + len(self._tool_end):], "gap"
+        return True
+
+    def _until(self, marker: str, emit, next_phase: str) -> bool:
+        return self._until_any([(marker, next_phase)], emit)
+
+    def _until_any(self, markers: list, emit) -> bool:
+        """Emit up to the earliest of the markers and switch to its phase; hold back any tail that
+        could be the start of one of them."""
+        p = self._pending
+        live = [(m, phase) for m, phase in markers if m]
+        if not live:
+            self._emit(emit, p)
+            self._pending = ""
+            return False
+        hits = [(p.find(m), m, phase) for m, phase in live if m in p]
+        if hits:
+            i, m, phase = min(hits)
+            self._emit(emit, p[:i])
+            self._pending, self._phase = p[i + len(m):], phase
+            return True
+        keep = max(_partial_suffix_len(p, m) for m, _ in live)
+        self._emit(emit, p[:len(p) - keep])
+        self._pending = p[len(p) - keep:]
+        return False
+
+    @staticmethod
+    def _emit(fn, text: str) -> None:
+        if text:
+            fn(text)
+
+
+def _partial_suffix_len(s: str, marker: str) -> int:
+    """Longest suffix of s that is a proper prefix of marker — the bytes to hold back."""
+    for n in range(min(len(marker) - 1, len(s)), 0, -1):
+        if s.endswith(marker[:n]):
+            return n
+    return 0
+
+===== lmk/stopmatch.py =====
+"""OpenAI `stop` on the answer part only.
+
+The engine's own stop_strings watch the whole token stream, thinking included,
+and on a thinking model that empties the answer (research/2026-09-21-sampling SMP-002).
+So lmk keeps `stop` to itself: this sits behind the output splitter, sees only
+answer text, and tells run_chat to close the engine's generator on a match."""
+from typing import Callable
+
+
+class StopMatcher:
+    def __init__(self, stops: list[str], on_text: Callable[[str], None]):
+        self._stops = [s for s in stops if s]
+        self._on_text = on_text
+        self._held = ""   # tail that might be the start of a stop string
+        self._hold = max((len(s) for s in self._stops), default=1) - 1
+
+    def write(self, piece: str) -> bool:
+        """Emits what is safe to emit. True = a stop string was hit; the text before it is out, nothing after."""
+        if not self._stops:
+            self._on_text(piece)
+            return False
+        text = self._held + piece
+        hits = [(text.find(s), s) for s in self._stops if s in text]
+        if hits:
+            at, _ = min(hits)
+            if at:
+                self._on_text(text[:at])
+            self._held = ""
+            return True
+        keep = 0
+        for n in range(min(self._hold, len(text)), 0, -1):   # longest tail that prefixes some stop string
+            if any(s.startswith(text[-n:]) for s in self._stops):
+                keep = n
+                break
+        if len(text) > keep:
+            self._on_text(text[:len(text) - keep])
+        self._held = text[len(text) - keep:] if keep else ""
+        return False
+
+    def close(self) -> None:
+        """Generation ended on its own: a held tail was not a stop string after all."""
+        if self._held:
+            self._on_text(self._held)
+            self._held = ""
+
+===== docs/backlog.md =====
+# lmk backlog —— 现在到哪了、还欠什么
+
+会变的东西放这里（`CLAUDE.md` 放不变的）。改了状态就回来改这份；条目做完就删，结论归到设计文档或 research。
+最后核对：2026-09-20。
+
+## 现在到哪了
+| 块 | 状态 | 出处 |
+|---|---|---|
+| 第一版 server（聊天 + 工具、思考分流、prefill 进度、调用方身份、warmup、持久化前缀 cache、图片输入） | 完成 | `docs/design/2026-09-19-lmk.md` |
+| 开箱体验（`lmk pull/up/status/logs/down`、`~/.lmk/`、零必填配置 + 自动刷新的 example、HF 共享目录、`install.sh`） | 完成，已合 main | `docs/design/2026-09-20-lmk-oobe.md` |
+| 内存护栏（加载前检查、准入队列四条规则、`requests.*` 三个配置、内存读数） | 完成，已合 main | `docs/design/2026-09-20-memory-guard.md` |
+| 状态看板（`lmk status [-w]`：starting/prefill/decode、排队原因、刚结束的、cache 命中率） | 完成，已合 main | 同上 + `lmk/board.py` |
+| repo | `github.com/seabit-ai/lmk`，**公开**（2026-09-22，v0.1.0），MIT（Copyright Seabit AI）。owner 的机器上由 `make install` 部署、launchd 常驻 | — |
+
+测试：单测 122（无 GPU）、集成测试 5 + cache 兼容 1（真实模型）。
+
+## 下一个：（空）——采样参数已做完，在分支 `sampling` 上待合并
+- 做了：`temperature`/`top_p`/`top_k`/`min_p`/`repetition_penalty`/`stop`；缺省读模型的 `generation_config.json`；
+  stop 由 lmk 在回答段匹配；seed 收下不传并记日志。取证 `research/2026-09-21-sampling`（SMP-001..004，exp01/02）。
+- 没做（单独一题）：`response_format` / `json_schema`（引擎有 `json_schema` 参数）。
+
+## 引擎路线（SAD 开题 2026-09-23，未裁）——`docs/design/2026-09-23-own-engine.md`
+- owner 要投机解码 + 磁盘 cache 同时有、KV 量化。我方案：fork mlx-engine 在批处理路径补，不从零写。
+- 09-23 量了（`research/2026-09-23-speculative-decoding/exp02`）：mlx-lm 路径对 Qwen3.8 不可用；用自带 MTP 头经 mlx-vlm 量得
+  散文 1.22× / 代码 1.59× / 复述 1.70×，灰区。新事实：mlx-vlm 已实现投机解码和 KV 量化，fork 只需接线。
+- 09-23 SAD 已裁：KV 量化先；fork = `seabit-ai/mlx-engine` 的 `lmk` 分支按功能一 commit 随上游 rebase；验收四条（长上下文评测臂、探针实测 ctx、
+  cache 身份带位宽、bench 只记录）；用户面 `model.kv_cache_bits` 16/8/4 默认 16、推荐按模型页、表显示推荐配置的数。
+- 09-23 开工，KV 量化接线**已落**（`research/2026-09-23-kv-cache-quant/`）：fork 分支 `lmk` d3650db（引擎 +111 行、10 单测）；
+  lmk 分支 `kv-cache-bits`（配置项、cache 身份、状态行、install/Makefile 指向 fork、`LMK_ITEST_KV_BITS`）。27B-4bit 8 位：itest 开关各 4/4 +
+  重启还原；探针 34,816 B/token；bench 三数进表。**还差验收第 1 条**（长上下文评测臂，含 k8v4 变体）才能写进模型页推荐；
+  之后是 Gemma 31B / 122B 的探针数与 README 表"推荐配置下的数"（`TestedModel.kv_cache_bits` 字段）。
+  已知未优化：8 位下 cache 命中还原慢 19%（首 token 只差 0.02 s）；Qwen3.8 磁盘 cache 大头是 linear attention 检查点，量化只省 18%。
+- 智能评测 `research/2026-09-23-intelligence-27b-vs-122b/`：三个 27B 臂已完（xhigh 最差、low 最好），122B-off 臂在跑；
+  跑完要写四臂汇总 + "共同错的题"节，模型页据此更新（27B 的推荐配置可能改成 `reasoning_effort: low`）。
+
+## 已裁但还没做的
+- **kitten 发 `X-Lmk-Purpose` / `X-Lmk-Ref-Id`**：2026-09-20 已在 kitten repo 的分支 `llm-call-identity` 上实现并验证
+  （用途 `turn` / `compaction` / `groom`；refId = `<sessionId>/<actionRef>`，groom = `groom/<project>/<startMs>`；未声明的不发头）。
+  kitten 的集成测试从本服务的 `/lmk/v1/status` 读回了名字。待 owner 合并、装新 kitten 并重启 kittend 后，他的会话在看板上才有名字。
+
+## 等 owner 定的
+- owner 机器上 `~/.lmstudio/models/` 里那份同款模型（15G）已无人使用，删不删。
+
+## 没验证过的（写进 README 的都验证过；这些没有）
+- **重启机器后 launchd 自动拉起**——自第一版起就没验证过。下次重启后 `lmk status` 看一眼。
+- 小内存 Mac：准入规则三（token 账）只有单测；加载前检查的"装不下"分支只有单测。我们只有一台 96GB 的机器。
+- 准入规则四（内存压力危急）在真机上从未触发——要触发就得把机器压到危急，没做。
+- cache 取回的代价只量到 27k token（约 0.37 秒；约 75ms + 10ms/1k）；更长的上下文、**重启机器后的真冷读**没量。
+- 并行：27k 会话只量了 2 个同时；4 个没量。短 prompt 量了 1/2/4。
+- 其它模型家族（只跑过 Qwen3.8-27B-4bit）；纯 attention 模型上与 oMLX 的差距是否消失（预期消失，未量）。
+- 等待中的客户端断开：感知不到，会占着队位直到被放行后第一次写失败或等满 `max_wait_seconds`。没加探测。
+- PDF 输入不支持。
+
+## 公开（2026-09-22 已公开，v0.1.0）
+- 真名清理、agent 片段、`curl | sh` 实测都已完成。`curl | sh` 从公开仓库装到临时目录 25 秒，装到 v0.1.0；
+  发现并修了一个 heredoc 反引号 bug（分支 `install-heredoc`）。CI 首跑通过（1m17s）。
+- 未验证之一"`curl | sh` 这条安装路径"由此关闭；其余未验证项不变。
+
+## 想法（没裁过，别当计划）
+- 给上游 mlx-engine 提"持久化前缀 cache"：评论稿在 `research/2026-09-20-mlx-engine-upstream/`（针对其 issue #354），是否已由 owner 发出未确认。
+- 给 oMLX 提 issue："混合架构模型在每次请求末尾补一个 256 边界的 snapshot"——它在这类模型上每步慢约 9 秒的原因（SVY-006）。
+- 投机解码（引擎有 `load_draft_model`）；`lmk status` 的 `starting` 阶段要不要细分出 `restore`（`restoreMs` 已在日志里）。
+- 本地 cache 不过期、命中代价约为重算的 0.5%（MG-009）——对 agent 侧"为保 cache 不敢动历史"的设计是个不同的前提（kitten 的 cache-aware compaction）。
+
+===== docs/benchmarks.md =====
+# Benchmarks
+
+What `lmk bench` measures, from outside the service over HTTP, one request at a time, `temperature: 0`:
+
+- **cold prefill** — a fixed ~4k-token text behind a random number, so nothing in the cache matches: tokens/s of reading a prompt lmk has never seen.
+- **cached prefill** — the same request again: tokens/s at which the cached part comes back from disk (the server's own restore timing). The first-token time next to it is what a client waits: the cache restores to the last 256-token boundary, so up to 255 tokens are still computed, plus HTTP.
+- **decode** — a short prompt, 400 tokens out: tokens/s while writing.
+
+A warm-up request runs first and is not counted: after hours idle, or after other models were loaded, the first touch of the weights pages them back in (37 s instead of 12.8 s for the cold probe, once, on the M3 Ultra below).
+
+Run it on your Mac and paste the row into an [issue](https://github.com/seabit-ai/lmk/issues) — different machines and models are what this table is missing:
+
+```sh
+lmk bench
+```
+
+Each run prints the seed behind its cold prompt. `lmk bench --seed <that number>` later — after
+`lmk down && lmk up`, or after a reboot — sends the same prompt again: if it comes back from the
+cache, the cache survived, and the run says so instead of reporting a cold number.
+
+| chip | memory | model | context | prefill | cached prefill | decode | lmk | engine | date |
+|---|---|---|---|---|---|---|---|---|---|
+| Apple M3 Ultra | 96 GB | qwen3.8-27b-4bit | 262,144 | 323 tok/s (4,074 tokens) | 53k tok/s (3,840 cached; first token 1.02 s) | 39.5 tok/s | v0.2.0+ | 08f0c07 | 2026-09-22 |
+| Apple M3 Ultra | 96 GB | qwen3.8-27b-8bit | 262,144 | 319 tok/s (4,074 tokens) | 44k tok/s (3,840 cached; first token 1.07 s) | 23.1 tok/s | v0.2.0+ | 08f0c07 | 2026-09-22 |
+| Apple M3 Ultra | 96 GB | qwen3.8-27b-5bit | 262,144 | 315 tok/s (4,074 tokens) | 57k tok/s (3,840 cached; first token 1.04 s) | 31.6 tok/s | v0.6.0+ | 08f0c07 | 2026-09-22 |
+| Apple M3 Ultra | 96 GB | qwen3.8-27b-6bit | 262,144 | 315 tok/s (4,074 tokens) | 53k tok/s (3,840 cached; first token 1.06 s) | 28.1 tok/s | v0.6.0+ | 08f0c07 | 2026-09-22 |
+| Apple M3 Ultra | 96 GB | qwen3.8-27b-4bit | 262,144 | 324 tok/s (4,074 tokens) | 58k tok/s (3,840 cached; first token 1.01 s) | 39.5 tok/s | dev | d3650db | 2026-09-23 |
+| Apple M3 Ultra | 96 GB | qwen3.8-27b-4bit, `kv_cache_bits: 8` | 262,144 | 323 tok/s (4,074 tokens) | 47k tok/s (3,840 cached; first token 1.03 s) | 38.9 tok/s | dev | d3650db | 2026-09-23 |
+| Apple M3 Ultra | 96 GB | qwen3.5-122b-a10b-4bit | 165,888 (lowered from 262,144 to fit) | 753 tok/s (4,032 tokens) | 89k tok/s (3,840 cached; first token 0.50 s) | 60.5 tok/s | v0.3.0+ | 08f0c07 | 2026-09-22 |
+| Apple M3 Ultra | 96 GB | qwen3.5-122b-a10b-48gb | 262,144 | 746 tok/s (4,034 tokens) | 89k tok/s (3,840 cached; first token 0.53 s) | 53.7 tok/s | v0.4.0+ | 08f0c07 | 2026-09-22 |
+| Apple M3 Ultra | 96 GB | gemma-4-26b-a4b-4bit | 262,144 | 1,833 tok/s (4,028 tokens) | 83k tok/s (3,840 cached; first token 0.26 s) | 119.5 tok/s | v0.4.1+ | 08f0c07 | 2026-09-22 |
+| Apple M3 Ultra | 96 GB | gemma-4-e4b-4bit | 131,072 | 2,199 tok/s (4,028 tokens) | 183k tok/s (3,840 cached; first token 0.19 s) | 93.5 tok/s | v0.5.0+ | 08f0c07 | 2026-09-22 |
+| Apple M3 Ultra | 96 GB | gemma-4-31b-4bit | 262,144 | 252 tok/s (4,028 tokens) | 26k tok/s (3,840 cached; first token 1.23 s) | 33.0 tok/s | v0.6.0+ | 08f0c07 | 2026-09-22 |
+| Apple M3 Ultra | 96 GB | gemma-4-12b-4bit ([tried, not listed](models/gemma-4-12b-4bit.md)) | 262,144 | 666 tok/s (4,028 tokens) | 52k tok/s (3,840 cached; first token 0.51 s) | 71.8 tok/s | v0.5.0+ | 08f0c07 | 2026-09-22 |
+
+Numbers from real agent traffic (a 56-tool, 11k-token system prompt; a 27k-token conversation) are in the [README](../README.md); they differ from these synthetic probes and both are true under their conditions.
+
+===== docs/design/2026-09-19-lmk.md =====
+# lmk（lm-kitten）：自建本地 LLM server
+
+> **2026-09-20：** 本文写于 lmk 还住在 kitten repo 的 `lmk/` 目录时；当天 lmk 带着历史搬到了本 repo。文中的 `lmk/…` 路径即本 repo 根目录，
+> `internal/…`、`itest/…` 指 kitten repo（那里留着 kitten 一侧的客户端）。
+
+> 2026-09-19 SAD 结论（owner 逐点拍板）。**设计点已关闭；未开工**——开工等显式指令。lmk = 基于开源 mlx-engine 的本地推理 server，替掉 LM Studio
+> 闭源的那一层。动机与需求：research/2026-09-19-local-llm-server-wishlist/notes.md（`WISH-`）；
+> 可行性与技术验证：research/2026-09-19-lmstudio-provider/notes.md（LMS-011 / 014）、
+> research/2026-09-19-lmk-spike/notes.md（`LMK-`，exp01 / exp02）。
+
+## 0. 地基（已验证，不是设计点）
+
+| 部分 | 状态 |
+|---|---|
+| 推理、批处理、磁盘前缀 cache | 开源 mlx-engine（MIT）现成；脱离 LM Studio 独立跑，速度持平（LMK-001） |
+| 消息 + 工具 → prompt | 模型自带的聊天模板现成 |
+| 工具调用解析（含参数类型还原） | mlx-lm 的 `tool_parsers` 现成（LMK-004） |
+| 命中 token 数、prefill 进度、请求 id | 引擎回调现成——是 LM Studio 的接口层没往外给 |
+| **lmk 要自己写的** | HTTP 层；流式三路切分（思考 / 正文 / 工具调用）；cache 持久化；声明式常驻模型；日志；以后的调度 |
+
+注意：磁盘前缀 cache 只在引擎的 VLM 路径里（模型 config 带 `vision_config`）；纯文本模型只有内存 cache。
+
+## 1. 裁决：语言 = Python，第一版单进程
+
+MLX 是 C++/Metal；mlx-lm、mlx-vlm、mlx-engine、tokenizer 与聊天模板、工具解析器全是 Python，新模型
+架构也先进 Python 版。用 Go 写 = 重写这一摞，或者最后还是调 Python。热路径在 Metal 内核里，Python
+只做调度——LM Studio 生产上跑的就是这份 Python 引擎。
+**偏离既有惯例**：lmk 用不上 honest-go / xklib。搬约定不搬库：结构化日志带 `event`、接受
+`traceparent`、时间可注入。
+留门：Go 写前端（排队、日志、配置）+ Python worker 的形状可行（LM Studio 自己就是 node + Python
+worker），但那是两个进程两种语言；第一版不走，只在结构上把"面向引擎的那部分"收在一个窄接口后面。
+
+## 2. 裁决：放在 kitten 仓库里，单独一个目录（owner）
+
+Python 项目，自带 Makefile（延续"每个模块一个 Makefile"）；与根目录的 Go module 互不干扰。
+
+## 3. 裁决：最终不要 LM Studio（owner："it sucks, it missing quite a few important features we need"）
+
+开发期并存、端口错开；终点是替换。两个后果：
+- **lmk 不能长期借 LM Studio 自带的 Python 环境**（技术验证 exp01 / exp02 是借着跑的）。要有自己的、
+  从公开仓库干净装起来的环境；公开仓库的版本与本机验证过的那份能否对齐——**已验证对得上**（LMK-005）。
+- 要接手 LM Studio 现在替用户做的事：下载模型（第一版直接读已有的模型目录；下载以后用 Hugging Face
+  的工具）；开机自启与常驻模型（WISH-012，现在由 `~/.kitten/bin/lmstudio-ensure-model.sh` 顶着）。
+
+## 4. 裁决：工具调用的格式按模型族走，收在一道缝后面
+
+owner 问：XML 风格是这个模型特有的吧？换模型会不一样？——是。mlx-lm 的 `_infer_tool_parser` 读模型
+自带的聊天模板、按标记字样自动选解析器（现有十种：qwen3_coder、gemma4、glm47、mistral、kimi_k2、
+minimax_m2、json_tools、pythonic、function_gemma、longcat），tokenizer 配置里的 `tool_parser_type` 可
+显式覆盖；渲染一侧同理（每个模型自带模板）。
+⇒ lmk 把"模板渲染 + 输出解析"这一对在加载模型时选定、藏在一个接口后面；其余部分永不碰具体格式。
+mlx-lm 认得的模型零工作量；认不得的只补这一对。
+
+## 5. 裁决（A）：对外接口 = OpenAI 形状打底 + 我们的扩展；状态按需查询（owner "LGTM"）
+
+- 第一版不自创协议。逐条对过愿望清单，都放得进 OpenAI 的形状：命中数（usage 加字段）、prefill 进度
+  与排队状态（同一条 SSE 流上的额外事件）、思考分流（delta 加 reasoning 字段）、调用方身份（HTTP 头：
+  用途 / refId / traceparent）、预热（`max_tokens:0` 或单开端点）、取消（断开连接）。
+- **"此刻谁在用 GPU"这类状态是按需查询，不是连接**（owner 修正）：客户端发一次请求、server 回一次
+  结果——一个普通的 GET。不开订阅通道、不维持连接。我原先写的"状态订阅 / 单开通道"作废。
+- 最重的理由来自 §3：要替掉 LM Studio，就得让这台机器上所有别的客户端（Bruce、评测脚本、curl）
+  接得上，它们只会说 OpenAI 的接口。
+- 做法：建一个"OpenAI 形状哪里硌脚"的清单；真硌到了再给那一样想办法，推理路径不动。
+
+### 否决
+- **自创协议（WebSocket）。** 理由：WebSocket 的长处（流中途双向控制、连接复用、服务端主动推送）
+  与"一个请求 → 一条流 → 结束"的形状不相干；多出连接生命周期 / 重连 / 分帧，失去 curl 调试，
+  还把别的客户端关在门外。不是永久否决——两头都是自己的代码，硌脚了随时可以换。
+- **状态走订阅 / 长连接。** 理由（owner）：这类信息是"问一次答一次"的东西。
+
+## 6. 裁决（B）：第一版范围——cache 持久化在内（owner："cache 持久化进第一版, yes"）
+
+**进第一版：**
+1. OpenAI 形状的流式聊天 + 工具（并行调用），工具格式经 §4 那道缝。
+2. 思考分流（delta 上的 reasoning 字段）；这个模型的思考开标签在 prompt 里，输出里只找 `</think>`（LMK-003）。
+3. usage 带命中 token 数；同一条流上发 prefill 进度（引擎回调现成，LMK-001）。
+4. 调用方身份：用途 / refId / `traceparent` 走 HTTP 头，逐请求进日志；refId 同时作为引擎的 `request_id`。
+5. 预热（touch）：只 prefill、不生成。
+6. **前缀 cache 跨加载、跨重启持久化**（WISH-001）。改动点已确认很集中：引擎只有一处构造存储
+   （`prompt_cache/cache_store.py:103`，`TemporarySafetensorBlobStore(base_dir)`，目录写死 `/tmp`）；
+   存储的接口很小（put / load_record / exists / size / delete / close）；要落盘的索引是几个字典
+   （记录 → 块 / 种类 / 层、大小、LRU 顺序、layout）。做法：同接口、有名文件的存储 + 启动时读回索引；
+   **cache 路径里必须带模型身份**（权重、量化、引擎存储格式的版本），否则换了权重会命中错的 KV。
+   这是对引擎内部的改动——先以 lmk 内的替换实现落地，同时准备向上游提"存储可注入"的 PR。
+7. 声明式常驻模型：配置里写模型与窗口，启动即加载；没有 JIT、没有 TTL 驱逐（WISH-012）。
+8. 状态查询：一个普通的 GET（§5）。
+9. 日志：结构化、带 `event`、落在重启不丢的地方，stderr 也落盘（WISH-009）。
+
+**不进第一版：** 按用途调度（WISH-010，第二版）；多模型同驻；PDF（图片已提前做，见 §9 追加）；模型下载；按请求控制思考
+（WISH-016——若只是聊天模板的一个开关，顺手带上，否则后置）；加载护栏对 77.8 GiB 算账（WISH-013，
+单模型常驻时风险小，后置）。
+
+## 7. 裁决（D）：launchd 常驻；配置在 `~/.kitten/lmk.yaml`（owner）
+
+机器级的东西放机器级的位置（与 lmstudio 那次"地址是机器的事"同理）。配置至少包含：常驻模型的路径、
+窗口大小、监听地址与端口、cache 目录与容量上限、日志目录。lmk 就位后，
+`~/.kitten/bin/lmstudio-ensure-model.sh` 与它的 LaunchAgent 退役。
+launchd 的已知坑：重建二进制后任务被 OS_REASON_CODESIGNING 杀——那是对编译产物说的；lmk 是 Python
+脚本 + venv，预计不受影响，**未验证**。
+
+## 8. 裁决（E）：kitten 这一侧另起 `lmk` provider（owner："lmk provider, of course"）
+
+同形不同物：`lmstudio` provider 的语义是 LM Studio 这个产品的（窗口是加载参数、永不触发加载、命中数
+未上报、自己剥 `<think>`）；`lmk` 的语义是我们自己定的（命中数上报、思考已分流、有进度、接受用途与
+refId）。`lmk` 出现即 lmstudio 设计 §1 第 4 条说的"第三个 OpenAI 兼容端点"——到时判断 SSE 解析与
+tool-call 分片拼接那百来行抽不抽。
+`Usage.CachedTokensUnreported` 对 lmk 恒为 false；cache-aware compaction 的"永不过期"第三态由 lmk 填。
+
+## 9. 落地切片（待开工令）
+
+目录 `lmk/`（kitten 仓库内；Python；自带 Makefile 与钉死的依赖，沿用上游 `requirements.txt` 的钉法，
+LMK-005）。每片有自己的验收；引擎在线的验收走脚本式集成测试。
+- **K1 骨架**：venv 与依赖、配置读取（`~/.kitten/lmk.yaml`）、启动即加载常驻模型、`GET` 状态、结构化日志。
+  验收：启动后状态接口报出模型与窗口。
+- **K2 聊天**：OpenAI 形状的流式聊天；模板渲染 + 三路切分（思考 / 正文 / 工具调用）+ mlx-lm 解析器；
+  usage 带命中数；prefill 进度事件；身份头进日志。验收：回放 kitten lmstudio provider 的集成测试那两条
+  （工具闭环、第二轮命中），外加命中数出现在 usage 里。
+- **K3 预热**：touch。验收：预热后首个真实请求的命中数 ≥ 公共前缀 − 256。
+- **K4 持久化 cache**：§6 第 6 条。验收：杀掉进程重启，同前缀的请求仍命中；换一份权重不命中。
+- **K5 launchd**：常驻、开机自启、日志落盘。验收：重启机器后状态接口可用、模型已加载。
+- **K6 kitten 的 `lmk` provider** + 装配 + 集成测试；exp07 同款端到端试跑。
+- **K7 退役**：`lmstudio-ensure-model.sh` 与它的 LaunchAgent；LM Studio 的去留由 owner 定时点。
+
+### 落地状态（2026-09-19，分支 `lmk`，未合并）
+K1–K6 已落，每片一个 commit。lmk 单测 34 个（无 GPU）+ 集成测试 4 个（真实 27B）全过；Go 侧 40 个包
+全过；kitten 的 `lmk` provider 集成测试在常驻服务上通过；端到端见 LMK-006——**服务重启后第一句话
+首 token 2.4 秒**（冷启动 36.8 秒）。
+- 本机已装：`~/.kitten/lmk/app`（`make -C lmk install`）、LaunchAgent `ai.kitten.lmk`、
+  配置 `~/.kitten/lmk.yaml`（27B-4bit，窗口 200000，端口 1235）、cache 在 `~/.kitten/lmk/cache`。
+- 实现期定下的：HTTP 层用标准库（零新增依赖）；服务从 PREFIX 跑、不从工作区跑（切分支不该让服务断）；
+  持久化存储一条记录一个文件（不沿用引擎的单文件区段分配——少一份要落盘的索引，崩溃更安全）；
+  Go 侧的 wire 是 lmstudio 包的拷贝、有意不抽公共层（lmstudio 包随 LM Studio 退役而删）。
+- **K7 已做（2026-09-19 晚）**：owner 把三份 config 都切到 `lmk:` 之后发话；`lmstudio-ensure-model.sh` 与
+  LaunchAgent `ai.kitten.lmstudio-model` 已删，LM Studio 里那份 27B 已卸载（省 16GB）。以下是当时未做的原因，留档：
+- ~~K7 未做，有意~~：owner 现在的 kitten 配置还指着 `lmstudio` provider；此时退役
+  `lmstudio-ensure-model.sh`，他下次重启后现有配置就断了。等他把 config 切到 `lmk:` 之后再退役。
+- 没做的（都在 §6 的"不进第一版"里，或依赖别的设计）：调用方身份头 kitten 这一侧还没发（依赖
+  "让本地模型的第一句话变快"那份设计的 §3）；预热端点有了、kitten 还没调用它（同一份设计的 §2）；
+  groom 启动即跑（LMS-013）未修——它现在会打到 lmk 上。
+- 未验证：机器重启后的自启链路；客户端断开后引擎是否立刻让出 GPU；两份 27B（lmk + LM Studio）同时
+  常驻时的内存余量（权重各约 16GB，KV 随用随长；上限 77.8 GiB）。
+
+### 追加（2026-09-19，分支 `lmk-images`）：图片输入提前做了
+§6 原把"图片 / PDF"划在第一版之外；owner 在选择器里注意到 `lmk:` 模型没有 "I" 标记、而这个模型本来
+支持图片，当天同意提前做（PDF 仍不做）。
+- server：OpenAI 的 `image_url` 部件 → 模板里的 `{"type":"image"}` 占位 + 按出现顺序的 base64 列表交给
+  引擎（引擎 demo 的用法）。**只收内嵌的 `data:` URL**——server 不替客户端去抓任何地址。会被拒的请求
+  在发出第一个响应字节之前就 400（流式回复没法中途变成错误）。状态接口报 `input_modalities`。
+  usage 的 `prompt_tokens` 取引擎报的总数（文本 tokenize 的数里图片只算一个占位符）。
+- kitten 的 lmk provider：图片附件内嵌为 data: URL；tool 结果里的图片以紧随其后的合成 user 消息发出
+  （沿用 openrouter 包的做法）；文档类附件不发并 WARN；`ModelInfo.InputModalities` 照抄 server 的说法。
+- 验收（真实 27B）：lmk 侧——生成一张写着 4217 的 PNG，模型答 "4217"；kitten 侧——经 provider 发一张
+  纯红图，模型答 red。
+- 部署时撞到并修了一个坑：`make install` 在 bootout 之后立刻 bootstrap 会报 I/O 错——lmk 退出前要把
+  cache 排空到盘上，旧实例还没走。现在先等它走完。
+
+## 10. 待议
+
+（设计点已清空。开工等显式指令。）
+
+===== docs/design/2026-09-20-lmk-oobe.md =====
+# lmk 的开箱体验（OOBE）
+
+日期 2026-09-20。状态：SAD 进行中。起因：owner——"As an AI agent developer, I don't have too much interest to
+play with multiple model on my local m3u… most of the framework are over complicated, and their user experience sucks."
+前提：实测 lmk 是 m3u 上跑 qw38-27B 体验最好的方案（research/2026-09-20-local-server-survey，SVY-005/006）。
+
+## 0. 用户是谁、要什么
+AI agent 开发者，有一台 Apple Silicon 机器。产品是他的 agent；本地模型是水电。他要的是**一个地址**：
+填进 agent 的配置，从此每一步亚秒出字、重启后还在。他不想逛模型、调参数、管进程。
+
+## 1. 现状走查（2026-09-20，以刚 clone 完的人的身份）
+| # | 他得做什么 | 问题 |
+|---|---|---|
+| 1 | clone 整个 kitten（Go 项目）才拿得到 `lmk/` | 拿水电先买房 |
+| 2 | 自己备好 python 3.11 | README 没说从哪来；Makefile 默认 `~/.local/bin/python3.11`，那是 m3u 上的私有路径 |
+| 3 | 自己弄到模型（15G） | README 一字未提；示例路径指向 `~/.lmstudio/models/…`——等于"先装 LM Studio 来下载" |
+| 4 | 手写 `~/.kitten/lmk.yaml`，三个必填 | 端口"无缺省"要他挑；`context_length` 要他知道一个数，且这个数今天还不诚实（配 200k，引擎实际 262k）；`model.path` 是第 3 步的产物 |
+| 5 | `make venv && make install` | 可以；但几分钟里无进度，1.2G |
+| 6 | 确认它起来了 | 没有命令；得知道去 curl `/lmk/v1/status` 或翻 `~/Library/Logs/kitten/` |
+| 7 | 把 base_url + model id 填进 agent | model id 缺省是"目录名小写"，我们自己就填错过一次（`-4bit` 对 `@4bit`） |
+| 8 | 发第一句，等 37 秒 | 冷 prefill，无任何提示；他会以为坏了 |
+
+没配置就启动时的全部指引：`lmk: no config at … — see lmk/README.md for a starting point`。
+八步，三个不该由他做的决定（端口、窗口、路径），一个隐藏前置（python），一个对竞品的依赖（下载）。
+
+## 2. 设计点
+（逐点过；裁决与被否方案记在各节）
+- A. 定位与命令面
+- B. 模型从哪来
+- C. 配置：哪些该有缺省、哪些该消失
+- D. 怎么装到机器上（与 python 环境 / 引擎钉版纠缠）
+- E. 常驻与升级（launchd）
+- F. 第一句与就绪（冷启动那 37 秒）
+- G. agent 一侧（kitten 怎么找到它）
+
+## A. 定位与命令面 —— 已裁（2026-09-20，owner："I like this direction"）
+**lmk 是 appliance：一台机器，一个模型，常驻常热。** 用户拿到的是一个地址 + 一个 model id。
+明确不做（写进 README 当立场，不是"以后补"）：模型库浏览、多模型同驻、每模型参数面板、菜单栏应用、网页管理台。
+换模型 = 改成另一个再 `up`，替换。
+命令面随 B 的裁决从四个变五个：`pull / up / status / logs / down`。
+
+owner 随裁决给的三条（分别并入 B、C）：
+1. 配置在 `~/.lmk/config.yaml`，缺省就能跑，用户不配任何东西也能启动。
+2. 下载模型要更显式。
+3. 模型放哪个目录？HuggingFace 有个共享位置。
+
+## B. 模型从哪来、放哪 —— 已裁（2026-09-20，owner："agree on most of them"）
+事实（m3u 实查）：HF 共享目录是 `~/.cache/huggingface/hub/`（`HF_HOME` 可改），每模型 `models--<org>--<name>/{blobs,refs,snapshots/<commit>}`。
+m3u 上同一批模型散在三处：`~/.lmstudio/models` 166G、`~/models`（oMLX）32G、HF cache 16G；Qwen3.8-27B-4bit 实体在 LM Studio
+目录，HF cache 里只有 4K 空壳。
+
+推荐：
+- **lmk 不拥有模型目录。** 模型用 HF repo id 指名（`lmstudio-community/Qwen3.8-27B-MLX-4bit`），实体就在 HF cache。
+  理由：生态里唯一的公共位置——`hf download`、mlx-lm、oMLX（`--hf-cache`）都认，不重复下 15G；断点续传、`hf cache` 清理都现成；
+  snapshot 的 commit hash 直接当模型身份（替掉 persistcache 里"文件名+大小+mtime"那套自制指纹）。
+  代价：`~/.cache` 可能被清理工具扫掉（重下 15G）；路径难看（用户永远不需要看见）。
+- **下载是显式的独立动作 `lmk pull`**（owner 第 2 条）。15G、几十分钟、占盘、走网络——这种事不能作为别的命令的副作用发生。
+  `lmk up` 发现模型不在：拒绝，并打印要敲的那一条命令。`lmk pull` 不带参数 = 拉配置里的那个模型。
+- 逃生口：`model` 也接受本地路径（m3u 今天就是这种情况）。
+- **模型清单**：实测过的模型列在 `config.yaml.example` 里（owner："a place user can find all our possible parameters and
+  model list"），用户抄一行进 config.yaml。今天清单里只有 qwen3.8-27b 一家。
+  我的读法（待他纠正）：清单 = "我们跑过、保证体验"的集合；`model` 同时接受任意 HF repo id / 本地路径，但 example 里写明那是未验证的。
+
+## C. 配置 —— 已裁（2026-09-20）
+- 位置 `~/.lmk/config.yaml`（owner 第 1 条）。**取代** 09-19 的裁决 `~/.kitten/lmk.yaml`：lmk 自立门户，状态全部收进 `~/.lmk/`
+  （config、cache、app、logs）。m3u 上的迁移在实现时做。
+- 零必填。端口缺省 1235；`context_length` 缺省 = 模型自己的上限（受内存约束时如实下调并说出来）——顺带了结"配 200k 实为 262k"；
+  model id 缺省 = 一个稳定短名，不再是"目录名小写"。
+- **两份文件，kitten 的做法**（owner 裁决；对照 `internal/config/seed.go`）：
+  - `config.yaml`：不存在时种一份**全注释**的模板，此后程序永不碰，归用户。
+  - `config.yaml.example`：归程序，每次启动按内容比对、不同就重写；全部参数 + 模型清单的大全，文件头写明"别改，抄进 config.yaml"。
+  - 缺省值住在代码里（模板全注释 ⇒ 没有值冻在用户盘上）；新版本的新参数通过 example 到达用户。
+- **被否：我的"文件可不存在 + 只放改过的项 + `lmk status` 显示来源"**。我担心的是"写出去的缺省值冻住"，kitten 的全注释模板
+  已经解决了它，还多给了用户一个查全部参数的地方；而且与 kitten 同一套心智，用户只学一次。`lmk status` 显示生效值这一条保留。
+
+## C2. 状态目录与 prefix cache —— 已裁（2026-09-20）
+事实（m3u，2026-09-20）：现在在 `~/.kitten/lmk/cache/<模型身份>/`，每条记录一个 safetensors；跑了一天半 10G，约 5G/天；
+lmk 无上限，只有引擎预算 162.81 GiB。同机 oMLX 的 cache 无人过问地涨到了 176G。
+
+推荐：
+- `~/.lmk/` 收下全部状态：`config.yaml`、`config.yaml.example`、`app/`、`cache/<模型身份>/`、`logs/`。卸载 = 删一个目录。
+  `cache.dir` 可改（外接 SSD）。
+- 被否：`~/Library/Caches/`（系统和清理工具有权随时清，而这个 cache 的价值就是活过重启）；HF 目录（别人的地盘）。
+- `cache.max_size` **缺省 200G，可配**（owner 裁决；我提的 50GB 被否——那个数我自己也说不出依据，而命中就是这个产品的价值，盘比等待便宜）。整目录按最久未用淘汰——一条规则；换模型/升引擎留下的旧身份目录无人再碰，自然先被淘汰，不为它们写专门逻辑。
+- `lmk status` 显示 cache 已用/**生效**上限。引擎自己还有一层预算（`disk_budget.py`：min(一个满窗口 cache 的体积, 空闲盘/4)，空闲 <10GiB 时为 0；
+  本模型 262k 窗口下 = 162.81 GiB）。`cache.max_size` 是上界，生效值 = 两者取小；不为了凑满 200G 去改引擎的预算。
+- 建目录时放 `CACHEDIR.TAG` 并 `tmutil addexclusion`（免 sudo），不进 Time Machine。
+
+### C2 修订（2026-09-20，owner 问"为什么取三者最小？"，随后 "y"）：`cache.max_size` 就是上限
+README 里我用一段话解释"生效上限 = max_size、空闲盘/4、一个满窗口的 cache 三者最小"。后两个是引擎的规则，为它的**临时**
+cache 设计（只服务当前这段对话；预算加载后算一次）。lmk 的 cache 是持久的、跨几周很多段对话共用：换一个 32k 窗口的模型，
+引擎会把用户写下的 200G 悄悄压到约 20G；盘剩 300G 时 200G 变 75G。配置说 200G、实际是个三方公式——与"显式"相反。
+- **`cache.max_size` 是上限，说多少就是多少。**
+- 只留一条保护机器的规则：**盘空闲低于 10GB 时不再往 cache 里加，并按最久未用先让出空间**（`persistcache.cache_budget`）；
+  触发时 `lmk status` 明说。10GB 沿用引擎自己的下限。
+- 被否：我原来的"生效值 = 两者取小；不为了凑满 200G 去改引擎的预算"——那是为了我自己省事。判据：要用一段话才解释得清的上限，是设计的问题。
+
+### C3 修订（2026-09-22，owner "y"）：`model.id` 删除
+起因：owner 问 "what's the difference between id vs name? this is very confusing!"。`id` 是 09-20 迁移时为了让 kitten 的别名
+不改而加的过渡开关；kitten 的别名 09-21 已改，它没有存在理由了。要用一段话才解释得清的键是设计问题（本文件的老教训）。
+裁决：客户端看到的名字**永远**等于 `name`，或 `repo` / `path` 最后一段的小写——一条规则，没有第二个键。
+配置里还写着 `id:` 的，启动时报错并说出现在的名字，不静默忽略。副作用：`path` 指向 LM Studio 目录时模型叫 `qwen3.8-27b-mlx-8bit`，接受。
+
+### C4 修订（2026-09-22，owner）：种子 `config.yaml` 是真配置，不是全注释
+owner："when first install we should populate a good config.yaml file, good means all those values are NOT commented out."
+原 C 的种子文件全是注释（"零必填"的一种落法）。改：种子写出每个生效值——模型名、地址端口、cache 目录与上限、队列三项、日志目录，
+短注释；`repo`/`path` 作为 `name` 的替代写法留成注释；`context_length` 不写（缺省是模型最大值，装时未知）。
+目录按实际 home 写（缺省 `~/.lmk`，测试或试装的自定义 `LMK_HOME` 写真路径）。`config.yaml.example` 不变，仍是完整参考 + 模型清单。
+理由：显式优先——用户打开文件就看到在用的值，不用猜"注释掉的那行等于什么"。
+
+## D. 怎么装到机器上 —— 已裁（2026-09-20，owner："sure. let's try this way"）；前提已验证（OOBE-003）
+事实：mlx-engine 无 pyproject/setup.py，不能 pip install；requirements 61 行含 3 个钉 commit 的 git 依赖（mlx-lm、mlx-vlm、outlines）；需 python 3.11。
+推荐：`curl … | sh` 安装脚本，底下用 uv（静态二进制，自带下载 python 3.11 ⇒ 消掉隐藏前置）；全部落在 `~/.lmk/`；升级 = 再跑一遍；
+`make install` 留给开发者。被否的路：Homebrew tap（第三方 tap 的 untrusted 拦截、61 个 resource、oMLX 在 m3u 上留下的双 launchd 任务）；
+`uv tool install` / PyPI（引擎不是包）。
+实验结果：uv 从零到环境可用约 20 秒（uv 2s、python 3.11 2s、61 行 requirements 16s），42 个单测全过。剩下的真前置是 **git**
+（3 个 git 依赖；全新 macOS 首次调 git 会弹 Xcode CLT 安装框）——可试把 git 依赖改成 commit tarball URL 绕开，未测。
+
+## E. 常驻与升级 —— 已裁（2026-09-20，owner："can not agree more"）
+- `lmk up`：装 LaunchAgent（登录自启、崩溃自拉）→ **等模型加载完 → 自己发一句冒烟 → 才打印 ✓ 和地址**。60 秒没起来：把 stderr 日志末尾几行直接打出来。
+  起之前先查端口被谁占、是否已有另一个 lmk；是就指名道姓地说并停手，绝不进入拉起-失败的循环（m3u 上 oMLX 双 launchd 任务循环五个月的教训）。
+- `lmk down`：停服务并卸 LaunchAgent（重启后不再起来）；cache、配置、模型都留着。**没有"停了但还留着自启"的中间状态。**
+- 升级 = 再跑一遍安装脚本，然后 `lmk up`。脚本只换 `~/.lmk/app`，不碰在跑的服务；`up` 发现在跑的比盘上的旧就重启换新（等旧实例退出再起新的）。
+  引擎升级 ⇒ 模型身份变 ⇒ 旧 cache 作废：重启**之前**明说"这次升级换了引擎，cache 要重建，第一句约 40 秒"。
+- 明确不做：自动更新。不联网查版本，不自己换自己。
+
+## E′. 对 E 的修正：引擎升级不再作废 cache —— 已裁（2026-09-20，owner："agree"）
+起因：owner 问"升级引擎之后为什么冷？什么引擎？为什么要升、常升吗？"
+事实：引擎 = mlx-engine，钉在 `08f0c07`（2026-08-21）；升级理由只有新模型家族支持 / 速度内存改进 / bug 修复；上游节奏一阵一阵
+（08-10→08-21 五个 commit，其后一个月零个）；appliance 用户模型跑得好就几乎没有理由升，我们自己一年几次。
+"升级即作废"是 lmk 自己的规则（`persistcache.model_identity` 把引擎 commit 哈希进了身份），不是引擎的限制——为防一件很少发生的事
+（新引擎读错旧记录），让用户每次升级赔上至多 160G cache 和全部会话变冷。
+- **身份 = 权重（HF commit hash，兑现 B）+ `CACHE_FORMAT_VERSION`。** 引擎 commit 只写进 `layout.json` 备查，不进身份。
+  本地路径的模型（无 HF hash）沿用现在的文件名+大小+mtime 指纹。
+- 升级引擎这个"特意的动作"多一道集成测试：**旧引擎写下的 cache，新引擎接着用，命中数与输出一致**。过 ⇒ 版本号不动，用户的 cache 活过升级，
+  无需告知；不过 ⇒ 版本号 +1，此时才用 E 里那句"cache 要重建，第一句约 40 秒"。
+- 被否：我原来的"引擎 commit 进身份"（粗、省我的事、费用户的事）。
+
+## F. 第一句的 37 秒 —— 已裁（2026-09-20，owner："y"）
+服务端消不掉：agent 开口前 lmk 不知道它的 prompt；新 agent 的第一句必须算完整个前缀（约 3s / 1k token）。
+会撞上的场合（经 E′ 修正后）：刚装好、换了 agent。（引擎升级仅在格式版本真的变了时。）
+推荐——让等待看得见、只发生一次：
+1. `lmk up` 成功后的输出里一句话说在前头："first request from a new agent prefills its whole prompt (~3s per 1k tokens); after that every step starts in about a second."
+2. `lmk status` 显示在途请求的 prefill 进度（`server.py` 已在 `_in_flight[...]["prefill"]` 里记着，只差显示）。
+3. 流里的 `lmk.prefill` chunk 保留：懂的 agent 画进度条；不懂的客户端忽略它，但连接上一直有字节，不会被 30–60s 读超时掐断。
+   非流式请求在 prefill 期间一个字节都没有——README 写明"用流式"，不为非流式做保活。
+- 不做：服务端猜 prompt、预热。预热只能由 agent 发起（`/lmk/v1/warmup` 已有），何时调归 G。
+
+## G. agent 一侧 —— 已裁（2026-09-20）
+- 别人的 agent（任何 OpenAI 兼容客户端）：`lmk up` / `lmk status` 把三样东西打印成可复制的形状——地址、model id、"api key 随便填"。
+- kitten：**配置保持显式，不改**。`providers.lmk.base_url` 照旧必填（"写出服务器就是 opt-in"的旧裁决不动），别名照旧写全。
+  lmk 这边能帮的是把要粘的那几行原样打印出来（含 kitten 的片段），并用稳定短名（C）让 id 不易填错；模型选择器本来就会从 status 列出常驻模型。
+- **被否：`providers: {lmk: {}}` + base_url 缺省**（我的提议）。owner 原话："you are making things harder to understand. I prefer making
+  thing more explicit." 少写两行的代价是读配置的人得去猜 kitten 连向哪里；行数少 ≠ 好懂。
+- 不做：kitten 启动时探测 1235 端口自动发现（隐式、启动期 IO、违反"注册只看配置"）；开会话时自动 warmup（维持上一个 SAD 的"推迟"）。
+- kitten 发"用途 + refId"头：属于 2026-09-19-llm-call-flow-control.md 里待裁的 C，不在此重复。
+
+## H. lmk 独立成 repo —— 已裁（2026-09-20，owner："I want to create a new repo for lmk"）
+取代 09-19 的裁决"放在 kitten repo 里，另一个文件夹"。了结 §1 走查的第 1 步（拿 lmk 先得 clone 整个 kitten）。
+- 新 repo `~/src/lmk`，用 `git subtree split -P lmk` 从 kitten main 带出全部历史（K1–K6 + 图片输入，6 个 commit）；原 `lmk/` 的内容成为根目录。
+- lmk 的设计文档与调研（lmk、lmk-oobe、wishlist、lmk-spike、local-server-survey、mlx-engine-upstream）拷入新 repo；kitten 里的原件不动。
+- 留在 kitten 的：`internal/provider/lmk/`（kitten 的客户端）、`itest/lmk_test.go`。
+- 待办：GitHub 远端由 owner 建并 push；之后 kitten 删 `lmk/`、文档改指新 repo（走分支，合并要他授权）；m3u 上的服务改从新 repo 部署。
+
+## 状态
+A–H 全部已裁（2026-09-20）；同日 owner "go"，落地于分支 `oobe`。
+
+| # | 项 | 状态 |
+|---|---|---|
+| 1 | `lmk pull / up / status / logs / down`（+ launchd 跑的 `serve`） | ✅ `lmk/cli.py`、`service.py`、`serve.py`、`render.py` |
+| 2 | `~/.lmk/config.yaml` 零必填 + 内建缺省；seed 全注释 + 每次刷新 `config.yaml.example`（含模型清单） | ✅ `config.py`、`configfiles.py`、`models.py` |
+| 3 | 模型：实测清单名 / 任意 HF repo / 本地路径；HF cache 解析；`pull` 走 `huggingface_hub` | ✅ 实测 16GB 8 分 13 秒 |
+| 4 | cache：上限 200G（整目录一个上限，别的模型留下的目录先走）；身份 = HF commit hash + 格式版本；`CACHEDIR.TAG` + Time Machine 排除 | ✅ `persistcache.py` |
+| 5 | `up` 等到可用 + 冒烟 + 端口占用者指名；`status` 显示生效窗口、cache 已用/生效上限、在途 prefill 进度 | ✅ 在 m3u 上实测 |
+| 6 | `install.sh`（uv）；`make install` 走同一脚本 | ✅ 空闲网络下 21 秒。`curl … \| sh` 这条路要等 repo 公开才能测 |
+| 7 | m3u 迁移到 `~/.lmk/` | ✅ 原 10G cache 带过来（HF 权重与 LM Studio 那份逐字节相同）；迁移后首轮命中 11008/11139、1.8s |
+| 8 | 引擎升级的 cache 兼容测试 | ✅ `make cache-fixture` / `make cache-compat` |
+
+落地时定的细节（设计里没写到的）：
+- 三种指名方式是三个键 `model.name / repo / path`，只能写一个——显式优先，不靠一个字符串猜它是名字、repo 还是路径。
+- `lmk pull` 不带参数：拉配置里的那个。配置是唯一的事实来源；换模型 = 改配置 → `pull` → `up`。
+- `lmk up` 靠"配置指纹"（build + 生效配置 + 模型 revision 的哈希，服务在 status 里报出）判断要不要重启；相同即 no-op（0.16s）。
+- `lmk serve` 遇到重启也修不好的问题（配置错、模型缺、端口被占）**干净退出**（exit 0），launchd 的 `KeepAlive.SuccessfulExit=false`
+  因此不会空转——m3u 上 oMLX 那个每 11 秒一次、转了五个月的循环就是反例。
+- 非缺省 `LMK_HOME` 的安装不往 `~/.local/bin` 放 `lmk` 链接（测试时踩到：临时安装劫持了命令）。
+- launchd label 沿用 `ai.kitten.lmk`：换 label 会让新旧两个服务抢端口，正是要避免的那类事故。
+- 给人看的字集中在 `render.py`、`configfiles.py` 的模板、`install.sh` 的输出、README——都按"没参加过我们讨论的 agent 开发者"来写。
+
+实测时踩出来、已修的两个坑：
+- `lmk` 命令用 `python -m lmk` 起，cwd 排在 import 路径最前：在本 repo 的 clone 目录里敲 `lmk`（README 正是这么教的）跑的是工作树的代码。
+  → 命令与 launchd 都用 `python -P`。是 `make install` 第一次走升级路径时暴露的。
+- mlx-engine 一被 import 就把 `huggingface_hub.snapshot_download` 换成必抛异常的函数；用它找本地模型，成败取决于进程先 import 了谁。
+  → `models._hf_snapshot_dir` 直接读 HF cache 的目录结构。是集成测试（先 import 引擎、后找模型）暴露的。
+
+未验证：重启机器后 launchd 自动拉起（自第一版起未验证）；`curl | sh`（repo 私有）；16GB 以外内存规格的机器。
+下一步（OOBE 之外，已排队）：内存护栏、采样参数（engine 层的 `sampling` 直通已就位，缺 HTTP 层解析）。
+
+===== docs/design/2026-09-20-memory-guard.md =====
+# lmk 的内存护栏
+
+日期 2026-09-20。状态：SAD 进行中。事实依据：`research/2026-09-20-memory-guard/notes.md`（MG-001..005）。
+
+## 0. 用户要的结果
+**这台 Mac 不会因为 lmk 而卡死。** 卡死 = 所有 agent 一起停、只能硬重启，是本地跑模型最贵的一种失败。
+次一级：当 lmk 因为内存拒绝做某件事时，它说得清为什么、该怎么办。
+
+## 1. 已有的与缺的
+引擎已经做了最难的那部分（MG-001：按实测系数把窗口拟合进 GPU 工作集，并按内存排 prefill 步长）。缺的是它假设之外的三种情形：
+| | 情形 | 谁造成的 | 现状 |
+|---|---|---|---|
+| ① | 配了一个这台机器装不下的模型 | 用户的配置（只可能经 `model.repo` / `model.path`） | 无检查，照常加载（MG-003） |
+| ② | 几个长请求同时在跑 | lmk 自己（`max_seq_nums=4`） | 拟合不知道并发（MG-002） |
+| ③ | 别的程序在同一台机器上加载了大模型 | 邻居（oMLX / LM Studio / …） | 拟合看不见别的进程，且只算一次（MG-004） |
+
+## 2. 设计点
+（逐点过；裁决与被否方案记在各节）
+
+### A. 护栏管哪几种情形 —— 已裁（2026-09-20）
+三种都管，各用最便宜的手段。原则：**lmk 对自己造成的风险负全责；对邻居造成的风险，只保证自己不再往里加内存。**
+- ① 加载前检查（已同意）：`lmk up` 拿权重体积比 GPU 工作集，装不下就拒绝并说清"要多少、这台 Mac 给多少"。
+- ② 并发：见 B。
+- ③ 邻居（已同意）：读 macOS 的内存压力等级；到"危急"时拒绝**新**请求并明说，`lmk status` 一直显示压力等级。不卸载自己、不杀别人。
+- 明确不做：每秒轮询内存的守护线程；内存不够时自动卸载模型；悄悄调小用户配置的窗口（引擎已在做，且 status 如实显示）。
+
+### B. 并发 —— 已裁（2026-09-20）
+事实（MG-006，exp01）：并行**生成**给吞吐——2 个同时 1.7×（各 34 tok/s，单个 39.7），4 个同时 2.2×（各 22）；
+读 prompt 严格串行；**一个请求读长 prompt 时，所有正在生成的请求近乎停顿**（读 13k 用 43 秒，期间另一个只出 11 个 chunk）。
+并发 4 个无错无卡。
+
+**B1（已裁）：同时作答的请求数可配置，缺省 2。** 原话："should be something we can configure, maybe we set default to 2."
+- 配置项 `requests.max_parallel`（缺省 2）；传给引擎的 `max_seq_nums`。超出的请求被接受并排队，不报错。
+- 缺省取 2 的依据是实测：2 拿到了大部分收益且每个请求几乎不变慢；4 让每个请求掉到约一半。模板注释里写明这组数字出自
+  M3 Ultra + 缺省模型，别的机器/模型需自己量。
+- 内存：两条满长序列 ≈ 32GiB KV + 15 + 3 ≈ 50GiB，在 77.76GiB 之内；缺省值下并发的内存风险顺带了结。
+  用户把它调大时，上限检查归 A① 的同一处（`lmk up` 时按 `max_parallel × 窗口 × 每 token KV` 核一遍，超了就拒绝并说清）。
+- 被否：我最初的"写死降到 2"。
+
+**B1 的依据需补上条件（MG-008，exp03，落地后才量到）**：exp01 的 1.7× / 2.2× 是在几十 token 的短 prompt 下量的，数字没错，缺的是条件。
+27k 上下文下 1 个 33 tok/s、2 个各 16，合计 1.0×。两组数并列才是完整的事实：并行的收益随上下文长度而变（中间的长度没量过）。
+产品里的说明文字改为两种条件并列陈述。**缺省值保持 2（owner 重裁，2026-09-20）**：长上下文下它不换来吞吐，换来的是
+后来者立刻半速出字、而不是整段停着等——盯着一个会话看的人，半速仍可读，停住更难受。
+（owner 纠偏："it's not an error, it just needs to be more precise on condition"——我先是只报 1.7× 不写条件，量到 1.0× 后又说成"推翻"，两头都不精确。）
+
+**B2（已裁，"agree"）：有请求正在作答时，新来的长 prompt 先排队。**
+正在作答的请求写完之前，不开始读新请求的 prompt（短到一块以内的除外——它一圈就读完，不拖人）。
+理由：一次作答通常几秒到几十秒，让后来者等这一会儿，远小于让正在看输出的人停 43 秒。`lmk status` 显示
+"waiting — another request is answering"及是谁。lmk 自己的准入逻辑，不改引擎。
+- 可行性（已查）："长"要按**未命中 cache 的 token 数**判——agent 的每一步都是 27k prompt、只有几十个新 token，绝不能被排队。
+  引擎的 store 有 `plan_longest_prefix_restore(...)`：只查内存里的索引、不加载记录，准入前即可问"这条 prompt 会恢复多少"。
+  待实现时核实：该方法从 HTTP 线程调用是否安全（store 归 cache I/O 线程所有）；带图片的请求哈希含图片，算不准时按"长"处理。
+
+### C. 两个请求并行时的内存账 —— 已裁（2026-09-20，"I like C"）
+引擎的窗口拟合按"一条序列"算；缺省并行 2 在小内存 Mac 上会超（32GB：工作集约 22GB − 权重 15 − 余量 3 ≈ 4GB ≈ 65k token 的 KV，
+两个 50k 的请求就超）。
+- **按 token 记账**：加载后用引擎实测的每 token KV 字节数算出"这台机器总共装得下多少 token 的 KV"；新请求进来时，
+  在途的（prompt + max_tokens）之和加上它若超过总量，就在 B2 的同一个准入队列里等。单个请求仍可用满整个窗口。
+- m3u 上总量约 98 万 token，永不触发；保护的是小内存机器上的用户。status 对等待者显示原因。
+- 被否：静态平分（窗口 ÷ 并行数）——最常见的"只有一个请求"时，单独装得下的长对话会被拒。
+- 局限：只有一台 96GB 的机器，小内存上的行为无法实测；逻辑由单测保证（假引擎注入小总量）。
+
+### D. 加载前检查怎么判 —— 已裁（2026-09-20，"agree"）
+- 判据只有一条：**权重体积（目录里 *.safetensors 之和）+ 3GiB 余量 > GPU 工作集上限 ⇒ 拒绝启动**。
+  3GiB 沿用引擎拟合用的同一个余量（`context_fit.py`：来自实测残差）。工作集上限 = `mx.device_info()["max_recommended_working_set_size"]`，
+  不加载引擎即可读（m3u：77.76GiB，0.03s）。
+- 只比权重：权重装不下 = 必然失败；"装得下但窗口要缩"已由引擎的拟合处理，`lmk status` 如实显示。
+- 两处：`lmk up`（起 launchd 之前，立刻得到答复）；`lmk serve`（防绕过，干净退出，launchd 不空转）。
+- 拒绝时说清三件事：要多少、这台 Mac 给多少（以及为什么不是全部内存）、该怎么办（更小的模型 / 更低 bit）。
+- **不提供强行加载的开关。** 有开关就会被关掉（09-19：为加载大模型，LM Studio 的护栏被 agent 关了）；权重大过工作集的模型没有任何场景值得强行加载。
+
+### E. 邻居把内存吃紧时 —— 已裁（2026-09-20）
+- 信号：macOS 自己的内存压力等级 `kern.memorystatus_vm_pressure_level`（1 正常 / 2 警告 / 4 危急）。系统对"整机还撑不撑得住"的
+  综合判断，已算进所有进程；读一次几微秒。
+- **只报数字，不猜原因**（裁决："we just report the memory numbers"）。`lmk status` 常驻一行：
+  `memory  pressure: warning · 12% of 96 GB free · lmk holds 19.2 GB`——压力等级、`kern.memorystatus_level`（全机空闲百分比）、
+  MLX 报告的本进程 GPU 内存。三个都便宜、可靠。
+  被否：我的措辞 "another program is using a lot"——lmk 不知道内存被谁吃了，也可能就是它自己；没核实的原因不进给用户看的字。
+- "警告"：不改变任何行为，只显示。"危急"：新请求**不放行**（见 F 的队列）；已在作答的继续写完。
+- 不做：危急时卸载模型；数别的进程、杀进程；对"警告"做任何动作。
+
+### F. 一个等待队列，四条准入规则 —— 已裁（2026-09-20，"y"）
+起因：owner 三问——内存造成的等待与并行数造成的等待要不要分开处理？有没有可配置的最长等待？有没有可配置的队列上限？
+- **不分开。** lmk 里、引擎前面，**一个**先到先走的队列。队首依次过四条规则，全过才交给引擎；过不了就留在队首，后面的跟着等：
+  ① 在答的请求数 < `max_parallel`（B1）；② 有请求在答时，未命中 cache 的部分超过一块的新请求先等（B2）；
+  ③ 在途的 token 账装得下它（C）；④ 内存压力不是"危急"（E）。
+  `lmk status` 对每个等待者显示卡在哪一条及当时的数字。
+- 重新检查：有请求结束时查一次（①②③ 只在这时变）；④ 由外界决定，**仅当队列非空时**每秒查一次。
+- 并行数由 lmk 自己数，不再靠引擎内部的队列（那个队列在引擎里，看不见）；`max_seq_nums=max_parallel` 仍传给引擎作兜底。
+- **放行之前不发任何字节（含状态行）**：等过头可以老实回 503。已查 kitten 的 lmk 客户端无读超时（ctx 管）。
+  被否：等待期间发 SSE 注释行保活——会让超时变成"先 200、后流内报错"。
+- 配置（都在 `requests:` 下，名字带单位）：
+  | 键 | 缺省 | 缺省值的依据 |
+  |---|---|---|
+  | `max_parallel` | 2 | exp01：2 个同时 1.7×、各自几乎不慢；4 个各掉到约一半 |
+  | `max_queue` | 16 | 多会话形态：6 个会话 × 一个 turn + 一个 groom = 12，留余量。满了的下一个立刻 503 |
+  | `max_wait_seconds` | 600 | 一次合理的最长等待：前一个读完 10 万 token 的冷 prompt（约 5 分钟）+ 写 8k token（约 4 分钟） |
+- 命名：`max_queue`（owner 改定；我原先写的是 `max_waiting`——队列就叫队列）。
+- 一个最长等待管所有原因。被否：我上一轮的"内存危急单独等 60 秒"——等待者什么都不占，等 10 分钟无害，且用户看到原因后可以去关掉
+  吃内存的程序让它继续；60 这个数本来也没有实测依据。
+- 503 的报文写清：等了多久、卡在哪条、当时的数字；队列满则 `16 requests are already waiting`。
+- 每次进入/离开"危急"记日志（带持续时长）：将来回头校数值的依据。
+
+## 状态
+A–F 全部已裁（2026-09-20）；同日 "start"，落地于分支 `memory-guard`，已部署 m3u（build `7a98a23`）。
+
+| # | 项 | 状态 |
+|---|---|---|
+| 1 | `requests.max_parallel / max_queue / max_wait_seconds` | ✅ `config.py`、模板与 example |
+| 2 | 内存数字（压力等级、全机空闲百分比、本进程 GPU 内存） | ✅ `memory.py`（ctypes 读 sysctl，读法可注入） |
+| 3 | 加载前检查 | ✅ `modelfit.py`；`lmk up` 与 `lmk serve` 两处 |
+| 4 | 准入队列 + 四条规则 | ✅ `admission.py`；token 总量取自引擎的 `_context_fit_result`（m3u：979,877）；未命中数取自 store 的 restore 计划 |
+| 5 | status 的 memory / waiting；503 报文 | ✅ `server.py`、`render.py` |
+| 6 | README | ✅ |
+| 7 | 验证 | ✅ 单测 117；真实模型集成测试 5；exp02（MG-007）：A 51.3s → 8.2s，agent 的下一步不被排队，估计值 = 实测值 |
+
+落地时定的细节：
+- 线程安全：preflight 从 HTTP 线程只读 store 的索引；读失败按"未知 = 长"处理（偏向让后来者多等）。实测三次估计值与引擎实测逐个相等，
+  且该对照常驻 `LmkChatDone` 日志（`uncachedEstimate` / `uncachedActual`）——规则二判错了，日志里看得出来。
+- 等待中的客户端断开：线程阻塞在队列里，感知不到；它会占着队位直到被放行后第一次写失败（随即取消）或等满 `max_wait_seconds`。没有为此加探测。
+- 顺带修的两处：引擎异常时回 500 并说明（原先直接断连）；短 prompt 的请求在 status 里一直显示 "reading prompt"（改为以第一个 chunk 为凭据）。
+
+未验证：小内存 Mac 上规则 ③ 的真实行为（只有单测）；规则 ④（内存危急）在真机上从未触发过——要触发就得把 m3u 压到危急，没做。
+
+===== docs/design/2026-09-21-sampling.md =====
+# 采样参数：请求里的 temperature / top_p / top_k / min_p / repetition_penalty / stop / seed
+
+> 2026-09-21 SAD 结论（owner 一次拍板四点，"go"）。已实现并合 main（merge 435a74b）。取证 `research/2026-09-21-sampling`（SMP-001..004，exp01/02）。
+
+起因：公开前，OpenAI 兼容 server 最基本的预期；此前这些字段全部被忽略（README "What does not work yet" 第一条）。
+
+## 1. 裁决：名字映射、校验、未知参数
+- 收 `temperature`→`temp`、`top_p`、`top_k`、`min_p`、`repetition_penalty`（后三个原样透传）；`stop` 见 §4。
+- 范围按 OpenAI：temperature 0–2、top_p (0,1]、top_k ≥ 0 整数、min_p [0,1]、repetition_penalty > 0、stop ≤ 4 条非空串。
+  越界回 400，`error.param` 点名字段，message 说规则。布尔不算数字。
+- 不认识的参数忽略不报错（OpenAI 同样做法）。
+- 落点：`lmk/sampling.py`。
+
+## 2. 裁决：缺省 = 模型作者的设置；lmk 不发明温度
+原裁决"请求没给就不传，让引擎用模型自带的 generation_config"。**实测前提不成立**（SMP-001）：引擎缺省 temp 0 = 贪心，
+且从不读 `generation_config.json`。故由 lmk 在加载时读那份文件（`temperature`/`top_p`/`top_k`；`do_sample: false` ⇒ temp 0），
+作为请求未指定时的值。**行为改变**：lmk 从第一版起一直贪心（THK-001），现在缺省按模型作者的采样（Qwen3.8-27B：1.0 / 0.95 / 20）。
+`lmk status`、`lmk up` 多一行显示这组值；`LmkChatDone` 记每次实际生效的 `sampling`。
+
+## 3. 裁决：seed——无法兑现，如实报
+原裁决"照引擎的全局语义实现，并发下不保证，README 写明"。**实测前提不成立**（SMP-003）：引擎在批处理路径上忽略 seed
+（`generate.py:688`），lmk 的模型正走这条路径。改为：seed 收下、不传引擎、记 `LmkParamIgnored`（不拒绝——客户端库常默认带 seed）；
+README 写明不支持，要复现用 `temperature: 0`（exp01：逐字相同）。
+
+被否：报 400 拒绝 seed——会把默认带 seed 的客户端整个挡在门外。
+
+## 4. 裁决：stop 只对回答段生效
+原裁决留待实测。exp01：交给引擎的 `stop_strings` 对整条 token 流生效，思考型模型在思考段第 12 个 token 就命中、回答为空。
+故 **stop 不传引擎**，lmk 在自己的输出切分器之后、只对回答段匹配（`lmk/stopmatch.py`），命中即用取消路径现成的
+`generation.pieces.close()` 关引擎生成器；停止串本身不进输出；跨 piece 的匹配靠留一段尾巴（最长停止串减一）。
+exp02：同一请求思考完整跑完（262 token）、回答在停止串前截住，流式与非流式一致。代价：命中前引擎可能多算几个 token。
+
+被否：把 stop 交给引擎并在文档里写"思考里也会停"——那等于让思考型模型上的 stop 不可用。
+
+## 5. 不做（另开题）
+`response_format` / `json_schema`：引擎有 `json_schema` 参数，与思考段和工具调用的关系没想清楚。
+
+===== docs/design/2026-09-23-own-engine.md =====
+# 引擎路线：fork mlx-engine，先量后建
+
+> 2026-09-23 SAD 开题。owner 提出"我们自己写一个 mlx-engine"；我的判断是"目标同意，路径是 fork + 补丁，不是从零写"。
+> 本文记已摆出的事实、双方立场、裁定。09-23 SAD 三点已裁（fork 放哪、验收、用户面）；**开工令另等 owner 显式给**。
+> 取证：`research/2026-09-23-speculative-decoding/`（SPD-001/002）。
+
+## 0. owner 要的结果
+lmk 的引擎路线图归自己：**投机解码与磁盘 cache 同时有，KV 量化**——owner 的原话："those are already critical enough"。
+
+## 1. 已摆出的事实
+- 栈：lmk → mlx-engine（LM Studio，1.3 万行 Python，调度层，不含模型定义）→ mlx-vlm（模型定义，个人项目 Blaizzy/Prince Canuma）
+  与 mlx-lm（苹果 ml-explore；lmk 只用它的

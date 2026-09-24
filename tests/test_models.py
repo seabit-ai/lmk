@@ -129,7 +129,7 @@ def test_models_are_grouped_by_the_smallest_mac_with_a_useful_context():
     md = tested_models_markdown()
     assert md.index("### Needs at least 32 GB") < md.index("### Needs at least 48 GB") < md.index("### Needs at least 96 GB")
     assert "| ctx size on 32 GB / 48 GB / 64 GB / 96 GB |" in md   # up to where every model in the group maxes out
-    assert "| 85k / 223k / 262k / 262k tokens |" in md
+    assert "| 122k / 262k / 262k / 262k tokens with `kv_cache_bits: 8` |" in md
     assert "| 165k / 262k tokens |" in md                                # 96 GB measured, 128 GB from the formula
 
 

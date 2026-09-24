@@ -1,0 +1,14 @@
+{
+ "content": "- Data loss from hardware failure, corruption, or bugs becomes unrecoverable, potentially erasing all historical records permanently.\n- Human error such as accidental deletion, a bad migration, or a flawed UPDATE statement cannot be rolled back, taking the entire database down with it.\n- Ransomware or malicious deletion destroys all copies at once, with no fallback to restore from, meaning total operational loss and extended downtime.",
+ "reasoning": "The user is asking me to name three risks of running a database without backups, with a very specific format: exactly three bullet points, each starting with '- ', and nothing else. This is a straightforward general knowledge question, not related to the lmk codebase. I need to be precise about the format — exactly three lines, each starting with \"- \", no preamble, no closing text.\n",
+ "tool_calls": [],
+ "finish": "stop",
+ "tokens": 165,
+ "ms": 14347,
+ "raw_message": {
+  "role": "assistant",
+  "content": "- Data loss from hardware failure, corruption, or bugs becomes unrecoverable, potentially erasing all historical records permanently.\n- Human error such as accidental deletion, a bad migration, or a flawed UPDATE statement cannot be rolled back, taking the entire database down with it.\n- Ransomware or malicious deletion destroys all copies at once, with no fallback to restore from, meaning total operational loss and extended downtime.",
+  "reasoning_content": "The user is asking me to name three risks of running a database without backups, with a very specific format: exactly three bullet points, each starting with '- ', and nothing else. This is a straightforward general knowledge question, not related to the lmk codebase. I need to be precise about the format — exactly three lines, each starting with \"- \", no preamble, no closing text.\n"
+ },
+ "pass": true
+}

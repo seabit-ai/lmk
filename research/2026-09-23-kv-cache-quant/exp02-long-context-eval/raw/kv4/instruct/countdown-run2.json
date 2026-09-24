@@ -1,0 +1,14 @@
+{
+ "content": "10,9,8,7,6,5,4,3,2,1",
+ "reasoning": "The user wants me to output integers from 10 down to 1 as a single comma-separated line with no spaces, and nothing else.\n\nSo that would be: 10,9,8,7,6,5,4,3,2,1\n",
+ "tool_calls": [],
+ "finish": "stop",
+ "tokens": 80,
+ "ms": 9878,
+ "raw_message": {
+  "role": "assistant",
+  "content": "10,9,8,7,6,5,4,3,2,1",
+  "reasoning_content": "The user wants me to output integers from 10 down to 1 as a single comma-separated line with no spaces, and nothing else.\n\nSo that would be: 10,9,8,7,6,5,4,3,2,1\n"
+ },
+ "pass": true
+}

@@ -1,0 +1,14 @@
+{
+ "content": "MOUNTAINS RISE MIGHTILY FROM THE EARTH, THEIR PEAKS TOUCHING THE CLOUDS.",
+ "reasoning": "The user wants one sentence about mountains in all capital letters. Simple request.\n",
+ "tool_calls": [],
+ "finish": "stop",
+ "tokens": 44,
+ "ms": 8263,
+ "raw_message": {
+  "role": "assistant",
+  "content": "MOUNTAINS RISE MIGHTILY FROM THE EARTH, THEIR PEAKS TOUCHING THE CLOUDS.",
+  "reasoning_content": "The user wants one sentence about mountains in all capital letters. Simple request.\n"
+ },
+ "pass": true
+}

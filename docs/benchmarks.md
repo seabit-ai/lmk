@@ -26,6 +26,7 @@ cache, the cache survived, and the run says so instead of reporting a cold numbe
 | Apple M3 Ultra | 96 GB | qwen3.8-27b-6bit | 262,144 | 315 tok/s (4,074 tokens) | 53k tok/s (3,840 cached; first token 1.06 s) | 28.1 tok/s | v0.6.0+ | 08f0c07 | 2026-09-22 |
 | Apple M3 Ultra | 96 GB | qwen3.8-27b-4bit | 262,144 | 324 tok/s (4,074 tokens) | 58k tok/s (3,840 cached; first token 1.01 s) | 39.5 tok/s | dev | d3650db | 2026-09-23 |
 | Apple M3 Ultra | 96 GB | qwen3.8-27b-4bit, `kv_cache_bits: 8` | 262,144 | 323 tok/s (4,074 tokens) | 47k tok/s (3,840 cached; first token 1.03 s) | 38.9 tok/s | dev | d3650db | 2026-09-23 |
+| Apple M3 Ultra | 96 GB | qwen3.8-27b-4bit, `speculative_decoding: true` (default sampling; greedy code: 58 tok/s) | 262,144 | 323 tok/s (4,062 tokens) | 56k tok/s (3,840 cached; first token 0.92 s) | 40.5 tok/s | dev | 2839cfa | 2026-09-23 |
 | Apple M3 Ultra | 96 GB | qwen3.5-122b-a10b-4bit | 165,888 (lowered from 262,144 to fit) | 753 tok/s (4,032 tokens) | 89k tok/s (3,840 cached; first token 0.50 s) | 60.5 tok/s | v0.3.0+ | 08f0c07 | 2026-09-22 |
 | Apple M3 Ultra | 96 GB | qwen3.5-122b-a10b-48gb | 262,144 | 746 tok/s (4,034 tokens) | 89k tok/s (3,840 cached; first token 0.53 s) | 53.7 tok/s | v0.4.0+ | 08f0c07 | 2026-09-22 |
 | Apple M3 Ultra | 96 GB | gemma-4-26b-a4b-4bit | 262,144 | 1,833 tok/s (4,028 tokens) | 83k tok/s (3,840 cached; first token 0.26 s) | 119.5 tok/s | v0.4.1+ | 08f0c07 | 2026-09-22 |

@@ -1,0 +1,14 @@
+{
+ "content": "- Permanent data loss from hardware failure, disk corruption, or software bugs with no way to recover.\n- Inability to undo human errors such as accidental DROP statements, bad migrations, or overwritten records.\n- No recovery path after ransomware encryption or malicious deletion, forcing a full rebuild from scratch if one exists at all.",
+ "reasoning": "The user is asking a general question about database backup risks, unrelated to the lmk project context. They want exactly three bullet points, each starting with '- ', and nothing else. Let me think of the three most significant risks:\n\n1. Data loss from hardware failure, software bug, or corruption\n2. Inability to recover from human error (accidental DROP, bad migration)\n3. Vulnerability to ransomware or malicious deletion with no recovery path\n\nI need to format these as exactly three bullet points starting with '- ' and include nothing else.\n",
+ "tool_calls": [],
+ "finish": "stop",
+ "tokens": 183,
+ "ms": 15998,
+ "raw_message": {
+  "role": "assistant",
+  "content": "- Permanent data loss from hardware failure, disk corruption, or software bugs with no way to recover.\n- Inability to undo human errors such as accidental DROP statements, bad migrations, or overwritten records.\n- No recovery path after ransomware encryption or malicious deletion, forcing a full rebuild from scratch if one exists at all.",
+  "reasoning_content": "The user is asking a general question about database backup risks, unrelated to the lmk project context. They want exactly three bullet points, each starting with '- ', and nothing else. Let me think of the three most significant risks:\n\n1. Data loss from hardware failure, software bug, or corruption\n2. Inability to recover from human error (accidental DROP, bad migration)\n3. Vulnerability to ransomware or malicious deletion with no recovery path\n\nI need to format these as exactly three bullet points starting with '- ' and include nothing else.\n"
+ },
+ "pass": true
+}
