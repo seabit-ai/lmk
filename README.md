@@ -319,10 +319,11 @@ conversations.
 
 Writing the answer is the other half. With `speculative_decoding: true` a small draft — Qwen3.8's own
 multi-token-prediction head, which the original weights ship and the MLX conversions drop — guesses the
-next few tokens and the model checks them in one pass. Guesses it agrees with are free; with greedy
-decoding the answer is token for token the one it would have written alone. On the M3 Ultra the 27B
-goes from 39 to 58 tokens/s on code and copy-editing, 46 on prose, and 86% of its guesses were accepted
-across our agent tests. It runs while one request is being answered; several at once are decoded plainly.
+next few tokens and the model checks them in one pass. Guesses it agrees with are free, and the answer
+is token for token the one the model would have written alone (checked on prose, code and copy-editing).
+On the M3 Ultra the 27B goes from 39 to 50 tokens/s on code and copy-editing, with 86–88% of its guesses
+accepted across our agent tests; prose, where fewer guesses land, comes out about 4% slower than without.
+It runs while one request is being answered; several at once are decoded plainly.
 `lmk up` fetches the draft for the models that have one; the model page says so.
 
 The model runtime is [mlx-engine](https://github.com/lmstudio-ai/mlx-engine), the open-source
