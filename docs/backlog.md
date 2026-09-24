@@ -40,7 +40,9 @@
   **真机结果（exp03）**：贪心下 code/copyedit 与普通解码逐字节一致，story 与 mlx-vlm 自己的循环同样分叉；采样 temp 1 接受率 87%。
   **验收全过（exp03 + exp04）**：单流草稿开着、默认采样：code 40/40、instruct 20/20、tools 10/10，接受率 86%，7 s/答对 9 s。27B-4bit 页已写推荐
   `speculative_decoding: true` 与 `kv_cache_bits: 8`（后者：exp02 长上下文 40/40、20/20、10/10）。引擎 `lmk` 分支已 ff 到 2839cfa，ENGINE_COMMIT 指过去。
-  **待 owner**：合并 lmk 分支 `speculative-decoding`；push 引擎 `lmk` 分支（先）再 push lmk；建 HF 组织 `seabit-ai` 后我上传草稿器
+  `speculative-decoding` 已合 main（2026-09-24，bda4425）。**09-24 发现并修了：两个开关同开会崩**（exp05，SPD-009）——fork `lmk` 分支 7a1e17f，
+  `ENGINE_COMMIT` 已指过去（分支 `config-example`）。owner 机器已按推荐配置在跑（kv8 + 草稿 + thinking off）。
+  **待 owner**：push 引擎 `lmk` 分支到 7a1e17f（先）再 push lmk；建 HF 组织 `seabit-ai` 后我上传草稿器
   （在此之前 `lmk pull` 会说"could not fetch it"，`speculative_decoding: true` 启动即报错说去 pull）；tag v0.7.0。
   **并发限制**：两条请求行长不齐时 mlx-vlm 的批量回滚不对（同 prompt 正确、code+story 第 53 个 token 分叉），MVP 只在单请求解码时投机
   （`speculative.py` 的 `MAX_ROUND_ROWS = 1`），多请求退回普通解码；复现脚本 `pair_probe`（scratch，内容见 exp03 README 第 5 条）。查清再开。
@@ -68,8 +70,12 @@
   6. 崩溃循环里 launchd 每 30 s 重拉一次直到有人管（`lmk status` 现在会说）。`lmk serve` 顶层再兜一层未知异常 → 记 `LmkCrashed` 后 exit 1
      保留重启，还是 exit 0 停下来，没裁。
 
-## 2026-09-24 `config.yaml.example` 改成真配置（分支 `config-example`，基于 `speculative-decoding`）
-- 裁决与形状：OOBE 设计文档 C5。待：owner 机器上照用户的样子看一眼 `~/.lmk/config.yaml.example`，然后合并。
+## 2026-09-24 `config.yaml.example` 改成真配置（分支 `config-example`，现基于 main）
+- 裁决与形状：OOBE 设计文档 C5；owner 09-24 三条纠偏已改（无分组行、模型只列名、`path:` 用 LM Studio 真实目录）。
+  同一分支上带着 `ENGINE_COMMIT` → 7a1e17f（exp05 的修复，example 推荐的组合靠它才能跑）。待 owner 授权合并。
+- **`lmk status` / `lmk bench` 没跟上两个开关（owner 09-24 指出，已查清、未做）**：status 只在开着时才显示（关着一字不提）、不显示 `reasoning_effort`；
+  bench 的 Markdown 行不带配置、不报接受率；`LmkStarting`/`LmkReady`/`LmkChatDone` 不记位宽、投机、接受数；README 的 status 示例是旧格式；
+  27B 页 Speed 表没有推荐配置下的数（owner 机器现在就是推荐配置，`lmk bench` 直接量）。下一个分支做。
 - 种子 `config.yaml` 同形状（owner 09-24 "fix ~/.lmk/config.yaml too"）：注释文案与 example 共用一张表（`_WHAT`）；owner 的文件已照此重写，生效值不变。
 
 ## 已裁但还没做的

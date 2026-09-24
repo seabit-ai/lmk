@@ -26,3 +26,7 @@
   可接受差异 + 测试（设计文档 §4 验收项要改：不是"逐 token 一致"，而是"代码类逐 token 一致、散文允许分叉且质量不降"）。
 - **SPD-008 其他草稿器**：`z-lab/Qwen3.8-27B-DFlash2`（3.6 GB，DFlash v2）存在，这版 mlx-vlm 只写了 v1，未试。z-lab 也有
   `Qwen3.5-122B-A10B-DFlash`（对应 lmk 的 122B 两个版本），未试。
+- **SPD-009 投机解码 + 量化 KV 一起开会崩（2026-09-24，exp05）**：mlx-vlm 的校验注意力（`target_verify and L > 1`）对量化 cache 主动返回 None，
+  然后按稠密 keys 逐位置切片——上游根本不支持这个组合；两功能各自验收过、合起来第一个请求 500。修在 fork 7a1e17f：量化 cache 时整块
+  一次带因果掩码的量化注意力（`kv_quant.verify_block_attention`，经 `patches/qwen3_5.py` 挂钩），稠密路径不动。修后 code/copyedit 与 kv8 普通解码
+  逐字节一致、1.49×、采样接受率 86%、itest 5/5。教训：推荐配置按组合验收。
