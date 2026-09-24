@@ -18,6 +18,7 @@ from lmk.clock import get_current_clock
 from lmk.memory import get_current_memory
 from lmk.config import ConfigError, LmkConfig, app_dir, config_path, fingerprint, load_config
 from lmk.configfiles import refresh_example, seed_config
+from lmk.report import ISSUES_URL
 from lmk.models import TESTED_MODELS, ModelNotDownloaded, missing_weight_files, resolve_model
 
 READY_TIMEOUT_S = 600  # a cold load of a large model from a slow disk; normally ~10s
@@ -398,7 +399,44 @@ def cmd_bench(args) -> int:
     _say("")
     _say(f"  seed {result.seed}   ·   row for docs/benchmarks.md:")
     _say(bench.markdown_row(result, m, status, datetime.date.today().isoformat()))
+    if result.canary_ok is False:
+        _say("")
+        _say("  The answer did not match. The numbers above are not to be trusted, and we want to know about this Mac:")
+        _say(f"  run  lmk report  and paste it into an issue at {ISSUES_URL}")
     return 0
+
+
+def cmd_report(args) -> int:
+    """One Markdown block for a GitHub issue: machine, build, config, status, canary, last events and traceback."""
+    from lmk import bench, report
+    from lmk.config import app_dir, build_id, config_path
+
+    cfg = _config()
+    status = _get_status(cfg)
+    canary, canary_error = None, None
+    if status is not None:
+        try:
+            canary = bench.run_canary(bench.stream_via_http(render.base_url(cfg.host, cfg.port), timeout_s=300), status["model"]["id"])
+        except Exception as e:  # noqa: BLE001 - the report is for exactly the cases where things fail
+            canary_error = f"the canary request failed: {e}"
+    engine = (status or {}).get("engine") or _engine_commit_on_disk(app_dir())
+    try:
+        config_text = config_path().read_text()
+    except OSError as e:
+        config_text = f"# could not read: {e}"
+    _say(report.markdown(machine=bench.machine(), build=(status or {}).get("build") or build_id(), engine=str(engine)[:7],
+                         config_text=config_text, config_path=render.short_path(str(config_path())), status=status,
+                         canary=canary, canary_error=canary_error,
+                         events=[render.log_line(l) for l in _tail(cfg.log_dir / "lmk.jsonl", args.lines)],
+                         stderr=_tail(cfg.log_dir / "lmk.stderr.log", args.lines)))
+    return 0
+
+
+def _engine_commit_on_disk(app: Path) -> str:
+    try:
+        return (app / ".engine" / "mlx-engine" / "COMMIT").read_text().strip()
+    except OSError:
+        return "?"
 
 
 def main(argv: Optional[list[str]] = None) -> int:
@@ -414,6 +452,8 @@ def main(argv: Optional[list[str]] = None) -> int:
     p.add_argument("-n", "--lines", type=int, default=40)
     p.add_argument("--raw", action="store_true", help="the model runtime's own output instead of lmk's events")
     sub.add_parser("down", help="stop lmk and do not start it at login")
+    p = sub.add_parser("report", help="one Markdown block for a GitHub issue: this Mac, build, config, status, a canary answer, last events")
+    p.add_argument("-n", "--lines", type=int, default=40, help="log lines to include (default 40)")
     p = sub.add_parser("bench", help="measure prefill, cache-hit and decode speed on this Mac; prints a row for docs/benchmarks.md")
     p.add_argument("--url", help="an lmk other than the configured one (default: this Mac's)")
     p.add_argument("--seed", type=int, help="reuse a seed from an earlier run: the cold probe then tests whether "
@@ -427,6 +467,6 @@ def main(argv: Optional[list[str]] = None) -> int:
 
             return serve()
         return {"pull": cmd_pull, "up": cmd_up, "status": cmd_status, "logs": cmd_logs, "down": cmd_down,
-                "bench": cmd_bench}[args.command](args)
+                "bench": cmd_bench, "report": cmd_report}[args.command](args)
     except ConfigError as e:
         return _fail(f"✗ {render.short_path(str(config_path()))}: {e}", 2)
