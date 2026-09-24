@@ -34,7 +34,7 @@ def test_status_reports_the_resident_model(server):
     # context_length is the value in use; the request is reported next to it so a lowered window is visible
     assert body["model"] == {"id": "kitten-27b", "path": "/m/x", "context_length": 200000,
                              "requested_context_length": 262144, "input_modalities": ["text"], "thinking": True,
-                             "reasoning_effort": None, "kv_cache_bits": 16, "speculative_decoding": False}
+                             "reasoning_effort": None, "kv_cache_bits": 16, "speculative_decoding": False, "draft_kind": None}
     assert body["draft"] is None   # no draft model: nothing to count
     assert body["cache"] == {"dir": "/c/abc", "used_bytes": 10, "max_bytes": 100, "records": 2}
     assert body["sampling_defaults"] == {}   # FakeEngine has no generation_config; MlxEngine reads the model's

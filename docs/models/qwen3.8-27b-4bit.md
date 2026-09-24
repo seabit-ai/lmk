@@ -24,6 +24,17 @@ With the draft on, code and copy-editing come out 1.5x faster and token for toke
 prose 15% faster, and there the answer can differ from plain decoding's after a few dozen tokens (greedy is
 exact up to floating-point ties, not bit-exact). See "Tested" for how this was measured.
 
+Two drafts exist for this model; `model.draft` picks one, the default is `mtp`:
+
+| `draft:` | what it is | download | prose | code | copy-editing |
+|---|---|---|---|---|---|
+| `mtp` (default) | the model's own multi-token-prediction head, split out of the original weights | 0.8 GB | 45 tok/s (1.2x) | 60 (1.5x) | 59 (1.5x) |
+| `dflash2` | z-lab's DFlash 2, a block-diffusion drafter trained for this model, published by Inco AI | 4.0 GB | 40 (1.0x) | 59 (1.5x) | 72 (1.8x) |
+
+On the M3 Ultra they are a wash; on a Mac with less memory bandwidth (M4 Pro, 48 GB) DFlash 2 should pull ahead,
+because its draft step costs the same while the model's own step is slower — we have not measured that: a
+`lmk bench` row from such a Mac would settle it.
+
 ## Recommended configuration
 
 ```yaml
@@ -96,6 +107,12 @@ makes every cached conversation cold once.
   every engine version before). mlx-vlm's own bit-exact verifier was measured at 109 ms per 8-token block against 47 for a
   plain forward and is not used. Integration tests 5/5 with `kv_cache_bits: 8` and the draft; the on-disk cache written by
   the previous engine restores.
+- **`draft: dflash2`** (2026-09-24, `research/2026-09-23-speculative-decoding/exp12-dflash2-in-engine/`): greedy code and
+  copy-editing identical to plain decoding at 16 bits (1.51x and 1.83x), a story diverges (1.0x: on prose few guesses land);
+  with `kv_cache_bits: 8` code also diverges after some tokens. 81% of drafted tokens accepted on code with the model's
+  default sampling. Integration tests 5/5 with the DFlash 2 draft and `kv_cache_bits: 8`. The drafter only sees the part of
+  the prompt this request computed — a prefix that came back from the disk cache is not fed to it — which costs nothing
+  measurable (research exp09: the last 256 tokens carry all of the acceptance rate).
 - **Both together — `kv_cache_bits: 8` with `speculative_decoding: true`, the configuration recommended above** (2026-09-24,
   `research/2026-09-23-speculative-decoding/exp05-kv8-with-draft/`): the first request crashed on the engine as shipped
   (its verify step could not read a quantized cache; fixed in our engine fork). After the fix: greedy code and copy-editing

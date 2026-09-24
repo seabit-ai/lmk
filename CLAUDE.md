@@ -113,6 +113,10 @@ Known issues）、启动时校验会炸的配置值。加模型的工作量大�
 - **第二个家族翻出来的 Qwen 假设**（Gemma 4，2026-09-22，exp05 F1–F4）：思考开≠每轮都有思考；冷 prefill≠命中为零（Gemma 能取回
   10 个 turn 头 token）；`thinking: false` 对 Gemma 是提示不是硬开关；同一模型的两个模板修订对工具结果要不同形状。
   **进表的模型必须是 `lmk pull` 拿到的那份**——本机现成副本（oMLX/LM Studio 留下的）可能是旧修订，只能当线索。
+- **两种草稿器**（fork `speculative.py` 的 `Drafter.kind`）：`mtp` 是模型自带的 MTP 头（拆自原版权重，靠最后一层隐状态）；`dflash` 是 z-lab 的 DFlash 2
+  （靠目标 5 层隐状态注入自己的滑窗 KV，只吃本次 prefill 的尾巴，exp09）。校验都走普通批量前向 + `GdnVerifyRecorder` 记录回滚（exp11），
+  **不用 0.6.16 的 exact verifier**（慢 2 倍，SPD-012）。DFlash 的 config `model_type` 写的是目标家族名，种类看 `architectures` / `dflash_config`。
+  用户面 `model.draft`，缺省按模型页（`TestedModel.default_draft`）。
 - 思考 / 回答 / 工具调用的区分**引擎不知道**（对模型都是 token），是 lmk 从文本标记读出来的；换模型家族时靠模板自动选解析器。
 - 读长 prompt 会把所有正在生成的请求拖到近乎停顿（引擎每圈：大家各出 1 token + 一块 2048 的 prefill）。这是准入队列规则二存在的原因。
 - 模型模板把 `enable_thinking` / `reasoning_effort` 渲染在 prompt 最前面：**中途换档 = 整段对话冷算**。力度是 server 级常量（未实现，见 backlog）。

@@ -5,7 +5,7 @@ import signal
 from lmk import log
 from lmk.config import ConfigError, app_dir, build_id, config_path, fingerprint, load_config
 from lmk.configfiles import refresh_example, seed_config
-from lmk.models import DraftNotDownloaded, ModelNotDownloaded, draft_repo_for, resolve_draft, resolve_model
+from lmk.models import DraftNotDownloaded, ModelNotDownloaded, draft_kind_for, draft_repo_for, resolve_draft, resolve_model
 
 # launchd restarts us after a non-zero exit. Problems a restart cannot fix must
 # therefore end in a CLEAN exit, or the service spins forever in the background.
@@ -27,15 +27,17 @@ def serve() -> int:
         log.error("LmkModelMissing", f"{e} — run `lmk pull`, then `lmk up`")
         return EXIT_WILL_NOT_FIX_ITSELF
 
-    draft_path = None
+    draft_path, draft_kind = None, None
     if cfg.model.speculative_decoding:
-        if draft_repo_for(cfg.model.source) is None:
-            log.error("LmkConfigInvalid", "model.speculative_decoding is on, but lmk has no draft model for this model "
-                      "(the model page says which models have one) — set it to false, or pick a model with a draft",
+        draft_kind = draft_kind_for(cfg.model.source, cfg.model.draft)
+        if draft_repo_for(cfg.model.source, cfg.model.draft) is None:
+            wanted = f" of kind {cfg.model.draft!r}" if cfg.model.draft else ""
+            log.error("LmkConfigInvalid", f"model.speculative_decoding is on, but lmk has no draft model{wanted} for this model "
+                      "(the model page says which drafts it has) — set it to false, change model.draft, or pick a model with a draft",
                       path=str(config_path()), model=cfg.model.id)
             return EXIT_WILL_NOT_FIX_ITSELF
         try:
-            draft_path = resolve_draft(cfg.model.source)
+            draft_path = resolve_draft(cfg.model.source, cfg.model.draft)
         except DraftNotDownloaded as e:
             log.error("LmkDraftMissing", f"{e} — run `lmk pull`, then `lmk up`")
             return EXIT_WILL_NOT_FIX_ITSELF
@@ -59,12 +61,13 @@ def serve() -> int:
     log.info("LmkStarting", "loading the resident model", model=cfg.model.id, path=str(resolved.path),
              requestedContextLength=cfg.model.context_length, build=build_id(),
              kvCacheBits=cfg.model.kv_cache_bits, speculativeDecoding=cfg.model.speculative_decoding,
-             draftPath=None if draft_path is None else str(draft_path), thinking=cfg.model.thinking,
+             draftPath=None if draft_path is None else str(draft_path), draftKind=draft_kind, thinking=cfg.model.thinking,
              reasoningEffort=cfg.model.reasoning_effort)
     engine = MlxEngine(cfg.model.id, resolved.path, cfg.model.context_length, cache_dir=cfg.cache_dir,
                        cache_max_bytes=cfg.cache_max_bytes, repo=cfg.model.source.repo, revision=resolved.revision,
                        max_parallel=cfg.requests.max_parallel, template_kwargs=cfg.model.template_kwargs(),
-                       kv_cache_bits=cfg.model.kv_cache_bits, draft_path=draft_path, draft_tokens=cfg.model.draft_tokens)
+                       kv_cache_bits=cfg.model.kv_cache_bits, draft_path=draft_path, draft_kind=draft_kind,
+                       draft_tokens=cfg.model.draft_tokens)
     try:
         # a value the template rejects (Qwen3.8 accepts exactly xhigh / medium / low for reasoning_effort)
         # must stop the start with a clean exit, not the first request with a 500 — and not a restart loop
@@ -90,7 +93,7 @@ def serve() -> int:
     log.info("LmkReady", "serving", host=cfg.host, port=server.port, model=cfg.model.id,
              contextLength=model.context_length, maxParallel=cfg.requests.max_parallel,
              tokenBudget=engine.token_budget(), kvCacheBits=model.kv_cache_bits,
-             speculativeDecoding=model.speculative_decoding, thinking=engine.thinking_enabled(),
+             speculativeDecoding=model.speculative_decoding, draftKind=model.draft_kind, thinking=engine.thinking_enabled(),
              reasoningEffort=engine.reasoning_effort())
 
     def stop(signum, _frame):  # launchd stops us with SIGTERM

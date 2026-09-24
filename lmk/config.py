@@ -57,7 +57,8 @@ class ModelSource:
 
 KV_CACHE_BITS = (16, 8, 4)  # what the engine's batched path quantizes to; 16 means no quantization
 MODEL_KEYS = {"name", "repo", "path", "context_length", "thinking", "reasoning_effort", "kv_cache_bits",
-              "speculative_decoding", "draft_tokens", "id"}  # id: refused with its own message below
+              "speculative_decoding", "draft", "draft_tokens", "id"}  # id: refused with its own message below
+DRAFT_KINDS = ("mtp", "dflash2")
 
 
 @dataclass(frozen=True)
@@ -68,7 +69,8 @@ class ModelConfig:
     thinking: Optional[bool]       # None: the template's default (Qwen: on). False: the model answers without thinking
     reasoning_effort: Optional[str]  # for templates that know it (Qwen3.8: low / medium / xhigh); None: the template's default
     kv_cache_bits: int = 16        # 16 = the model's own precision; 8 / 4 quantize the KV cache (more context, same memory)
-    speculative_decoding: bool = False  # draft tokens with the model's own draft head; needs the draft lmk pull fetched
+    speculative_decoding: bool = False  # draft tokens and let the model check them; needs the draft lmk up fetched
+    draft: Optional[str] = None         # which drafter: mtp (the model's own head) / dflash2; None: the model page's default
     draft_tokens: Optional[int] = None  # tokens drafted per round; None: the draft model's own setting
 
     def template_kwargs(self) -> dict:
@@ -180,6 +182,10 @@ def load_config(path: Optional[Path] = None) -> LmkConfig:
     speculative = model.get("speculative_decoding", False)
     if not isinstance(speculative, bool):
         raise ConfigError("model.speculative_decoding must be true or false")
+    draft = model.get("draft")
+    if draft is not None and draft not in DRAFT_KINDS:
+        raise ConfigError(f"model.draft must be one of {', '.join(DRAFT_KINDS)} (which drafter speculative decoding uses; "
+                          f"leave it out for the model page's default) — got {draft!r}")
     draft_tokens = model.get("draft_tokens")
     if draft_tokens is not None and (isinstance(draft_tokens, bool) or not isinstance(draft_tokens, int)
                                      or not 1 <= draft_tokens <= 16):
@@ -187,7 +193,7 @@ def load_config(path: Optional[Path] = None) -> LmkConfig:
     return LmkConfig(
         model=ModelConfig(id=_default_model_id(source), source=source,
                           context_length=context_length, thinking=thinking, reasoning_effort=effort,
-                          kv_cache_bits=int(kv_bits), speculative_decoding=speculative, draft_tokens=draft_tokens),
+                          kv_cache_bits=int(kv_bits), speculative_decoding=speculative, draft=draft, draft_tokens=draft_tokens),
         host=str(listen.get("host") or DEFAULT_HOST),
         port=int(listen.get("port") or DEFAULT_PORT),
         cache_dir=Path(str(cache.get("dir") or lmk_home() / "cache")).expanduser(),

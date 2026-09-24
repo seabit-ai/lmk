@@ -48,3 +48,27 @@
   同一个 exact verifier 也是 MTP 头升级后从 1.49× 掉到 1.26× 的原因。出路：校验走普通批量前向 + 记下每层 GDN 的输入（q,k,v,a,b,state,mask,卷积输入）
   喂给 mlx-vlm 自己的 `rollback_speculative_cache`（它有"无中间态就重跑前缀"的分支）——mlx-dspark 就是这么做的（钩 `gated_delta_update` 和 conv 调用）。
   代价：位级等价退回"贪心正确到浮点平手"（mlx-dspark 的定义；0.6.12 的经验是代码一致、散文偶尔分叉）。要 owner 重裁 09-24 的 ①。
+- **SPD-013 外部调研：别人在 Apple/MLX 上做到多少（2026-09-24，网上的数，都没在本机验证；M = 来源实测，C = 仅主张）**
+  - MTP 头我们不慢：mlx-lm PR #990（M，M4 Pro，Qwen3.5-27B 4bit，temp 0）1.57×；MTPLX（M，M5 Max，Qwen3.8-27B 混合量化）code 58.7 tok/s、
+    每深度接受 0.95/0.88/0.80、校验 50–53 ms/轮。我们 M3 Ultra 60.6 tok/s（1.53×）同一水平。
+  - DFlash2：oMLX（M，Mac mini M4 24GB，4bit）块 3 1.79× / 块 5 1.66× / **块 8 1.11×**，量化目标固定块 5；mlx-dspark（M，M4 Pro）2.30×，
+    但 M3 Max 上与 M4 Pro 同为 33.7 tok/s（作者："wide verify is compute-bound"）。ivanfioravanti 的 97 tok/s（C）只见二手转述，条件不明，且是 **80 核** M3 Ultra（我们 60 核）。
+  - llama.cpp Metal 上 MTP 全档变慢（M，M1 Max，Qwen3.5-9B，issue #23752）。
+  - 出处：mlx#4265、mlx-lm#990、github.com/youssofal/MTPLX、github.com/ARahim3/mlx-dspark/releases、llama.cpp#23752。
+- **SPD-014 Apple GPU 上 4 位校验前向按宽度近似线性变贵——H200 上的倍数不能搬过来**（mlx#4265，M，M3 Ultra 80 核，Qwen3.8-27B 4bit，mlx 0.32.0 + qmv_wide）：
+  整模型前向 S=1 29.7 ms、S=4 45.4、S=8 77.1；单个 4 位 matmul M=8 是 M=1 的 6.1×（bf16 平在 2×）。qmv/qmm 切换阈值不是解（已在最优点）。
+  已知解是自写小 M 内核（avlp12 `fast_qmm.py`，split-K simdgroup MMA，M 6–8、4 位 gs64，MIT；mlx-dspark 带一份 `small_m_qmm.py`）：S=8 77.1 → **43.3 ms**，
+  外挂草稿器 0.92× → 1.65×，逐 token 一致。M<6 不帮忙（MTP 块 3 = 宽 4 用不上）。DFlash 论文的 2.8–6×都假设"校验 8–16 个 ≈ 校验 1 个"（H200）。
+  **待核**：我们 exp10 记的"普通批量前向校验约 47 ms"（T 未严格控制）远低于他的 stock S=8 77 ms、接近他带内核的 43 ms——要按依赖链重量一次 T=1..16 的曲线。
+- **SPD-015 长上下文下校验的注意力有第二个悬崖**（mlx-dspark，M，M4 Pro）：mlx 融合向量 SDPA 只接 `q_len × GQA ≤ 32`，Qwen3.8-27B GQA 6 ⇒ q ≥ 6 走慢路径，
+  32k 时 2.48 → 7.09 ms/次；`sdpa_split.py` 把校验查询切成 ≤5 行一块，8k–32k 快 1.5–2.2×。我们的投机实验 prompt 都短（exp09 最长 4k），agent 的 30k+ 上下文没量过。
+- **SPD-016 不靠模型的草稿（后缀/prompt lookup）对 agent 负载是我们没碰过的一块**（C，都不是本机条件）：SuffixDecoding（arXiv 2411.04975，Llama-3.1-8B H100）
+  SWE-Bench 2.5×、每步接受 7.8（prompt lookup 3.2），匹配长才用、否则退回模型草稿，草稿长度随匹配长度；Snowflake 代码编辑 1.96–3.12×；mlx-serve（C，M4 Max）
+  prompt lookup 复述 2.1×、code 1.5×。草稿几乎零成本（CPU 上查），但长草稿 = 宽校验，撞 SPD-014 的悬崖——和小 M 内核是一对。
+- **SPD-017 其余候选与估值（推算，未量）**：按置信度停链 + 按实测校验代价表选 T（SpecDec++ 阈值规则，+7–11% 于 GPU；我们主要赚在散文退回）；
+  根部多一个兄弟节点的小树（GDN Tree-Scan，arXiv 2609.23900，Qwen3.6-27B FP8 vLLM B=1，+27% 于 5 步 MTP，收益几乎全来自"第一个草稿被拒"的轮）；
+  草稿 lm_head 裁词表（FR-Spec）：248k 词表的 lm_head 约占 MTP 一步读量的 3/4，但一轮里只占约 7%，上限约 5%。不适合本机：lookahead decoding、Saguaro（要富余算力或第二块硬件）。
+- **SPD-018 DFlash2 接进引擎（2026-09-24，exp12，fork 3b493b5）**：第二种草稿器 `dflash`（`Drafter.kind`），prompt 分块抓 5 层隐状态只留窗口尾巴（exp09），
+  `dflash_round` 用 mlx-vlm 的 `draft_block` / 贪心 walk / 采样 walk，校验走普通前向 + 记录回滚（exp11），单行投机。M3 Ultra 上：code 1.51×（一致）、
+  copyedit 1.83×（一致）、story 1.01×（分叉）——与 MTP 头打平（1.53 / 1.51 / 1.20）。kv8 下 code 分叉（量化注意力 L>1 与 L=1 不位级一致）。
+  用户面 `model.draft: mtp | dflash2`，缺省按模型页（27B 先 mtp）。DFlash2 的 config `model_type` 写的是目标家族名（"qwen3"），种类看 `architectures` / `dflash_config`。
