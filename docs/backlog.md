@@ -22,7 +22,9 @@
 ## 引擎路线（SAD 开题 2026-09-23，未裁）——`docs/design/2026-09-23-own-engine.md`
 - owner 要投机解码 + 磁盘 cache 同时有、KV 量化。我方案：fork mlx-engine 在批处理路径补，不从零写。
 - 09-23 量了（`research/2026-09-23-speculative-decoding/exp02`）：mlx-lm 路径对 Qwen3.8 不可用；用自带 MTP 头经 mlx-vlm 量得
-  散文 1.22× / 代码 1.59× / 复述 1.70×，灰区。新事实：mlx-vlm 已实现投机解码和 KV 量化，fork 只需接线。我倾向 KV 量化先，待裁。
+  散文 1.22× / 代码 1.59× / 复述 1.70×，灰区。新事实：mlx-vlm 已实现投机解码和 KV 量化，fork 只需接线。
+- 09-23 SAD 已裁：KV 量化先；fork = `seabit-ai/mlx-engine` 的 `lmk` 分支按功能一 commit 随上游 rebase；验收四条（长上下文评测臂、探针实测 ctx、
+  cache 身份带位宽、bench 只记录）；用户面 `model.kv_cache_bits` 16/8/4 默认 16、推荐按模型页、表显示推荐配置的数。**待开工令。**
 - 智能评测 `research/2026-09-23-intelligence-27b-vs-122b/`：三个 27B 臂已完（xhigh 最差、low 最好），122B-off 臂在跑；
   跑完要写四臂汇总 + "共同错的题"节，模型页据此更新（27B 的推荐配置可能改成 `reasoning_effort: low`）。
 
