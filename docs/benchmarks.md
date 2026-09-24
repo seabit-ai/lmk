@@ -4,7 +4,12 @@ What `lmk bench` measures, from outside the service over HTTP, one request at a 
 
 - **cold prefill** — a fixed ~4k-token text behind a random number, so nothing in the cache matches: tokens/s of reading a prompt lmk has never seen.
 - **cached prefill** — the same request again: tokens/s at which the cached part comes back from disk (the server's own restore timing). The first-token time next to it is what a client waits: the cache restores to the last 256-token boundary, so up to 255 tokens are still computed, plus HTTP.
-- **decode** — a short prompt, 400 tokens out: tokens/s while writing.
+- **decode** — a short prompt, 400 tokens out: tokens/s while writing. Measured twice, on prose (a story) and on code (a class):
+  speculative decoding gains most on code, so one prose number would hide it. Where a draft model was in use, the share of
+  drafted tokens the model accepted is next to the code number.
+
+The model cell names the switches a row was measured with when they are not the defaults (`KV cache 8-bit`, `speculative decoding`);
+`lmk bench` prints them at the top too, so a row is never a mystery number.
 
 A warm-up request runs first and is not counted: after hours idle, or after other models were loaded, the first touch of the weights pages them back in (37 s instead of 12.8 s for the cold probe, once, on the M3 Ultra below).
 
@@ -25,8 +30,9 @@ cache, the cache survived, and the run says so instead of reporting a cold numbe
 | Apple M3 Ultra | 96 GB | qwen3.8-27b-5bit | 262,144 | 315 tok/s (4,074 tokens) | 57k tok/s (3,840 cached; first token 1.04 s) | 31.6 tok/s | v0.6.0+ | 08f0c07 | 2026-09-22 |
 | Apple M3 Ultra | 96 GB | qwen3.8-27b-6bit | 262,144 | 315 tok/s (4,074 tokens) | 53k tok/s (3,840 cached; first token 1.06 s) | 28.1 tok/s | v0.6.0+ | 08f0c07 | 2026-09-22 |
 | Apple M3 Ultra | 96 GB | qwen3.8-27b-4bit | 262,144 | 324 tok/s (4,074 tokens) | 58k tok/s (3,840 cached; first token 1.01 s) | 39.5 tok/s | dev | d3650db | 2026-09-23 |
-| Apple M3 Ultra | 96 GB | qwen3.8-27b-4bit, `kv_cache_bits: 8` | 262,144 | 323 tok/s (4,074 tokens) | 47k tok/s (3,840 cached; first token 1.03 s) | 38.9 tok/s | dev | d3650db | 2026-09-23 |
-| Apple M3 Ultra | 96 GB | qwen3.8-27b-4bit, `speculative_decoding: true` (default sampling; greedy code: 58 tok/s) | 262,144 | 323 tok/s (4,062 tokens) | 56k tok/s (3,840 cached; first token 0.92 s) | 40.5 tok/s | dev | 2839cfa | 2026-09-23 |
+| Apple M3 Ultra | 96 GB | qwen3.8-27b-4bit (KV cache 8-bit) | 262,144 | 323 tok/s (4,074 tokens) | 47k tok/s (3,840 cached; first token 1.03 s) | 38.9 tok/s | dev | d3650db | 2026-09-23 |
+| Apple M3 Ultra | 96 GB | qwen3.8-27b-4bit (speculative decoding) | 262,144 | 323 tok/s (4,062 tokens) | 56k tok/s (3,840 cached; first token 0.92 s) | 40.5 tok/s prose (greedy code: 58) | dev | 2839cfa | 2026-09-23 |
+| Apple M3 Ultra | 96 GB | qwen3.8-27b-4bit (KV cache 8-bit, speculative decoding) — the model page's recommendation | 262,144 | 321 tok/s (4,034 tokens) | 47k tok/s (3,840 cached; first token 0.91 s) | 44.5 tok/s prose · 58.6 code (88% of drafted tokens accepted) | v0.7.0+ | 7a1e17f | 2026-09-24 |
 | Apple M3 Ultra | 96 GB | qwen3.5-122b-a10b-4bit | 165,888 (lowered from 262,144 to fit) | 753 tok/s (4,032 tokens) | 89k tok/s (3,840 cached; first token 0.50 s) | 60.5 tok/s | v0.3.0+ | 08f0c07 | 2026-09-22 |
 | Apple M3 Ultra | 96 GB | qwen3.5-122b-a10b-48gb | 262,144 | 746 tok/s (4,034 tokens) | 89k tok/s (3,840 cached; first token 0.53 s) | 53.7 tok/s | v0.4.0+ | 08f0c07 | 2026-09-22 |
 | Apple M3 Ultra | 96 GB | gemma-4-26b-a4b-4bit | 262,144 | 1,833 tok/s (4,028 tokens) | 83k tok/s (3,840 cached; first token 0.26 s) | 119.5 tok/s | v0.4.1+ | 08f0c07 | 2026-09-22 |

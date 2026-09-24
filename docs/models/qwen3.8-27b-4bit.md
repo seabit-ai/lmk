@@ -15,9 +15,10 @@ Text and images in, tool calls, thinking. This is the model lmk itself was built
 
 ## Speed (M3 Ultra, 96 GB — [`docs/benchmarks.md`](../benchmarks.md))
 
-| prefill | cached prefill | decode |
-|---|---|---|
-| 323 tok/s | 53k tok/s | 39 tok/s (about 33 on long agent conversations) |
+| | prefill | cached prefill | decode, prose | decode, code |
+|---|---|---|---|---|
+| defaults (16-bit KV cache, no draft) | 323 tok/s | 53k tok/s | 39 tok/s (about 33 on long agent conversations) | — |
+| the recommended configuration below | 321 tok/s | 47k tok/s | 44.5 tok/s | 58.6 tok/s (88% of drafted tokens accepted) |
 
 ## Recommended configuration
 

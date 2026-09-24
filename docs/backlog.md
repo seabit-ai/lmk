@@ -73,9 +73,9 @@
 ## 2026-09-24 `config.yaml.example` 改成真配置（分支 `config-example`，现基于 main）
 - 裁决与形状：OOBE 设计文档 C5；owner 09-24 三条纠偏已改（无分组行、模型只列名、`path:` 用 LM Studio 真实目录）。
   同一分支上带着 `ENGINE_COMMIT` → 7a1e17f（exp05 的修复，example 推荐的组合靠它才能跑）。待 owner 授权合并。
-- **`lmk status` / `lmk bench` 没跟上两个开关（owner 09-24 指出，已查清、未做）**：status 只在开着时才显示（关着一字不提）、不显示 `reasoning_effort`；
-  bench 的 Markdown 行不带配置、不报接受率；`LmkStarting`/`LmkReady`/`LmkChatDone` 不记位宽、投机、接受数；README 的 status 示例是旧格式；
-  27B 页 Speed 表没有推荐配置下的数（owner 机器现在就是推荐配置，`lmk bench` 直接量）。下一个分支做。
+- **`lmk status` / `lmk bench` 跟上两个开关**（owner 09-24："I have no idea what's the current config"）：分支 `status-switches`（叠在 `config-example` 上，
+  先合它）。status 加 `settings` 行三个开关永远写出；bench 首行报配置、行的模型格带开关、decode 分散文/代码并报接受率；三个日志事件补字段；
+  README 的 status 示例换成真输出；27B 页 Speed 表加推荐配置一行（散文 44.5 / 代码 58.6，接受 88%）。已在 owner 机器上照用户的样子跑过。
 - 种子 `config.yaml` 同形状（owner 09-24 "fix ~/.lmk/config.yaml too"）：注释文案与 example 共用一张表（`_WHAT`）；owner 的文件已照此重写，生效值不变。
 
 ## 已裁但还没做的

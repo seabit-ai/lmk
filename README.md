@@ -30,8 +30,9 @@ request log (`LmkChatDone`) and [`research/2026-09-20-memory-guard`](research/20
 The cache-hit numbers are with the cache files warm in the OS page cache; a true cold read after a
 reboot is not measured yet.
 
-`lmk bench` measures the same three things on your Mac and prints a row for
-[`docs/benchmarks.md`](docs/benchmarks.md) — other machines and models are what that table is missing.
+`lmk bench` measures the same things on your Mac — prefill, cache hit, decode on prose and on code — says which
+switches were on, and prints a row for [`docs/benchmarks.md`](docs/benchmarks.md); other machines and models
+are what that table is missing.
 
 ### Why not the server you already have?
 
@@ -71,11 +72,17 @@ your agent:
 
 ```
 ✓ lmk is up    http://127.0.0.1:1235/v1   (OpenAI-compatible)
-  model      qwen3.8-27b-4bit   (text, image in)
-  context    262,144 tokens
-  cache      0 B of 200.0 GB   ~/.lmk/cache
-  running    1s   (build 908b57c)
-  busy       no — idle
+  model      qwen3.8-27b-4bit · text, image in · 262,144 tokens
+  settings   thinking off · KV cache 8-bit · speculative decoding on
+  draft      no tokens drafted yet
+  about it   https://github.com/seabit-ai/lmk/blob/main/docs/models/qwen3.8-27b-4bit.md
+  sampling   temp 1.0 · top_p 0.95 · top_k 20   (the model's generation_config; a request may override)
+  memory     pressure: normal · 76% of 96.0 GB free · lmk holds 16.5 GB
+  cache      0 B of 200.0 GB in ~/.lmk/cache
+  requests   answering 0 of 2 · waiting 0 of 16 · tokens in memory 0 of 1,844,474
+  since start  0 answered · 0 refused · 0 failed · 0 cancelled · up 1s · build v0.7.0
+
+  idle — no requests
 
   Point your agent at it — any OpenAI-compatible client:
     base URL   http://127.0.0.1:1235/v1
@@ -105,7 +112,7 @@ Everything lmk installs lives in `~/.lmk`. The model goes to the shared HuggingF
 | `lmk status` | Is it up, what is it doing right now, how full is the cache. |
 | `lmk logs` | Recent events. `-f` to follow, `--raw` for the model runtime's own output. |
 | `lmk down` | Stop it, and don't start it at login. Model, cache and config are kept. |
-| `lmk bench` | Prefill, cache-hit and decode speed on this Mac, as a row for [`docs/benchmarks.md`](docs/benchmarks.md). |
+| `lmk bench` | Prefill, cache-hit and decode speed (prose and code) on this Mac, with the switches in effect, as a row for [`docs/benchmarks.md`](docs/benchmarks.md). |
 
 When a request seems stuck, `lmk status` shows what it is doing:
 
