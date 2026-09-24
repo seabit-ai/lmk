@@ -204,7 +204,8 @@ model:
   name: qwen3.8-27b-4bit     # a tested model (see Models). Clients send that name as "model"
   # repo: mlx-community/Qwen3-30B-A3B-4bit   # instead of name: any MLX model on HuggingFace (its address after
                              #                huggingface.co/); untested by us. Clients send its last part, lower case
-  # path: /Users/me/models/Some-Model-MLX    # instead of name: a model folder already on this Mac
+  # path: ~/.lmstudio/models/lmstudio-community/Qwen3.8-27B-MLX-4bit   # instead of name: an MLX model folder
+                             #                already on this Mac — here, one LM Studio downloaded
   # thinking: false           # the model answers without thinking (default: the template's own, on for Qwen)
   # reasoning_effort: low     # for templates that know it (Qwen3.8: low / medium / xhigh); a server-wide constant
   # kv_cache_bits: 8          # 8 halves what each token of context costs in memory (about twice the context on the

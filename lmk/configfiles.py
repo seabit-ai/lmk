@@ -17,7 +17,7 @@ from lmk.models import DEFAULT_MODEL_NAME, TESTED_MODELS, smallest_mac_gb
 # What each setting does and what we measured lives in README "Configuration" and the model pages, not here.
 _WHAT = {
     "repo": "instead of name: any MLX model on HuggingFace (address after huggingface.co/); untested by us",
-    "path": "instead of name: a model folder already on this Mac",
+    "path": "instead of name: an MLX model folder already on this Mac — here, one LM Studio downloaded",
     "reasoning_effort": "Qwen3.8: low / medium / xhigh (other models: their page); server-wide",
     "kv_cache_bits": "16 = the model's own precision; 8 = about twice the context on the same Mac",
     "speculative_decoding": "the model's own draft head guesses tokens, the model checks them (`lmk pull` fetches it)",
@@ -41,7 +41,7 @@ def _seed_text() -> str:
 model:
   name: {DEFAULT_MODEL_NAME:<24} # a tested model; the list is in config.yaml.example
   # repo: mlx-community/Qwen3-30B-A3B-4bit   # {_WHAT["repo"]}
-  # path: /Users/me/models/Some-Model-MLX    # {_WHAT["path"]}
+  # path: ~/.lmstudio/models/lmstudio-community/Qwen3.8-27B-MLX-4bit   # {_WHAT["path"]}
   # reasoning_effort: low        # {_WHAT["reasoning_effort"]}
   # kv_cache_bits: 8             # {_WHAT["kv_cache_bits"]}
   # speculative_decoding: true   # {_WHAT["speculative_decoding"]}
@@ -67,18 +67,10 @@ log:
 
 
 def _model_lines() -> str:
-    """One commented `name:` line per tested model, grouped by the smallest Mac it should run on:
-    choosing a model = uncommenting a line. Expected from memory measured on a 96 GB Mac."""
-    tiers: dict[int, list[str]] = {}
-    for name, m in TESTED_MODELS.items():
-        tiers.setdefault(smallest_mac_gb(m), []).append(name)
-    lines = []
-    for gb in sorted(tiers):
-        lines.append(f"  #   -- a Mac with at least {gb} GB --")
-        for name in tiers[gb]:
-            m = TESTED_MODELS[name]
-            lines.append(f"  # name: {name:<24} # {m.size_gb:.1f} GB download, {m.loaded_gib:.0f} GiB loaded: {m.good_for}")
-    return "\n".join(lines)
+    """One commented `name:` line per tested model, smallest Mac first: choosing a model = uncommenting
+    a line. Nothing else here — sizes, speeds and what each is good for are on the model pages."""
+    order = sorted(TESTED_MODELS, key=lambda n: smallest_mac_gb(TESTED_MODELS[n]))
+    return "\n".join(f"  # name: {name}" for name in order)
 
 
 def _draft_family() -> str:
@@ -97,10 +89,10 @@ def example_text() -> str:
 # What each setting does and what we measured: README.md "Configuration" and docs/models/<name>.md.
 
 model:
-  name: {DEFAULT_MODEL_NAME:<24} # a tested model, one of these:
+  name: {DEFAULT_MODEL_NAME:<24} # a tested model, one of these (each has a page under docs/models/):
 {_model_lines()}
   # repo: mlx-community/Qwen3-30B-A3B-4bit   # {_WHAT["repo"]}
-  # path: /Users/me/models/Some-Model-MLX    # {_WHAT["path"]}
+  # path: ~/.lmstudio/models/lmstudio-community/Qwen3.8-27B-MLX-4bit   # {_WHAT["path"]}
   # The next three are the {DEFAULT_MODEL_NAME} page's recommendation; for another model its page says which to keep.
   reasoning_effort: low          # {_WHAT["reasoning_effort"]}
   # reasoning_effort: xhigh      # the template's own default; scored worse than low on every test

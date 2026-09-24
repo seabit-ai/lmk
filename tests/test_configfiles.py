@@ -44,9 +44,9 @@ def test_example_is_a_real_config_with_the_defaults_and_the_default_models_recom
 def test_example_shows_every_tested_model_and_the_other_ways_of_naming_one_as_commented_lines():
     text = example_text()
     for name in TESTED_MODELS:
-        assert f"# name: {name}" in text or f"#   name: {name}" in text, name
-    for needle in ("# repo: ", "# path: ", "# thinking: false", "# reasoning_effort: ", "# port: ", "# max_parallel: ",
-                   "16.1 GB download"):
+        assert f"  # name: {name}\n" in text, name          # the line alone: sizes and speeds live on the model page
+    for needle in ("# repo: ", "# path: ~/.lmstudio/models/", "# thinking: false", "# reasoning_effort: ", "# port: ",
+                   "# max_parallel: "):
         assert needle in text, needle
 
 
