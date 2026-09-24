@@ -1,0 +1,16 @@
+Splash model incoai/Qwen3.8-27B-Splash is already installed in /Users/xinkai/Library/Application Support/Splash/models/incoai/Qwen3.8-27B-Splash
+08:38:25 Loading · incoai/Qwen3.8-27B-Splash
+08:38:25 Kernel policy for GPU family 9 with 60 cores.
+08:38:37 Ready · incoai/Qwen3.8-27B-Splash · context 256K · http://127.0.0.1:8010
+08:38:38 Done · input 26 · cached 0 · output 8 · TTFT 0.5s · 26.7 tok/s
+08:38:56 Done · input 33 · cached 0 · output 400 · TTFT 0.6s · 22.9 tok/s
+08:39:14 Done · input 26 · cached 0 · output 400 · TTFT 0.3s · 22.9 tok/s
+08:39:33 Done · input 33 · cached 32 · output 400 · TTFT 0.8s · 22.3 tok/s
+08:40:17 Done · input 37 · cached 0 · output 1,000 · TTFT 0.6s · 22.7 tok/s
+08:40:35 Done · input 33 · cached 32 · output 400 · TTFT 0.3s · 22.9 tok/s
+error: native transport stopped after an engine failure
+08:40:36 Error · runtime_unavailable
+08:40:36 Error · runtime_unavailable
+08:40:36 Error · runtime_unavailable · POST /v1/chat/completions08:40:36 Error · runtime_unavailable · POST /v1/chat/completions
+
+08:40:36 Stopping · releasing engine resources

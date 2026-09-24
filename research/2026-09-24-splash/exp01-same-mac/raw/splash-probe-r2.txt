@@ -1,0 +1,7 @@
+cold prefill         320 tok/s  (4034 prompt, 0 cached, first token 12.60 s)
+hit first token     0.34 s     (4032 cached reported)
+decode prose        22.9 tok/s  code 22.9 tok/s  (accepted None)
+long cold         108.77 s first token (32034 prompt tokens)  ->  hit 0.38 s (32032 cached reported)
+concurrent 2         0.0 tok/s aggregate (0 tokens in 0.9 s; first tokens []; errors 2 ["error chunk: {'message': 'target policy selected an invalid next anchor', 'type': 'server_error', 'code': 'runtime_unavailable'}"])
+concurrent 4         0.0 tok/s aggregate (0 tokens in 0.0 s; first tokens []; errors 4 ['HTTP 503: b\'{"error":{"message":"engine is recovering; retry shortly","type":"server_error","code":"engine_recovering"}}\''])
+wrote raw/splash-probe-r2.json

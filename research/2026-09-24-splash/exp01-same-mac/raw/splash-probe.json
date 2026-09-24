@@ -1,0 +1,129 @@
+{
+ "url": "http://127.0.0.1:8010",
+ "model": "incoai/Qwen3.8-27B-Splash",
+ "date": "2026-09-24 08:19",
+ "bench": {
+  "seed": 173809,
+  "warmup": {
+   "prompt_tokens": 19,
+   "cached_tokens": 0,
+   "completion_tokens": 8,
+   "first_token_ms": 17,
+   "total_ms": 726,
+   "restore_ms": null,
+   "draft_accepted": null,
+   "draft_drafted": null
+  },
+  "cold": {
+   "prompt_tokens": 4034,
+   "cached_tokens": 0,
+   "completion_tokens": 32,
+   "first_token_ms": 7,
+   "total_ms": 13955,
+   "restore_ms": null,
+   "draft_accepted": null,
+   "draft_drafted": null
+  },
+  "hit": {
+   "prompt_tokens": 4034,
+   "cached_tokens": 4032,
+   "completion_tokens": 32,
+   "first_token_ms": 10,
+   "total_ms": 1698,
+   "restore_ms": null,
+   "draft_accepted": null,
+   "draft_drafted": null
+  },
+  "decode": {
+   "prompt_tokens": 26,
+   "cached_tokens": 0,
+   "completion_tokens": 400,
+   "first_token_ms": 1,
+   "total_ms": 17772,
+   "restore_ms": null,
+   "draft_accepted": null,
+   "draft_drafted": null
+  },
+  "decode_code": {
+   "prompt_tokens": 33,
+   "cached_tokens": 0,
+   "completion_tokens": 400,
+   "first_token_ms": 1,
+   "total_ms": 18066,
+   "restore_ms": null,
+   "draft_accepted": null,
+   "draft_drafted": null
+  }
+ },
+ "long": {
+  "cold": {
+   "prompt_tokens": 32034,
+   "cached_tokens": 0,
+   "completion_tokens": 16,
+   "first_token_ms": 38,
+   "total_ms": 109510,
+   "restore_ms": null,
+   "draft_accepted": null,
+   "draft_drafted": null
+  },
+  "hit": {
+   "prompt_tokens": 32034,
+   "cached_tokens": 32032,
+   "completion_tokens": 16,
+   "first_token_ms": 40,
+   "total_ms": 1109,
+   "restore_ms": null,
+   "draft_accepted": null,
+   "draft_drafted": null
+  },
+  "prompt": "Benchmark run 2492979571.\nThe quick brown fox jumps over the lazy dog. The quick"
+ },
+ "concurrent": {
+  "n": 4,
+  "wall_s": 2.451928000024054,
+  "total_tokens": 48,
+  "aggregate_tok_s": 19.57643128164004,
+  "each": [
+   {
+    "prompt_tokens": -1,
+    "cached_tokens": 0,
+    "completion_tokens": 14,
+    "first_token_ms": 3,
+    "total_ms": 2451,
+    "restore_ms": null,
+    "draft_accepted": null,
+    "draft_drafted": null
+   },
+   {
+    "prompt_tokens": -1,
+    "cached_tokens": 0,
+    "completion_tokens": 13,
+    "first_token_ms": 290,
+    "total_ms": 2451,
+    "restore_ms": null,
+    "draft_accepted": null,
+    "draft_drafted": null
+   },
+   {
+    "prompt_tokens": 28,
+    "cached_tokens": 0,
+    "completion_tokens": 8,
+    "first_token_ms": 302,
+    "total_ms": 1724,
+    "restore_ms": null,
+    "draft_accepted": null,
+    "draft_drafted": null
+   },
+   {
+    "prompt_tokens": -1,
+    "cached_tokens": 0,
+    "completion_tokens": 13,
+    "first_token_ms": 296,
+    "total_ms": 2451,
+    "restore_ms": null,
+    "draft_accepted": null,
+    "draft_drafted": null
+   }
+  ]
+ }
+}

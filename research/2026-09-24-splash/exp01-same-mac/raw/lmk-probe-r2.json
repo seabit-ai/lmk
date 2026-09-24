@@ -1,0 +1,159 @@
+{
+ "url": "http://127.0.0.1:1235",
+ "model": "qwen3.8-27b-4bit",
+ "date": "2026-09-24 08:34",
+ "bench": {
+  "seed": 245141,
+  "warmup": {
+   "prompt_tokens": 19,
+   "cached_tokens": 0,
+   "completion_tokens": 2,
+   "first_token_ms": 254,
+   "total_ms": 254,
+   "restore_ms": 2,
+   "draft_accepted": 0,
+   "draft_drafted": 2
+  },
+  "cold": {
+   "prompt_tokens": 4034,
+   "cached_tokens": 0,
+   "completion_tokens": 2,
+   "first_token_ms": 12585,
+   "total_ms": 12585,
+   "restore_ms": 2,
+   "draft_accepted": 0,
+   "draft_drafted": 2
+  },
+  "hit": {
+   "prompt_tokens": 4034,
+   "cached_tokens": 3840,
+   "completion_tokens": 2,
+   "first_token_ms": 913,
+   "total_ms": 937,
+   "restore_ms": 81,
+   "draft_accepted": 0,
+   "draft_drafted": 0
+  },
+  "decode": {
+   "prompt_tokens": 26,
+   "cached_tokens": 0,
+   "completion_tokens": 400,
+   "first_token_ms": 197,
+   "total_ms": 9232,
+   "restore_ms": 1,
+   "draft_accepted": 206,
+   "draft_drafted": 386
+  },
+  "decode_code": {
+   "prompt_tokens": 33,
+   "cached_tokens": 0,
+   "completion_tokens": 400,
+   "first_token_ms": 312,
+   "total_ms": 7185,
+   "restore_ms": 1,
+   "draft_accepted": 254,
+   "draft_drafted": 290
+  }
+ },
+ "long": {
+  "cold": {
+   "prompt_tokens": 32034,
+   "cached_tokens": 0,
+   "completion_tokens": 2,
+   "first_token_ms": 110744,
+   "total_ms": 110744,
+   "restore_ms": 8,
+   "draft_accepted": 0,
+   "draft_drafted": 2
+  },
+  "hit": {
+   "prompt_tokens": 32034,
+   "cached_tokens": 32000,
+   "completion_tokens": 2,
+   "first_token_ms": 985,
+   "total_ms": 1018,
+   "restore_ms": 531,
+   "draft_accepted": 0,
+   "draft_drafted": 0
+  },
+  "prompt": "Benchmark run 3552878588.\nThe quick brown fox jumps over the lazy dog. The quick"
+ },
+ "concurrent_2": {
+  "n": 2,
+  "wall_s": 13.398920207982883,
+  "total_tokens": 800,
+  "aggregate_tok_s": 59.70630376046061,
+  "each": [
+   {
+    "prompt_tokens": 26,
+    "cached_tokens": 0,
+    "completion_tokens": 400,
+    "first_token_ms": 348,
+    "total_ms": 13354,
+    "restore_ms": 1,
+    "draft_accepted": 1,
+    "draft_drafted": 2
+   },
+   {
+    "prompt_tokens": 26,
+    "cached_tokens": 0,
+    "completion_tokens": 400,
+    "first_token_ms": 389,
+    "total_ms": 13397,
+    "restore_ms": 147,
+    "draft_accepted": 1,
+    "draft_drafted": 3
+   }
+  ],
+  "errors": {}
+ },
+ "concurrent_4": {
+  "n": 4,
+  "wall_s": 27.178765000018757,
+  "total_tokens": 1600,
+  "aggregate_tok_s": 58.869488735006755,
+  "each": [
+   {
+    "prompt_tokens": 26,
+    "cached_tokens": 0,
+    "completion_tokens": 400,
+    "first_token_ms": 13834,
+    "total_ms": 26990,
+    "restore_ms": 102,
+    "draft_accepted": 4,
+    "draft_drafted": 12
+   },
+   {
+    "prompt_tokens": 26,
+    "cached_tokens": 0,
+    "completion_tokens": 400,
+    "first_token_ms": 208,
+    "total_ms": 13480,
+    "restore_ms": 0,
+    "draft_accepted": 4,
+    "draft_drafted": 4
+   },
+   {
+    "prompt_tokens": 28,
+    "cached_tokens": 0,
+    "completion_tokens": 400,
+    "first_token_ms": 442,
+    "total_ms": 13784,
+    "restore_ms": 205,
+    "draft_accepted": 6,
+    "draft_drafted": 10
+   },
+   {
+    "prompt_tokens": 27,
+    "cached_tokens": 0,
+    "completion_tokens": 400,
+    "first_token_ms": 14118,
+    "total_ms": 27176,
+    "restore_ms": 94,
+    "draft_accepted": 2,
+    "draft_drafted": 13
+   }
+  ],
+  "errors": {}
+ }
+}

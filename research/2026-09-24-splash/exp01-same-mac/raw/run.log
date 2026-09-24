@@ -1,0 +1,32 @@
+08:29:35 stop the download-run splash and the resident lmk
+  Your model, prompt cache and configuration are kept.  Start again:  lmk up
+08:29:37 splash, clean start
+08:29:51 splash ready (08:29:51 Ready · incoai/Qwen3.8-27B-Splash · context 256K · http://127.0.0.1:8010)
+{"schema_version":5,"ready":true,"maximum_context_tokens":262144,"memory_pressure":"normal","admission":{"waiting":0,"waiting_memory":0,"waiting_concurrency":0,"suspended":0,"draining":false,"oldest_wait_ms":0},"identity":{"cache":{"loaded_model_layout_sha256":"21e559f8a93ebc2a8129ea8bed6bd6202ebc61b788985f9611d6f167ab16000a","runtime_cache_namespace":"11874945db198b9fab34999a68e2356d01867f76b55904db78f5145014e92fbc","build_id":"src-4023cf4345e81a9aff479b03d0ef146f01386a5bda1c508d41d55e1af5142128","dtype":"q8s8_f32_scale_per_token_head_k_token_major_v_dimension_major","block_tokens":32},"q8":{
+08:29:51 probes on splash
+cold prefill         320 tok/s  (4034 prompt, 0 cached, first token 12.60 s)
+hit first token     0.34 s     (4032 cached reported)
+decode prose        22.9 tok/s  code 22.9 tok/s  (accepted None)
+long cold         108.77 s first token (32034 prompt tokens)  ->  hit 0.38 s (32032 cached reported)
+concurrent 2         0.0 tok/s aggregate (0 tokens in 0.9 s; first tokens []; errors 2 ["error chunk: {'message': 'target policy selected an invalid next anchor', 'type': 'server_error', 'code': 'runtime_unavailable'}"])
+concurrent 4         0.0 tok/s aggregate (0 tokens in 0.0 s; first tokens []; errors 4 ['HTTP 503: b\'{"error":{"message":"engine is recovering; retry shortly","type":"server_error","code":"engine_recovering"}}\''])
+wrote raw/splash-probe-r2.json
+08:32:35 restart splash, replay the 32k prompt
+08:32:51 splash ready (08:32:51 Ready · incoai/Qwen3.8-27B-Splash · context 256K · http://127.0.0.1:8010)
+after restart     108.94 s first token on the 32k prompt (0 cached reported; cold was 108.77 s)
+08:34:43 splash stopped
+08:34:43 lmk up
+✓ lmk is up    http://127.0.0.1:1235/v1   (OpenAI-compatible)
+08:34:49 probes on lmk
+cold prefill         321 tok/s  (4034 prompt, 0 cached, first token 12.59 s)
+hit first token     0.91 s     (3840 cached reported)
+decode prose        44.3 tok/s  code 58.2 tok/s  (accepted 0.8758620689655172)
+long cold         110.74 s first token (32034 prompt tokens)  ->  hit 0.98 s (32000 cached reported)
+concurrent 2        59.7 tok/s aggregate (800 tokens in 13.4 s; first tokens [0.35, 0.39]; errors 0 [])
+concurrent 4        58.9 tok/s aggregate (1600 tokens in 27.2 s; first tokens [13.83, 0.21, 0.44, 14.12]; errors 0 [])
+wrote raw/lmk-probe-r2.json
+08:37:51 restart lmk, replay the 32k prompt
+  Your model, prompt cache and configuration are kept.  Start again:  lmk up
+✓ lmk is up    http://127.0.0.1:1235/v1   (OpenAI-compatible)
+after restart       1.07 s first token on the 32k prompt (32000 cached reported; cold was 110.74 s)
+08:37:59 DONE

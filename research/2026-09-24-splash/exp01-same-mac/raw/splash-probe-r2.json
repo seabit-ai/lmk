@@ -1,0 +1,105 @@
+{
+ "url": "http://127.0.0.1:8010",
+ "model": "incoai/Qwen3.8-27B-Splash",
+ "date": "2026-09-24 08:29",
+ "bench": {
+  "seed": 577350,
+  "warmup": {
+   "prompt_tokens": 19,
+   "cached_tokens": 0,
+   "completion_tokens": 8,
+   "first_token_ms": 472,
+   "total_ms": 734,
+   "restore_ms": null,
+   "draft_accepted": null,
+   "draft_drafted": null
+  },
+  "cold": {
+   "prompt_tokens": 4034,
+   "cached_tokens": 0,
+   "completion_tokens": 32,
+   "first_token_ms": 12595,
+   "total_ms": 13955,
+   "restore_ms": null,
+   "draft_accepted": null,
+   "draft_drafted": null
+  },
+  "hit": {
+   "prompt_tokens": 4034,
+   "cached_tokens": 4032,
+   "completion_tokens": 32,
+   "first_token_ms": 336,
+   "total_ms": 1699,
+   "restore_ms": null,
+   "draft_accepted": null,
+   "draft_drafted": null
+  },
+  "decode": {
+   "prompt_tokens": 26,
+   "cached_tokens": 0,
+   "completion_tokens": 400,
+   "first_token_ms": 323,
+   "total_ms": 17759,
+   "restore_ms": null,
+   "draft_accepted": null,
+   "draft_drafted": null
+  },
+  "decode_code": {
+   "prompt_tokens": 33,
+   "cached_tokens": 0,
+   "completion_tokens": 400,
+   "first_token_ms": 619,
+   "total_ms": 18056,
+   "restore_ms": null,
+   "draft_accepted": null,
+   "draft_drafted": null
+  }
+ },
+ "long": {
+  "cold": {
+   "prompt_tokens": 32034,
+   "cached_tokens": 0,
+   "completion_tokens": 16,
+   "first_token_ms": 108770,
+   "total_ms": 109500,
+   "restore_ms": null,
+   "draft_accepted": null,
+   "draft_drafted": null
+  },
+  "hit": {
+   "prompt_tokens": 32034,
+   "cached_tokens": 32032,
+   "completion_tokens": 16,
+   "first_token_ms": 383,
+   "total_ms": 1115,
+   "restore_ms": null,
+   "draft_accepted": null,
+   "draft_drafted": null
+  },
+  "prompt": "Benchmark run 6678509794.\nThe quick brown fox jumps over the lazy dog. The quick"
+ },
+ "concurrent_2": {
+  "n": 2,
+  "wall_s": 0.9085571250179783,
+  "total_tokens": 0,
+  "aggregate_tok_s": 0.0,
+  "each": [],
+  "errors": {
+   "1": "error chunk: {'message': 'target policy selected an invalid next anchor', 'type': 'server_error', 'code': 'runtime_unavailable'}",
+   "0": "error chunk: {'message': 'target policy selected an invalid next anchor', 'type': 'server_error', 'code': 'runtime_unavailable'}"
+  }
+ },
+ "concurrent_4": {
+  "n": 4,
+  "wall_s": 0.002037416968960315,
+  "total_tokens": 0,
+  "aggregate_tok_s": 0.0,
+  "each": [],
+  "errors": {
+   "0": "HTTP 503: b'{\"error\":{\"message\":\"engine is recovering; retry shortly\",\"type\":\"server_error\",\"code\":\"engine_recovering\"}}'",
+   "3": "HTTP 503: b'{\"error\":{\"message\":\"engine is recovering; retry shortly\",\"type\":\"server_error\",\"code\":\"engine_recovering\"}}'",
+   "2": "HTTP 503: b'{\"error\":{\"message\":\"engine is recovering; retry shortly\",\"type\":\"server_error\",\"code\":\"engine_recovering\"}}'",
+   "1": "HTTP 503: b'{\"error\":{\"message\":\"engine is recovering; retry shortly\",\"type\":\"server_error\",\"code\":\"engine_recovering\"}}'"
+  }
+ }
+}

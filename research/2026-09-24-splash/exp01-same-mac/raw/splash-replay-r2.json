@@ -1,0 +1,12 @@
+{
+ "after_restart_long_hit": {
+  "prompt_tokens": 32034,
+  "cached_tokens": 0,
+  "completion_tokens": 16,
+  "first_token_ms": 108945,
+  "total_ms": 109676,
+  "restore_ms": null,
+  "draft_accepted": null,
+  "draft_drafted": null
+ }
+}

@@ -21,3 +21,10 @@
   （磁盘还原到最后一个 256 块 + HTTP）；2 并发短 prompt 1.7×。**条件不同，先别下结论**——但"32K 命中 282 ms"对"4k 命中 0.9 s"这一格值得单独量。
 - **SPL-006 要验证的顺序**：① 同机装 splash，跑 `lmk bench` 同款探针（冷 prefill 4k、命中、decode 散文/代码）；② 真实 agent 会话（56 工具 11k 系统提示、
   27k 对话）的每步出字；③ 重启后命中；④ 并发 2/4。每条两边同条件，一表。
+- **SPL-007 同机实测（exp01，M3 Ultra 60 核，macOS 26.6.2，brew 装的 Splash）：引擎在这台机器上输出乱码**，每个回答都是 "odataodataadona…" 这类垃圾，
+  草稿接受 0 / 15,421，decode 固定 22.9 tok/s（每步 43.8 ms 验证整块、全拒、出 1 个 token）；思考开着时启动预热失败、两条并发把引擎打崩
+  （同一个错 "target policy selected an invalid next anchor"），崩后所有请求 `runtime_unavailable`、不自愈。他们的自检全报 True 但不校验内容。
+  他们的 issue #130（同日）确认："1.0.2 decode garbling on Apple GPU family 9 (M3 Ultra): simdgroup K-split reduction … not coherent"。
+  ⇒ **他们博客的数在这台机器上无法复现，性能比较作废**；能比的只有机制：命中 0.34 s（4k）/ 0.38 s（32k）对 lmk 0.91 / 0.98，cache 不跨重启，prefill 两边都是 320 tok/s（他们算的还是垃圾）。
+- **SPL-008 探针的教训**：三个 bug 全是"没看内容"——空 chunk 骗首 token、错误流当成功、乱码当回答。以后对别人的服务器至少打印回答的前 60 字，
+  `lmk bench` 也该把 decode 探针的回答头几个字印出来（一个坏掉的引擎会把 tok/s 量得很好看）。

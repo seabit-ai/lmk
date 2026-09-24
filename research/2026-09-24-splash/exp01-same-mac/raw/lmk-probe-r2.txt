@@ -1,0 +1,7 @@
+cold prefill         321 tok/s  (4034 prompt, 0 cached, first token 12.59 s)
+hit first token     0.91 s     (3840 cached reported)
+decode prose        44.3 tok/s  code 58.2 tok/s  (accepted 0.8758620689655172)
+long cold         110.74 s first token (32034 prompt tokens)  ->  hit 0.98 s (32000 cached reported)
+concurrent 2        59.7 tok/s aggregate (800 tokens in 13.4 s; first tokens [0.35, 0.39]; errors 0 [])
+concurrent 4        58.9 tok/s aggregate (1600 tokens in 27.2 s; first tokens [13.83, 0.21, 0.44, 14.12]; errors 0 [])
+wrote raw/lmk-probe-r2.json

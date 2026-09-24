@@ -1,0 +1,6 @@
+cold prefill      576286 tok/s  (4034 prompt, 0 cached, first token 0.01 s)
+hit first token     0.01 s     (4032 cached reported)
+decode prose        22.5 tok/s  code 22.1 tok/s  (accepted None)
+long cold           0.04 s first token (32034 prompt tokens)  ->  hit 0.04 s (32032 cached reported)
+concurrent 4        19.6 tok/s aggregate (48 tokens in 2.5 s; first tokens [0.0, 0.29, 0.3, 0.3])
+wrote raw/splash-probe.json

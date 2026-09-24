@@ -1,0 +1,5 @@
+08:19:07 stop the download-run splash and the resident lmk
+lmk is not running, and not set to start at login. Nothing to do.
+08:19:08 splash, clean start
+08:19:10 splash did not come up
+error: Splash is already serving (PID 85842, model incoai/Qwen3.8-27B-Splash, port 8010); stop it with Ctrl+C first

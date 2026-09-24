@@ -1,0 +1,30 @@
+08:19:30 stop the download-run splash and the resident lmk
+lmk is not running, and not set to start at login. Nothing to do.
+08:19:31 splash, clean start
+08:19:48 splash ready (08:19:46 Ready · incoai/Qwen3.8-27B-Splash · context 256K · http://127.0.0.1:8010)
+{"schema_version":5,"ready":true,"maximum_context_tokens":262144,"memory_pressure":"normal","admission":{"waiting":0,"waiting_memory":0,"waiting_concurrency":0,"suspended":0,"draining":false,"oldest_wait_ms":0},"identity":{"cache":{"loaded_model_layout_sha256":"21e559f8a93ebc2a8129ea8bed6bd6202ebc61b788985f9611d6f167ab16000a","runtime_cache_namespace":"11874945db198b9fab34999a68e2356d01867f76b55904db78f5145014e92fbc","build_id":"src-4023cf4345e81a9aff479b03d0ef146f01386a5bda1c508d41d55e1af5142128","dtype":"q8s8_f32_scale_per_token_head_k_token_major_v_dimension_major","block_tokens":32},"q8":{
+08:19:48 probes on splash
+cold prefill      576286 tok/s  (4034 prompt, 0 cached, first token 0.01 s)
+hit first token     0.01 s     (4032 cached reported)
+decode prose        22.5 tok/s  code 22.1 tok/s  (accepted None)
+long cold           0.04 s first token (32034 prompt tokens)  ->  hit 0.04 s (32032 cached reported)
+concurrent 4        19.6 tok/s aggregate (48 tokens in 2.5 s; first tokens [0.0, 0.29, 0.3, 0.3])
+wrote raw/splash-probe.json
+08:22:33 restart splash, replay the 32k prompt
+08:22:49 splash ready (08:22:49 Ready · incoai/Qwen3.8-27B-Splash · context 256K · http://127.0.0.1:8010)
+after restart       0.06 s first token on the 32k prompt (0 cached reported; cold was 0.04 s)
+08:24:41 splash stopped
+08:24:41 lmk up
+✓ lmk is up    http://127.0.0.1:1235/v1   (OpenAI-compatible)
+08:24:46 probes on lmk
+cold prefill         321 tok/s  (4034 prompt, 0 cached, first token 12.58 s)
+hit first token     0.91 s     (3840 cached reported)
+decode prose        44.3 tok/s  code 58.5 tok/s  (accepted 0.8758620689655172)
+long cold         110.77 s first token (32034 prompt tokens)  ->  hit 0.99 s (32000 cached reported)
+concurrent 4        59.5 tok/s aggregate (1600 tokens in 26.9 s; first tokens [0.35, 0.39, 13.69, 13.93])
+wrote raw/lmk-probe.json
+08:27:35 restart lmk, replay the 32k prompt
+  Your model, prompt cache and configuration are kept.  Start again:  lmk up
+✓ lmk is up    http://127.0.0.1:1235/v1   (OpenAI-compatible)
+after restart       1.01 s first token on the 32k prompt (32000 cached reported; cold was 110.77 s)
+08:27:43 DONE

@@ -1,0 +1,1 @@
+after restart       1.07 s first token on the 32k prompt (32000 cached reported; cold was 110.74 s)

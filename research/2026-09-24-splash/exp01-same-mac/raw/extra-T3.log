@@ -1,0 +1,7 @@
+Splash model incoai/Qwen3.8-27B-Splash is already installed in /Users/xinkai/Library/Application Support/Splash/models/incoai/Qwen3.8-27B-Splash
+08:40:42 Loading · incoai/Qwen3.8-27B-Splash
+08:40:42 Kernel policy for GPU family 9 with 60 cores.
+08:40:54 Ready · incoai/Qwen3.8-27B-Splash · context 32K · http://127.0.0.1:8010
+08:40:55 Done · input 26 · cached 0 · output 8 · TTFT 0.5s · 26.8 tok/s
+08:41:13 Done · input 33 · cached 0 · output 400 · TTFT 0.6s · 22.8 tok/s
+08:41:13 Stopping · releasing engine resources
