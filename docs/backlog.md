@@ -68,6 +68,10 @@
   6. 崩溃循环里 launchd 每 30 s 重拉一次直到有人管（`lmk status` 现在会说）。`lmk serve` 顶层再兜一层未知异常 → 记 `LmkCrashed` 后 exit 1
      保留重启，还是 exit 0 停下来，没裁。
 
+## 2026-09-24 `config.yaml.example` 改成真配置（分支 `config-example`，基于 `speculative-decoding`）
+- 裁决与形状：OOBE 设计文档 C5。待：owner 机器上照用户的样子看一眼 `~/.lmk/config.yaml.example`，然后合并。
+- 顺带发现、未裁：种子 `config.yaml` 的注释和旧 example 一样长（`kv_cache_bits` / `speculative_decoding` 各 5–6 行），要不要同样收成一行 + 例子。
+
 ## 已裁但还没做的
 - **kitten 发 `X-Lmk-Purpose` / `X-Lmk-Ref-Id`**：2026-09-20 已在 kitten repo 的分支 `llm-call-identity` 上实现并验证
   （用途 `turn` / `compaction` / `groom`；refId = `<sessionId>/<actionRef>`，groom = `groom/<project>/<startMs>`；未声明的不发头）。

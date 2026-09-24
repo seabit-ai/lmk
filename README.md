@@ -194,16 +194,17 @@ picked a model and want your agent to be fast on it every day, that is what lmk 
 
 ## Configuration
 
-There is nothing you have to configure. `~/.lmk/config.yaml` is written at install with every value in use, so what you see is what runs;
-`~/.lmk/config.yaml.example` next to it is the full, always-current reference — including the
-list of models we have tested. The settings, with their defaults:
+There is nothing you have to configure. `~/.lmk/config.yaml` is written at install with every value in use, so what you see is what runs.
+`~/.lmk/config.yaml.example` next to it is a config that runs too — the defaults, plus the three settings the default
+model's page recommends — with every tested model as a line to uncomment and every other choice as a commented
+example; lmk rewrites it at each `lmk up`, so it always matches the installed version. The settings, with their defaults:
 
 ```yaml
 model:
-  name: qwen3.8-27b-4bit          # a tested model (see Models); or, for any other model, one of:
-                             #   repo: mlx-community/Qwen3-30B-A3B-4bit   (its HuggingFace address after huggingface.co/)
-                             #   path: /Users/me/models/Some-Model-MLX    (a model folder already on this Mac)
-                             # clients send that name as "model" (repo / path: its last part, lower case)
+  name: qwen3.8-27b-4bit     # a tested model (see Models). Clients send that name as "model"
+  # repo: mlx-community/Qwen3-30B-A3B-4bit   # instead of name: any MLX model on HuggingFace (its address after
+                             #                huggingface.co/); untested by us. Clients send its last part, lower case
+  # path: /Users/me/models/Some-Model-MLX    # instead of name: a model folder already on this Mac
   # thinking: false           # the model answers without thinking (default: the template's own, on for Qwen)
   # reasoning_effort: low     # for templates that know it (Qwen3.8: low / medium / xhigh); a server-wide constant
   # kv_cache_bits: 8          # 8 halves what each token of context costs in memory (about twice the context on the
@@ -211,8 +212,8 @@ model:
   # speculative_decoding: true  # the model's own draft head guesses tokens, the model checks them: same answers on
                              # code, faster while one request is being answered. Needs the draft `lmk pull` fetches;
                              # the model page says whether there is one. Default false
-  # context_length:                             (default: the model's maximum; lmk lowers it if
-                             #                   memory is short, and `lmk status` shows the value in use)
+  # context_length: 65536     # default: the model's maximum; lmk lowers it if memory is short, and `lmk status`
+                             # shows the value in use
 listen: {host: 127.0.0.1, port: 1235}
 cache:  {dir: ~/.lmk/cache, max_size: 200G}     # when full, what was used longest ago goes first
 requests:
