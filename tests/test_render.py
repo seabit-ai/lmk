@@ -25,6 +25,9 @@ def test_the_header_says_where_it_is_what_runs_memory_cache_and_limits():
     assert "  model      qwen3.8-27b-4bit · text, image in · 262,144 tokens" in text and "lowered" not in text
     off = dict(STATUS, model=dict(STATUS["model"], thinking=False))
     assert "· 262,144 tokens · thinking off" in render.status_block(off, "http://127.0.0.1:1235")
+    quantized = dict(STATUS, model=dict(STATUS["model"], kv_cache_bits=8))
+    assert "· 262,144 tokens · KV cache 8-bit" in render.status_block(quantized, "http://127.0.0.1:1235")
+    assert "KV cache" not in text                     # 16 = the model's own precision: nothing to say
     assert "  about it   https://github.com/seabit-ai/lmk/blob/main/docs/models/qwen3.8-27b-4bit.md" in text
     assert "about it" not in render.status_block(dict(STATUS, model=dict(STATUS["model"], id="my-own-model")), "u")
     assert "sampling" not in text                       # an older server without the field: no line

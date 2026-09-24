@@ -128,3 +128,12 @@ def test_below_the_floor_the_cache_gives_space_back():
     # 4 GB free: the cache must shrink by 6 to restore the floor
     assert cache_budget(200 * GB, used_bytes=50 * GB, free_disk_bytes=4 * GB) == 44 * GB
     assert cache_budget(200 * GB, used_bytes=2 * GB, free_disk_bytes=1 * GB) == 0
+
+
+def test_a_quantized_kv_cache_gets_its_own_directory_and_16_keeps_the_old_one(tmp_path):
+    model = make_model(tmp_path)
+    plain = model_identity(model, repo="org/m", revision="abc123")
+    assert model_identity(model, repo="org/m", revision="abc123", kv_cache_bits=16) == plain  # nothing moves for existing users
+    eight = model_identity(model, repo="org/m", revision="abc123", kv_cache_bits=8)
+    assert eight != plain
+    assert model_identity(model, repo="org/m", revision="abc123", kv_cache_bits=4) not in (plain, eight)

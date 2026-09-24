@@ -54,6 +54,9 @@ class ModelSource:
         return Path(self.value).expanduser() if self.kind == "path" else None
 
 
+KV_CACHE_BITS = (16, 8, 4)  # what the engine's batched path quantizes to; 16 means no quantization
+
+
 @dataclass(frozen=True)
 class ModelConfig:
     id: str  # what clients put in "model": the tested name, or the repo / directory name in lower case
@@ -61,6 +64,7 @@ class ModelConfig:
     context_length: Optional[int]  # None: the model's own maximum
     thinking: Optional[bool]       # None: the template's default (Qwen: on). False: the model answers without thinking
     reasoning_effort: Optional[str]  # for templates that know it (Qwen3.8: low / medium / xhigh); None: the template's default
+    kv_cache_bits: int = 16        # 16 = the model's own precision; 8 / 4 quantize the KV cache (more context, same memory)
 
     def template_kwargs(self) -> dict:
         kwargs = {}
@@ -160,9 +164,14 @@ def load_config(path: Optional[Path] = None) -> LmkConfig:
     effort = model.get("reasoning_effort")
     if effort is not None and (not isinstance(effort, str) or not effort):
         raise ConfigError("model.reasoning_effort must be a word the model's chat template knows, such as low / medium / xhigh")
+    kv_bits = model.get("kv_cache_bits", 16)
+    if isinstance(kv_bits, bool) or not isinstance(kv_bits, int) or kv_bits not in KV_CACHE_BITS:
+        raise ConfigError(f"model.kv_cache_bits must be one of {', '.join(map(str, KV_CACHE_BITS))} "
+                          f"(16 = the model's own precision; 8 halves what each token of context costs in memory) — got {kv_bits!r}")
     return LmkConfig(
         model=ModelConfig(id=_default_model_id(source), source=source,
-                          context_length=context_length, thinking=thinking, reasoning_effort=effort),
+                          context_length=context_length, thinking=thinking, reasoning_effort=effort,
+                          kv_cache_bits=int(kv_bits)),
         host=str(listen.get("host") or DEFAULT_HOST),
         port=int(listen.get("port") or DEFAULT_PORT),
         cache_dir=Path(str(cache.get("dir") or lmk_home() / "cache")).expanduser(),

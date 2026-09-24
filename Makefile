@@ -25,7 +25,7 @@ $(VENV)/.installed: requirements.txt
 # mlx-engine ships no packaging metadata, so it is cloned, not pip-installed.
 $(ENGINE)/.pinned: ENGINE_COMMIT
 	mkdir -p .engine
-	[ -d $(ENGINE) ] || git clone --quiet https://github.com/lmstudio-ai/mlx-engine.git $(ENGINE)
+	[ -d $(ENGINE) ] || git clone --quiet https://github.com/seabit-ai/mlx-engine.git $(ENGINE)
 	git -C $(ENGINE) fetch --quiet origin
 	git -C $(ENGINE) checkout --quiet $(ENGINE_COMMIT)
 	touch $@

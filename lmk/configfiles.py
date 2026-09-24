@@ -29,6 +29,9 @@ def _seed_text() -> str:
       # thinking: false                      # answer without thinking (default: the template's own — on for Qwen)
       # reasoning_effort: low                # low / medium / xhigh where the model's template knows it; server-wide,
       #                                      # never per request (it sits at the start of every prompt)
+      # kv_cache_bits: 8                     # 8 halves what each token of context costs in memory: about twice the
+      #                                      # context on the same Mac, answers may differ slightly on very long
+      #                                      # prompts. Default 16 (the model's own precision); 4 is accepted too
 
     listen:
       host: {DEFAULT_HOST}
@@ -65,6 +68,11 @@ _TEMPLATE = f"""\
 #   thinking: false            # answer without thinking (default: the template's own — on for Qwen)
 #   reasoning_effort: low      # low / medium / xhigh where the model's template knows it; a server-wide
 #                              # constant, never per request: it sits at the start of every prompt
+#   kv_cache_bits: 8           # 8 halves what each token of context costs in memory: about twice the context
+#                              # on the same Mac; answers may differ slightly on very long prompts. Default 16
+#                              # (the model's own precision). 4 quarters it, at a larger cost to precision.
+#                              # Changing it starts the prompt cache empty for this model. Each model page
+#                              # says whether we tested it with 8.
 #
 # listen:
 #   host: {DEFAULT_HOST}

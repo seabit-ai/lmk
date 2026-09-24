@@ -41,7 +41,8 @@ def serve() -> int:
              requestedContextLength=cfg.model.context_length, build=build_id())
     engine = MlxEngine(cfg.model.id, resolved.path, cfg.model.context_length, cache_dir=cfg.cache_dir,
                        cache_max_bytes=cfg.cache_max_bytes, repo=cfg.model.source.repo, revision=resolved.revision,
-                       max_parallel=cfg.requests.max_parallel, template_kwargs=cfg.model.template_kwargs())
+                       max_parallel=cfg.requests.max_parallel, template_kwargs=cfg.model.template_kwargs(),
+                       kv_cache_bits=cfg.model.kv_cache_bits)
     try:
         # a value the template rejects (Qwen3.8 accepts exactly xhigh / medium / low for reasoning_effort)
         # must stop the start with a clean exit, not the first request with a 500 — and not a restart loop

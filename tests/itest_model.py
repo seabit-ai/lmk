@@ -1,9 +1,14 @@
 """Which model the integration tests load: LMK_ITEST_MODEL (a directory), else the
-model lmk itself is configured to serve, found the way lmk finds it."""
+model lmk itself is configured to serve, found the way lmk finds it.
+LMK_ITEST_KV_BITS=8|4 runs the same acceptance with a quantized KV cache (`model.kv_cache_bits`)."""
 import os
 from pathlib import Path
 
 import pytest
+
+
+def kv_cache_bits() -> int:
+    return int(os.environ.get("LMK_ITEST_KV_BITS") or 16)
 
 
 def model_dir() -> Path:

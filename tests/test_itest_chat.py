@@ -10,7 +10,7 @@ import pytest
 
 pytestmark = pytest.mark.itest
 
-from itest_model import model_dir
+from itest_model import kv_cache_bits, model_dir
 TOOLS = [{"type": "function", "function": {
     "name": "file_read", "description": "Read a text file and return its contents.",
     "parameters": {"type": "object", "properties": {"path": {"type": "string"}, "max_lines": {"type": "integer"}},
@@ -26,8 +26,9 @@ def server():
     # constant, `model.thinking`); unset = the family's default (Qwen on, Gemma off)
     forced = os.environ.get("LMK_ITEST_THINKING")
     kwargs = {"enable_thinking": forced == "on"} if forced in ("on", "off") else {}
-    engine = MlxEngine("itest-model", model_dir(), 32768, template_kwargs=kwargs)
-    print("itest: dialect", engine.chat_format().dialect.name, "thinking", engine.thinking_enabled())
+    engine = MlxEngine("itest-model", model_dir(), 32768, template_kwargs=kwargs, kv_cache_bits=kv_cache_bits())
+    print("itest: dialect", engine.chat_format().dialect.name, "thinking", engine.thinking_enabled(),
+          "kv cache bits", kv_cache_bits())
     srv = LmkServer(engine, "127.0.0.1", 0)
     threading.Thread(target=srv.serve_forever, daemon=True).start()
     yield srv

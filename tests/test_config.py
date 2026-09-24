@@ -117,3 +117,16 @@ def test_thinking_and_effort_are_server_constants_handed_to_the_template(tmp_pat
     assert cfg.model.template_kwargs() == {"enable_thinking": False, "reasoning_effort": "low"}
     with pytest.raises(ConfigError, match="model.thinking must be true or false"):
         load_config(write(tmp_path, "model: {name: qwen3.8-27b-4bit, thinking: sometimes}"))
+
+
+def test_kv_cache_bits_defaults_to_the_models_own_precision_and_accepts_8_and_4(tmp_path):
+    assert load_config(write(tmp_path, "model: {name: qwen3.8-27b-4bit}")).model.kv_cache_bits == 16
+    assert load_config(write(tmp_path, "model: {name: qwen3.8-27b-4bit, kv_cache_bits: 8}")).model.kv_cache_bits == 8
+    assert load_config(write(tmp_path, "model: {name: qwen3.8-27b-4bit, kv_cache_bits: 4}")).model.kv_cache_bits == 4
+
+
+def test_kv_cache_bits_refuses_other_values_and_says_what_it_takes(tmp_path):
+    for bad in ("12", "true", "'8'", "8.0"):
+        with pytest.raises(ConfigError) as e:
+            load_config(write(tmp_path, f"model: {{name: qwen3.8-27b-4bit, kv_cache_bits: {bad}}}"))
+        assert "model.kv_cache_bits must be one of 16, 8, 4" in str(e.value)

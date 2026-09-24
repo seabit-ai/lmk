@@ -101,7 +101,8 @@ def status_block(status: dict, url: str) -> str:
         context += f" (asked for {requested:,}; lowered to fit this Mac's memory)"
     lines = [f"✓ lmk is up    {url}/v1   (OpenAI-compatible)",
              f"  model      {model['id']} · {', '.join(model.get('input_modalities') or ['text'])} in · {context}"
-             + (f" · thinking {'on' if model['thinking'] else 'off'}" if "thinking" in model else "")]
+             + (f" · thinking {'on' if model['thinking'] else 'off'}" if "thinking" in model else "")
+             + (f" · KV cache {model['kv_cache_bits']}-bit" if model.get("kv_cache_bits", 16) != 16 else "")]
     if model["id"] in TESTED_MODELS:
         lines.append(f"  about it   {model_page_url(model['id'])}")
     if "sampling_defaults" in status:
