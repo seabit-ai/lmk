@@ -11,7 +11,7 @@
 * Parallel requests, configurable, if you have the memory.
 * `Speculative decoding` with the model's own draft head: Qwen3.8-27B writes code 1.5x faster (39 → 58 tokens/s) with the
   answer token for token the same, one line in the config. The draft head is in the original weights but not in any MLX
-  conversion; `lmk pull` fetches the one we split out and verified.
+  conversion; `lmk up` fetches the one we split out and verified.
 * `KV cache at 8 bits`, one line in the config: the 27B fits 122k tokens of context on a 32 GB Mac instead of 85k, and scored
   the same as 16-bit with 60k tokens of files in front of every task.
 * Nine tested models today: Qwen3.8-27B at 4/5/6/8-bit, the Qwen3.5-122B mixture of experts in two sizes, and Gemma 4 in three
@@ -63,15 +63,15 @@ on a smaller/larger Mac is something you may want to leave feedback to let us kn
 
 ```sh
 git clone https://github.com/seabit-ai/lmk && cd lmk && ./install.sh
-lmk pull
 lmk up
 lmk bench
 ```
 
-`./install.sh` takes about 20 seconds and puts everything under `~/.lmk`. `lmk pull` downloads
-the model (16 GB, once; it resumes if interrupted). `lmk up` starts lmk now and at every login; it
-returns when the model is loaded and has answered a test request, and prints what to paste into
-your agent:
+`./install.sh` takes about 20 seconds and puts everything under `~/.lmk`. `lmk up` downloads the
+model if it is not on this Mac yet (16 GB, once, into the shared HuggingFace cache; one progress line
+with the percentage, the rate and the time left; interrupt any time, it resumes), then starts lmk now
+and at every login. It returns when the model is loaded and has answered a test request, and prints
+what to paste into your agent:
 
 ```
 ✓ lmk is up    http://127.0.0.1:1235/v1   (OpenAI-compatible)
@@ -110,7 +110,7 @@ Everything lmk installs lives in `~/.lmk`. The model goes to the shared HuggingF
 
 | | |
 |---|---|
-| `lmk pull` | Download the configured model. Nothing else ever downloads anything. |
+| `lmk pull` | Download the configured model now, to start later. `lmk up` downloads it too when it is missing; nothing else ever downloads anything. |
 | `lmk up` | Start lmk, now and at every login. Run it again after changing the config or upgrading. |
 | `lmk status` | Is it up, what is it doing right now, how full is the cache. |
 | `lmk logs` | Recent events. `-f` to follow, `--raw` for the model runtime's own output. |
@@ -130,7 +130,7 @@ When a request seems stuck, `lmk status` shows what it is doing:
 Tested end to end with a real agent — tool calls, thinking, images and the on-disk prompt cache — on an
 M3 Ultra with 96 GB. **Each model has its own page** with what fits, how fast, the recommended
 configuration and what to know before using it. Put the name under `model.name` in `~/.lmk/config.yaml`;
-`lmk pull` downloads it.
+`lmk up` downloads it.
 
 The groups say which Mac a model runs on, and "ctx size" the context that fits in that Mac's memory —
 how long a conversation can get (1k tokens is about 750 words of English; an agent's system prompt
@@ -238,7 +238,7 @@ log:    {dir: ~/.lmk/logs}
 `max_size` is the limit. One guard on top of it: when the disk has less than 10 GB free, lmk stops
 adding to the cache and gives space back, oldest first.
 
-To switch models: change `model:`, then `lmk pull` and `lmk up`.
+To switch models: change `model:`, then `lmk up` (it downloads the new model first).
 
 ## Several requests at once, and memory
 
@@ -320,7 +320,7 @@ next few tokens and the model checks them in one pass. Guesses it agrees with ar
 decoding the answer is token for token the one it would have written alone. On the M3 Ultra the 27B
 goes from 39 to 58 tokens/s on code and copy-editing, 46 on prose, and 86% of its guesses were accepted
 across our agent tests. It runs while one request is being answered; several at once are decoded plainly.
-`lmk pull` fetches the draft for the models that have one; the model page says so.
+`lmk up` fetches the draft for the models that have one; the model page says so.
 
 The model runtime is [mlx-engine](https://github.com/lmstudio-ai/mlx-engine), the open-source
 engine behind LM Studio, run from lmk's own fork ([seabit-ai/mlx-engine](https://github.com/seabit-ai/mlx-engine),
