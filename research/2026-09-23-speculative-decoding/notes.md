@@ -30,3 +30,10 @@
   然后按稠密 keys 逐位置切片——上游根本不支持这个组合；两功能各自验收过、合起来第一个请求 500。修在 fork 7a1e17f：量化 cache 时整块
   一次带因果掩码的量化注意力（`kv_quant.verify_block_attention`，经 `patches/qwen3_5.py` 挂钩），稠密路径不动。修后 code/copyedit 与 kv8 普通解码
   逐字节一致、1.49×、采样接受率 86%、itest 5/5。教训：推荐配置按组合验收。
+- **SPD-010 投机轮的 cache 快照早了一个 token（2026-09-24，owner 让查的那条警告）**：`[coordinator][WARNING]: Skipping prompt cache save for chunk [0, 256)
+  at snapshot 256: quantized kv cache snapshot covers [0, 255), not [0, 256)`，owner 机器上 261 个请求里 4 条，全在 bench 的代码题上（贪心 → 每次落点相同）。
+  和 kv8 无关：kv16 + 草稿的临时实例（scratch，port 1236）同一代码题出稠密版 "kv cache snapshot covers [0, 255)"。根因：基类是 decode-ahead，
+  `row.tokens` 只记**已喂进 cache** 的 token，快照时 cache 长度 == `len(row.tokens)`；投机轮把还没喂的 bonus（和 `_emit_pending` 里刚采样的 token）
+  也 append 了，正好落在 256 的答案就少一个 token，块不存。后果只是命中率（那一块没存），答案不受影响。
+  修在 fork e1239e1：先快照、再 append 那个没喂的 token；回归测试让一轮正好落在 256（不修时失败）。修后同题三次 0 条警告。
+  顺带：只有 4 条而不是每个 256 边界都有——散文题每次跨过 256（一轮前进多个 token），只有落点恰好等于块边界才触发。

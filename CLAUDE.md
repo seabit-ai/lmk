@@ -119,4 +119,6 @@ Known issues）、启动时校验会炸的配置值。加模型的工作量大�
   `answering 0 · waiting 0`，owner 可能正在用；重启还会清空看板上的 "just finished" 与累计数（它们只在内存里）。
 - 另起临时 lmk（实验、bench 别的模型）收尾**按 PID 杀**，别 `pkill -f "lmk serve"`——它连 launchd 的常驻服务一起杀，且干净退出后
   launchd 不重拉（2026-09-22 踩过，`lmk up` 拉回）。
+- **`make test` / `make install` 会把 `.engine/mlx-engine` `git checkout` 到 `ENGINE_COMMIT`（Makefile 的 `.pinned`），HEAD 变游离。**在 fork 上提交后
+  要 `git -C .engine/mlx-engine branch -f lmk <hash> && git checkout lmk`，否则 owner push `lmk` 分支时漏掉新 commit（2026-09-24 两次都这样）。
 - 测试用的临时 `LMK_HOME` 安装不得碰 `~/.local/bin/lmk`（已在 install.sh 里挡住）；launchd label 固定 `ai.kitten.lmk`，换 label 会让新旧服务抢端口。
