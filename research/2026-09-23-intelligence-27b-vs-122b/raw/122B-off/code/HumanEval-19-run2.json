@@ -1,0 +1,13 @@
+{
+ "content": "```python\nfrom typing import List\n\ndef sort_numbers(numbers: str) -> str:\n    \"\"\" Input is a space-delimited string of numberals from 'zero' to 'nine'.\n    Valid choices are 'zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight' and 'nine'.\n    Return the string with numbers sorted from smallest to largest\n    >>> sort_numbers('three one five')\n    'one three five'\n    \"\"\"\n    word_to_num = {\n        'zero': 0, 'one': 1, 'two': 2, 'three': 3, 'four': 4,\n        'five': 5, 'six': 6, 'seven': 7, 'eight': 8, 'nine': 9\n    }\n    num_to_word = {v: k for k, v in word_to_num.items()}\n    \n    if not numbers.strip():\n        return \"\"\n    \n    words = numbers.split()\n    numbers_list = [word_to_num[word] for word in words]\n    numbers_list.sort()\n    \n    sorted_words = [num_to_word[num] for num in numbers_list]\n    return ' '.join(sorted_words)\n```",
+ "reasoning": "",
+ "tool_calls": [],
+ "finish": "stop",
+ "tokens": 272,
+ "ms": 6905,
+ "raw_message": {
+  "role": "assistant",
+  "content": "```python\nfrom typing import List\n\ndef sort_numbers(numbers: str) -> str:\n    \"\"\" Input is a space-delimited string of numberals from 'zero' to 'nine'.\n    Valid choices are 'zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight' and 'nine'.\n    Return the string with numbers sorted from smallest to largest\n    >>> sort_numbers('three one five')\n    'one three five'\n    \"\"\"\n    word_to_num = {\n        'zero': 0, 'one': 1, 'two': 2, 'three': 3, 'four': 4,\n        'five': 5, 'six': 6, 'seven': 7, 'eight': 8, 'nine': 9\n    }\n    num_to_word = {v: k for k, v in word_to_num.items()}\n    \n    if not numbers.strip():\n        return \"\"\n    \n    words = numbers.split()\n    numbers_list = [word_to_num[word] for word in words]\n    numbers_list.sort()\n    \n    sorted_words = [num_to_word[num] for num in numbers_list]\n    return ' '.join(sorted_words)\n```"
+ },
+ "pass": true
+}

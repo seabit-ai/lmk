@@ -1,0 +1,13 @@
+{
+ "content": "```python\ndef rounded_avg(n, m):\n    \"\"\"You are given two positive integers n and m, and your task is to compute the\n    average of the integers from n through m (including n and m). \n    Round the answer to the nearest integer and convert that to binary.\n    If n is greater than m, return -1.\n    Example:\n    rounded_avg(1, 5) => \"0b11\"\n    rounded_avg(7, 5) => -1\n    rounded_avg(10, 20) => \"0b1111\"\n    rounded_avg(20, 33) => \"0b11010\"\n    \"\"\"\n    if n > m:\n        return -1\n    \n    # Calculate the sum of the arithmetic series from n to m\n    # Sum = (number of terms) * (first + last) / 2\n    count = m - n + 1\n    total_sum = count * (n + m) // 2\n    \n    # Calculate average and round to nearest integer\n    # Using standard rounding: add 0.5 and floor for positive numbers\n    average = total_sum / count\n    rounded = int(average + 0.5)\n    \n    return bin(rounded)\n```",
+ "reasoning": "",
+ "tool_calls": [],
+ "finish": "stop",
+ "tokens": 283,
+ "ms": 7591,
+ "raw_message": {
+  "role": "assistant",
+  "content": "```python\ndef rounded_avg(n, m):\n    \"\"\"You are given two positive integers n and m, and your task is to compute the\n    average of the integers from n through m (including n and m). \n    Round the answer to the nearest integer and convert that to binary.\n    If n is greater than m, return -1.\n    Example:\n    rounded_avg(1, 5) => \"0b11\"\n    rounded_avg(7, 5) => -1\n    rounded_avg(10, 20) => \"0b1111\"\n    rounded_avg(20, 33) => \"0b11010\"\n    \"\"\"\n    if n > m:\n        return -1\n    \n    # Calculate the sum of the arithmetic series from n to m\n    # Sum = (number of terms) * (first + last) / 2\n    count = m - n + 1\n    total_sum = count * (n + m) // 2\n    \n    # Calculate average and round to nearest integer\n    # Using standard rounding: add 0.5 and floor for positive numbers\n    average = total_sum / count\n    rounded = int(average + 0.5)\n    \n    return bin(rounded)\n```"
+ },
+ "pass": false
+}

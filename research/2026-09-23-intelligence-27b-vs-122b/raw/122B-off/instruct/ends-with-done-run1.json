@@ -1,0 +1,13 @@
+{
+ "content": "1. Maintain a consistent sleep schedule by going to bed and waking up at the same time every day, even on weekends.\n2. Create a restful environment by keeping your bedroom cool, dark, and quiet.\nDone.",
+ "reasoning": "",
+ "tool_calls": [],
+ "finish": "stop",
+ "tokens": 48,
+ "ms": 1391,
+ "raw_message": {
+  "role": "assistant",
+  "content": "1. Maintain a consistent sleep schedule by going to bed and waking up at the same time every day, even on weekends.\n2. Create a restful environment by keeping your bedroom cool, dark, and quiet.\nDone."
+ },
+ "pass": true
+}

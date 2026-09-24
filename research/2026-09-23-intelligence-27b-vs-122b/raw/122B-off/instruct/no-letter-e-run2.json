@@ -1,0 +1,13 @@
+{
+ "content": "Dark waves roll on sand. Salt air blows high. Big fish swim down low.",
+ "reasoning": "",
+ "tool_calls": [],
+ "finish": "stop",
+ "tokens": 18,
+ "ms": 610,
+ "raw_message": {
+  "role": "assistant",
+  "content": "Dark waves roll on sand. Salt air blows high. Big fish swim down low."
+ },
+ "pass": false
+}

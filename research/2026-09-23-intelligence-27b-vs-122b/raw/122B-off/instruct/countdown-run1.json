@@ -1,0 +1,13 @@
+{
+ "content": "10,9,8,7,6,5,4,3,2,1",
+ "reasoning": "",
+ "tool_calls": [],
+ "finish": "stop",
+ "tokens": 21,
+ "ms": 808,
+ "raw_message": {
+  "role": "assistant",
+  "content": "10,9,8,7,6,5,4,3,2,1"
+ },
+ "pass": true
+}

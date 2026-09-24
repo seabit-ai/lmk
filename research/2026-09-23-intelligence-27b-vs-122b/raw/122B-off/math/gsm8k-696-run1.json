@@ -1,0 +1,15 @@
+{
+ "content": "Here is the step-by-step solution to determine how many points the class is missing:\n\n**Step 1: Determine Adam's points**\nThe problem states directly that Adam has collected **50** points.\n$A = 50$\n\n**Step 2: Determine Betty's points**\nBetty collected 30% more than Adam.\nFirst, calculate 30% of Adam's points: $50 \\times 0.30 = 15$.\nAdd this to Adam's total: $50 + 15 = 65$.\nSo, Betty has **65** points.\n$B = 65$\n\n**Step 3: Determine Tom's points**\nTom has 30 points less than Betty.\n$T = B - 30$\n$T = 65 - 30 = 35$\nSo, Tom has **35** points.\n\n**Step 4: Determine Martha's points**\nMartha collected 3 times more points than Tom.\n$M = 3 \\times T$\n$M = 3 \\times 35 = 105$\nSo, Martha has **105** points.\n\n**Step 5: Calculate the total points collected by the class**\nSum the points of all four students:\nTotal = Adam + Betty + Tom + Martha\nTotal = $50 + 65 + 35 + 105$\nTotal = $255$ points.\n\n**Step 6: Calculate the missing points**\nThe minimum threshold to go on the trip is 400 points.\nMissing points = Threshold - Total collected\nMissing points = $400 - 255$\nMissing points = $145$\n\nAnswer: 145",
+ "reasoning": "",
+ "tool_calls": [],
+ "finish": "stop",
+ "tokens": 392,
+ "ms": 9528,
+ "raw_message": {
+  "role": "assistant",
+  "content": "Here is the step-by-step solution to determine how many points the class is missing:\n\n**Step 1: Determine Adam's points**\nThe problem states directly that Adam has collected **50** points.\n$A = 50$\n\n**Step 2: Determine Betty's points**\nBetty collected 30% more than Adam.\nFirst, calculate 30% of Adam's points: $50 \\times 0.30 = 15$.\nAdd this to Adam's total: $50 + 15 = 65$.\nSo, Betty has **65** points.\n$B = 65$\n\n**Step 3: Determine Tom's points**\nTom has 30 points less than Betty.\n$T = B - 30$\n$T = 65 - 30 = 35$\nSo, Tom has **35** points.\n\n**Step 4: Determine Martha's points**\nMartha collected 3 times more points than Tom.\n$M = 3 \\times T$\n$M = 3 \\times 35 = 105$\nSo, Martha has **105** points.\n\n**Step 5: Calculate the total points collected by the class**\nSum the points of all four students:\nTotal = Adam + Betty + Tom + Martha\nTotal = $50 + 65 + 35 + 105$\nTotal = $255$ points.\n\n**Step 6: Calculate the missing points**\nThe minimum threshold to go on the trip is 400 points.\nMissing points = Threshold - Total collected\nMissing points = $400 - 255$\nMissing points = $145$\n\nAnswer: 145"
+ },
+ "pass": true,
+ "got": "145",
+ "want": "145"
+}

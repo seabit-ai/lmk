@@ -1,0 +1,13 @@
+{
+ "content": "Towering mountains pierce the sky with their snow-capped peaks.",
+ "reasoning": "",
+ "tool_calls": [],
+ "finish": "stop",
+ "tokens": 15,
+ "ms": 628,
+ "raw_message": {
+  "role": "assistant",
+  "content": "Towering mountains pierce the sky with their snow-capped peaks."
+ },
+ "pass": false
+}

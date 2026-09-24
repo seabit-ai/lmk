@@ -1,0 +1,13 @@
+{
+ "content": "First, maintain a consistent sleep schedule by going to bed and waking up at the same time every day, even on weekends. Second, create a relaxing bedtime routine that avoids screens and bright lights at least an hour before sleep to help your body wind down naturally. Done.",
+ "reasoning": "",
+ "tool_calls": [],
+ "finish": "stop",
+ "tokens": 55,
+ "ms": 1538,
+ "raw_message": {
+  "role": "assistant",
+  "content": "First, maintain a consistent sleep schedule by going to bed and waking up at the same time every day, even on weekends. Second, create a relaxing bedtime routine that avoids screens and bright lights at least an hour before sleep to help your body wind down naturally. Done."
+ },
+ "pass": true
+}

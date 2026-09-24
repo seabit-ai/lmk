@@ -1,0 +1,54 @@
+{
+ "pass": true,
+ "steps": [
+  {
+   "content": "",
+   "reasoning": "",
+   "tool_calls": [
+    {
+     "id": "call_44ed87ca6c5543e6",
+     "type": "function",
+     "function": {
+      "name": "file_read",
+      "arguments": "{\"path\": \"todo.md\"}"
+     }
+    }
+   ],
+   "finish": "tool_calls",
+   "tokens": 26,
+   "ms": 1248
+  },
+  {
+   "content": "",
+   "reasoning": "",
+   "tool_calls": [
+    {
+     "id": "call_bbb4633d91f14884",
+     "type": "function",
+     "function": {
+      "name": "file_edit",
+      "arguments": "{\"path\": \"todo.md\", \"old_text\": \"- water plants\\n- pay rent\", \"new_text\": \"- water plants\\n- pay rent\\n- call the dentist\"}"
+     }
+    }
+   ],
+   "finish": "tool_calls",
+   "tokens": 68,
+   "ms": 3302
+  },
+  {
+   "content": "I have added \"- call the dentist\" to the end of `todo.md`. The file now contains:\n\n- water plants\n- pay rent\n- call the dentist",
+   "reasoning": "",
+   "tool_calls": [],
+   "finish": "stop",
+   "tokens": 35,
+   "ms": 1546
+  }
+ ],
+ "tokens": 129,
+ "ms": 6096,
+ "finish": "stop",
+ "final_files": {
+  "todo.md": "- water plants\n- pay rent\n- call the dentist\n"
+ },
+ "content": "I have added \"- call the dentist\" to the end of `todo.md`. The file now contains:\n\n- water plants\n- pay rent\n- call the dentist"
+}

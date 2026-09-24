@@ -1,0 +1,54 @@
+{
+ "pass": true,
+ "steps": [
+  {
+   "content": "",
+   "reasoning": "",
+   "tool_calls": [
+    {
+     "id": "call_7947e778b1454cc4",
+     "type": "function",
+     "function": {
+      "name": "file_read",
+      "arguments": "{\"path\": \"notes.md\"}"
+     }
+    }
+   ],
+   "finish": "tool_calls",
+   "tokens": 26,
+   "ms": 1974
+  },
+  {
+   "content": "",
+   "reasoning": "",
+   "tool_calls": [
+    {
+     "id": "call_9dfc72d232214f8f",
+     "type": "function",
+     "function": {
+      "name": "file_edit",
+      "arguments": "{\"path\": \"notes.md\", \"old_text\": \"- buy oat milk\", \"new_text\": \"- buy almond milk\"}"
+     }
+    }
+   ],
+   "finish": "tool_calls",
+   "tokens": 57,
+   "ms": 2114
+  },
+  {
+   "content": "Done! I've updated the milk item in `notes.md` to say \"buy almond milk\".",
+   "reasoning": "",
+   "tool_calls": [],
+   "finish": "stop",
+   "tokens": 21,
+   "ms": 1083
+  }
+ ],
+ "tokens": 104,
+ "ms": 5171,
+ "finish": "stop",
+ "final_files": {
+  "notes.md": "# notes\n- ship lmk\n- buy almond milk\n- call mom\n"
+ },
+ "content": "Done! I've updated the milk item in `notes.md` to say \"buy almond milk\"."
+}

@@ -1,0 +1,13 @@
+{
+ "content": "Dark waves roll on sand. Salt air fills my mouth. Fish swim in cold dark.",
+ "reasoning": "",
+ "tool_calls": [],
+ "finish": "stop",
+ "tokens": 19,
+ "ms": 769,
+ "raw_message": {
+  "role": "assistant",
+  "content": "Dark waves roll on sand. Salt air fills my mouth. Fish swim in cold dark."
+ },
+ "pass": false
+}

@@ -1,0 +1,13 @@
+{
+ "content": "```python\ndef solve(s):\n    \"\"\"You are given a string s.\n    if s[i] is a letter, reverse its case from lower to upper or vise versa, \n    otherwise keep it as it is.\n    If the string contains no letters, reverse the string.\n    The function should return the resulted string.\n    Examples\n    solve(\"1234\") = \"4321\"\n    solve(\"ab\") = \"AB\"\n    solve(\"#a@C\") = \"#A@c\"\n    \"\"\"\n    has_letters = any(c.isalpha() for c in s)\n    if not has_letters:\n        return s[::-1]\n    \n    result = []\n    for char in s:\n        if char.islower():\n            result.append(char.upper())\n        elif char.isupper():\n            result.append(char.lower())\n        else:\n            result.append(char)\n    return ''.join(result)\n```",
+ "reasoning": "",
+ "tool_calls": [],
+ "finish": "stop",
+ "tokens": 205,
+ "ms": 5174,
+ "raw_message": {
+  "role": "assistant",
+  "content": "```python\ndef solve(s):\n    \"\"\"You are given a string s.\n    if s[i] is a letter, reverse its case from lower to upper or vise versa, \n    otherwise keep it as it is.\n    If the string contains no letters, reverse the string.\n    The function should return the resulted string.\n    Examples\n    solve(\"1234\") = \"4321\"\n    solve(\"ab\") = \"AB\"\n    solve(\"#a@C\") = \"#A@c\"\n    \"\"\"\n    has_letters = any(c.isalpha() for c in s)\n    if not has_letters:\n        return s[::-1]\n    \n    result = []\n    for char in s:\n        if char.islower():\n            result.append(char.upper())\n        elif char.isupper():\n            result.append(char.lower())\n        else:\n            result.append(char)\n    return ''.join(result)\n```"
+ },
+ "pass": true
+}

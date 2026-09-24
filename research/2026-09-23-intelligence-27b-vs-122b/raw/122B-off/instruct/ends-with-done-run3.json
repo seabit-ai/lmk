@@ -1,0 +1,13 @@
+{
+ "content": "First, establish a consistent sleep schedule by going to bed and waking up at the same time every day, even on weekends, to regulate your body's internal clock. Second, create a restful environment by keeping your bedroom cool, dark, and quiet, while avoiding screens and bright lights at least an hour before bed. Done.",
+ "reasoning": "",
+ "tool_calls": [],
+ "finish": "stop",
+ "tokens": 67,
+ "ms": 2278,
+ "raw_message": {
+  "role": "assistant",
+  "content": "First, establish a consistent sleep schedule by going to bed and waking up at the same time every day, even on weekends, to regulate your body's internal clock. Second, create a restful environment by keeping your bedroom cool, dark, and quiet, while avoiding screens and bright lights at least an hour before bed. Done."
+ },
+ "pass": true
+}

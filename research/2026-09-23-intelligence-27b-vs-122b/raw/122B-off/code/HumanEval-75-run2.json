@@ -1,0 +1,13 @@
+{
+ "content": "```python\ndef is_multiply_prime(a):\n    \"\"\"Write a function that returns true if the given number is the multiplication of 3 prime numbers\n    and false otherwise.\n    Knowing that (a) is less then 100. \n    Example:\n    is_multiply_prime(30) == True\n    30 = 2 * 3 * 5\n    \"\"\"\n    def is_prime(n):\n        if n < 2:\n            return False\n        for i in range(2, int(n**0.5) + 1):\n            if n % i == 0:\n                return False\n        return True\n\n    prime_factors = []\n    temp = a\n    d = 2\n    while d * d <= temp:\n        while temp % d == 0:\n            if is_prime(d):\n                prime_factors.append(d)\n            temp //= d\n        d += 1\n    if temp > 1:\n        prime_factors.append(temp)\n\n    return len(prime_factors) == 3\n```",
+ "reasoning": "",
+ "tool_calls": [],
+ "finish": "stop",
+ "tokens": 230,
+ "ms": 5209,
+ "raw_message": {
+  "role": "assistant",
+  "content": "```python\ndef is_multiply_prime(a):\n    \"\"\"Write a function that returns true if the given number is the multiplication of 3 prime numbers\n    and false otherwise.\n    Knowing that (a) is less then 100. \n    Example:\n    is_multiply_prime(30) == True\n    30 = 2 * 3 * 5\n    \"\"\"\n    def is_prime(n):\n        if n < 2:\n            return False\n        for i in range(2, int(n**0.5) + 1):\n            if n % i == 0:\n                return False\n        return True\n\n    prime_factors = []\n    temp = a\n    d = 2\n    while d * d <= temp:\n        while temp % d == 0:\n            if is_prime(d):\n                prime_factors.append(d)\n            temp //= d\n        d += 1\n    if temp > 1:\n        prime_factors.append(temp)\n\n    return len(prime_factors) == 3\n```"
+ },
+ "pass": true
+}
