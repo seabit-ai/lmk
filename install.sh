@@ -10,6 +10,8 @@ LMK_HOME="${LMK_HOME:-$HOME/.lmk}"
 LMK_REF="${LMK_REF:-}"              # a tag, branch or commit to fetch when not run from a checkout;
                                     # empty = the newest release tag (v*)
 LMK_SRC="${LMK_SRC:-}"              # a checkout to install from; found by itself when run from one
+LMK_BUILD="${LMK_BUILD:-}"          # the build id to record when LMK_SRC has no git history (Homebrew: the formula's version)
+LMK_NO_PATH_LINK="${LMK_NO_PATH_LINK:-}"  # non-empty: do not link ~/.local/bin/lmk (Homebrew puts its own lmk on the PATH)
 if [ -z "$LMK_SRC" ]; then
   HERE="$(cd "$(dirname "$0")" 2>/dev/null && pwd || true)"
   [ -n "$HERE" ] && [ -d "$HERE/lmk" ] && [ -f "$HERE/ENGINE_COMMIT" ] && LMK_SRC="$HERE"
@@ -40,9 +42,13 @@ trap 'rm -rf "$STAGE"' EXIT
 if [ -n "$LMK_SRC" ]; then
   say "· installing lmk from $LMK_SRC"
   cp -R "$LMK_SRC/lmk" "$LMK_SRC/requirements.txt" "$LMK_SRC/ENGINE_COMMIT" "$STAGE/"
-  # the tag when on one, else `v0.1.0-3-gabc1234` (3 commits past v0.1.0), else the short commit
-  BUILD="$(git -C "$LMK_SRC" describe --tags --always --match 'v*' 2>/dev/null || echo unknown)"
-  [ -z "$(git -C "$LMK_SRC" status --porcelain 2>/dev/null)" ] || BUILD="$BUILD-dirty-$(date +%m%d%H%M%S)"
+  if [ -n "$LMK_BUILD" ]; then
+    BUILD="$LMK_BUILD"
+  else
+    # the tag when on one, else `v0.1.0-3-gabc1234` (3 commits past v0.1.0), else the short commit
+    BUILD="$(git -C "$LMK_SRC" describe --tags --always --match 'v*' 2>/dev/null || echo unknown)"
+    [ -z "$(git -C "$LMK_SRC" status --porcelain 2>/dev/null)" ] || BUILD="$BUILD-dirty-$(date +%m%d%H%M%S)"
+  fi
 else
   if [ -z "$LMK_REF" ]; then
     LMK_REF="$(git ls-remote --tags --refs https://github.com/seabit-ai/lmk 'v*' 2>/dev/null \
@@ -114,7 +120,7 @@ chmod +x "$BIN/lmk"
 # Only the default home puts `lmk` on the PATH: a second install elsewhere (a test, a
 # trial) must not hijack the command.
 LINKED=""
-if [ "$LMK_HOME" = "$HOME/.lmk" ]; then
+if [ "$LMK_HOME" = "$HOME/.lmk" ] && [ -z "$LMK_NO_PATH_LINK" ]; then
   case ":$PATH:" in
     *":$HOME/.local/bin:"*) mkdir -p "$HOME/.local/bin" && ln -sf "$BIN/lmk" "$HOME/.local/bin/lmk" && LINKED=1 ;;
   esac
@@ -122,12 +128,13 @@ fi
 
 say ""
 say "✓ lmk $BUILD is installed in $LMK_HOME"
-if [ -n "$LINKED" ]; then
+if [ -n "$LMK_NO_PATH_LINK" ]; then
+  :   # Homebrew's lmk is the command
+elif [ -n "$LINKED" ]; then
   say "  the lmk command is on your PATH (~/.local/bin/lmk)"
 else
   say "  add it to your PATH:   export PATH=\"$BIN:\$PATH\"     (put that line in ~/.zshrc)"
 fi
 say ""
 say "  next:"
-say "    lmk pull     download the model (16 GB) — once"
-say "    lmk up       start it, now and at every login"
+say "    lmk up       download the model (16 GB, once) and start it, now and at every login"

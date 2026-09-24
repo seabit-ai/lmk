@@ -94,7 +94,9 @@
 
 ## 2026-09-24 OOBE 两步（owner："start long run"）：① `lmk up` 自动下载（分支 `auto-pull`，OOBE C6）→ ② brew tap → ③ DFlash2 spike
 - ① 做了：`lmk/pull.py`（一行进度：百分比、字节、实测速率、剩余时间；非终端每 10% 一行）；`lmk up` 缺模型/草稿器先下；`lmk pull` 保留。
-  待 owner 授权合并。② brew：`seabit-ai/homebrew-tap` 一个 formula（源码进 Cellar + `lmk` 壳，第一次运行用 install.sh 自举 `~/.lmk`）。
+  已合 main（502436f）。② brew（分支 `brew-tap`，OOBE D2）：`packaging/homebrew/lmk.rb` + `try.sh` 本地试装。**待 owner**：建 GitHub 仓库
+  `seabit-ai/homebrew-tap`，把 `lmk.rb` 放到 `Formula/`；发 v0.7.0 时填 `url`/`sha256`（`packaging/homebrew/README.md` 有步骤）；
+  README 的 brew 一行在 tap 存在之前不要 push。
   ③ DFlash2：mlx-vlm v0.6.16 已有 `drafters/dflash2`；先 spike 量 27B-4bit 在 M3 Ultra 上的一致性/接受长度/tok/s，再决定升级引擎 + 接第二种草稿器。
 - Splash 评论稿在会话里（#130），等 owner 用 bruce-claw 登 `gh` 后贴。
 
