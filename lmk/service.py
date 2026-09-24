@@ -3,6 +3,7 @@
 import os
 import plistlib
 import subprocess
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional
 
@@ -41,6 +42,47 @@ def build_plist(app_dir: Path, log_dir: Path, env: dict) -> dict:
 
 def is_registered() -> bool:
     return subprocess.run(["launchctl", "print", f"{_domain()}/{LABEL}"], capture_output=True).returncode == 0
+
+
+@dataclass(frozen=True)
+class JobState:
+    """What launchd says about the registered job (`launchctl print`)."""
+    pid: Optional[int]              # set while a process is alive
+    runs: int                       # how many times launchd has spawned it since `lmk up` registered it
+    last_exit_code: Optional[int]   # None until it has exited once
+
+    @property
+    def loading(self) -> bool:
+        return self.pid is not None
+
+    @property
+    def exited(self) -> bool:
+        return self.pid is None and self.runs >= 1
+
+    @property
+    def crashed(self) -> bool:
+        # launchd restarts only after a non-zero exit (KeepAlive.SuccessfulExit false), so a second
+        # run — or a non-zero last exit with no process — means the first one crashed
+        return self.runs >= 2 or (self.exited and bool(self.last_exit_code))
+
+
+def parse_launchctl_print(output: str) -> JobState:
+    pid = runs = code = None
+    for line in output.splitlines():
+        key, _, value = line.strip().partition(" = ")
+        if key == "pid":
+            pid = int(value)
+        elif key == "runs":
+            runs = int(value)
+        elif key == "last exit code" and value.isdigit():
+            code = int(value)
+    return JobState(pid=pid, runs=runs or 0, last_exit_code=code)
+
+
+def job_state() -> Optional[JobState]:
+    """None when the job is not registered at all."""
+    out = subprocess.run(["launchctl", "print", f"{_domain()}/{LABEL}"], capture_output=True, text=True)
+    return parse_launchctl_print(out.stdout) if out.returncode == 0 else None
 
 
 def start(app_dir: Path, log_dir: Path, env: dict) -> None:

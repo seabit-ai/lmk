@@ -72,6 +72,16 @@ class Engine(Protocol):
                  sampling: Optional[dict] = None, tokens: Optional[list] = None) -> Generation: ...
 
 
+def runtime_import_error() -> Optional[str]:
+    """Why the model runtime cannot be imported, or None. Importing it is a side effect
+    (it replaces huggingface_hub.snapshot_download) — only `lmk serve` may call this."""
+    try:
+        import mlx_engine.generate  # noqa: F401 - the probe is the import
+    except ImportError as e:
+        return str(e)
+    return None
+
+
 class MlxEngine:
     """Loads the resident model at construction: there is no lazy / just-in-time
     loading in lmk (design §6.7)."""

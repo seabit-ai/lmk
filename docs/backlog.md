@@ -1,7 +1,7 @@
 # lmk backlog —— 现在到哪了、还欠什么
 
 会变的东西放这里（`CLAUDE.md` 放不变的）。改了状态就回来改这份；条目做完就删，结论归到设计文档或 research。
-最后核对：2026-09-20。
+最后核对：2026-09-24。
 
 ## 现在到哪了
 | 块 | 状态 | 出处 |
@@ -46,6 +46,27 @@
   （`speculative.py` 的 `MAX_ROUND_ROWS = 1`），多请求退回普通解码；复现脚本 `pair_probe`（scratch，内容见 exp03 README 第 5 条）。查清再开。
 - 智能评测 `research/2026-09-23-intelligence-27b-vs-122b/`：三个 27B 臂已完（xhigh 最差、low 最好），122B-off 臂在跑；
   跑完要写四臂汇总 + "共同错的题"节，模型页据此更新（27B 的推荐配置可能改成 `reasoning_effort: low`）。
+
+## 2026-09-24 `lmk up` 卡 10 分钟的事故——修了什么、还欠什么（分支 `speculative-decoding`）
+- 现场：`~/.lmk/app/.engine/mlx-engine/` 是空目录但 `COMMIT` 标记说已装。04:48 的旧 installer `curl | tar` 下载 fork 上还没 push 的
+  2839cfa，curl 404、tar 吃空流照样成功；05:19 的新 installer 因标记匹配整段跳过。服务 import 引擎失败 exit 1，launchd 每 30 s 拉起
+  （152 次）；`lmk up` 只看"注册没注册"，等到 600 s 超时才报错。
+- 修了（都有单测，真机照用户的样子跑过：崩溃循环与干净退出各 1–2 s 内报出，正常启动显示 "x of 15.0 GB"）：
+  installer 标记匹配但 `generate.py` 缺也重装；`lmk serve` 引擎 import 失败 → `LmkRuntimeMissing`、exit 0；`lmk up` 读 launchctl 的
+  pid / runs / last exit code（`service.job_state`），崩溃或退出立刻报，进度按服务进程常驻字节对模型权重字节（`memory.resident_bytes`，
+  实测 rss 随权重读入从 0 到 16.5 GB / 9 s，权重 16.05 GB），不再显示秒数；`lmk status` 加载中也显示同一行，崩溃循环有专门的一行；
+  报错里的 last events / last output 只取这次启动之后的行（旧进程的 LmkReady 和旧 traceback 不再混进来）。
+- 候选（未裁，owner 问"还该修什么"时列的）：
+  1. `lmk logs` 缺省只看 jsonl，traceback 只在 `--raw` 里——崩溃时用户要知道加 `--raw`（status 行已改指向）。要不要让 `lmk logs` 在
+     最后一条事件之后把 stderr 的 traceback 一并打出来。
+  2. 日志不轮转：`lmk.stderr.log` 已 420 KB、`lmk.jsonl` 185 KB，launchd 的 stdout/stderr 文件只会长。
+  3. 体积单位：`lmk pull` 说 "16 GB"（十进制，HF 的数），加载进度和 status 的 memory 行说 "15.0 GB"（其实是 GiB，`human_bytes` 按 1024）。
+     `config.yaml.example` 里已区分 "GB download / GiB loaded"，别处没有。
+  4. `ENGINE_COMMIT` 指向 fork 上没 push 的 commit 时，`curl | sh` 装不上（installer 现在会明说）；从 checkout `make install` 不受影响。
+     push 顺序（引擎先）已在上面"待 owner"里。
+  5. `READY_TIMEOUT_S = 600` 现在只兜"加载真的卡住"这一种情况；卡住时用户看到的是进度数字不动。要不要改成"进度 N 秒没变就报"。
+  6. 崩溃循环里 launchd 每 30 s 重拉一次直到有人管（`lmk status` 现在会说）。`lmk serve` 顶层再兜一层未知异常 → 记 `LmkCrashed` 后 exit 1
+     保留重启，还是 exit 0 停下来，没裁。
 
 ## 已裁但还没做的
 - **kitten 发 `X-Lmk-Purpose` / `X-Lmk-Ref-Id`**：2026-09-20 已在 kitten repo 的分支 `llm-call-identity` 上实现并验证

@@ -3,7 +3,7 @@ import errno
 import signal
 
 from lmk import log
-from lmk.config import ConfigError, build_id, config_path, fingerprint, load_config
+from lmk.config import ConfigError, app_dir, build_id, config_path, fingerprint, load_config
 from lmk.configfiles import refresh_example, seed_config
 from lmk.models import DraftNotDownloaded, ModelNotDownloaded, draft_repo_for, resolve_draft, resolve_model
 
@@ -46,8 +46,15 @@ def serve() -> int:
         log.error("LmkModelDoesNotFit", too_big.replace("\n  ", " "), path=str(resolved.path))
         return EXIT_WILL_NOT_FIX_ITSELF
 
-    from lmk.engine import MlxEngine
+    from lmk.engine import MlxEngine, runtime_import_error
     from lmk.server import LmkServer
+
+    not_importable = runtime_import_error()
+    if not_importable:
+        log.error("LmkRuntimeMissing", f"the model runtime (mlx-engine) is not installed: {not_importable} — "
+                  "run the installer again (`make install` from a checkout, or the curl | sh line in the README)",
+                  runtimeDir=str(app_dir() / ".engine" / "mlx-engine"))
+        return EXIT_WILL_NOT_FIX_ITSELF
 
     log.info("LmkStarting", "loading the resident model", model=cfg.model.id, path=str(resolved.path),
              requestedContextLength=cfg.model.context_length, build=build_id())

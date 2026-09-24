@@ -63,7 +63,10 @@ printf '%s\n' "$BUILD" > "$APP/BUILD"
 # --- the model runtime (mlx-engine), at the exact commit lmk was tested with.
 # It ships no packaging metadata, so it is fetched as source, not pip-installed.
 ENGINE_COMMIT="$(cat "$APP/ENGINE_COMMIT")"
-if [ "$(cat "$APP/.engine/COMMIT" 2>/dev/null || true)" != "$ENGINE_COMMIT" ]; then
+# The marker alone is not proof: an installer before 2026-09-24 could write it next to an
+# empty directory (failed download in a curl | tar pipe). The runtime's entry file must be there too.
+if [ "$(cat "$APP/.engine/COMMIT" 2>/dev/null || true)" != "$ENGINE_COMMIT" ] \
+   || [ ! -f "$APP/.engine/mlx-engine/mlx_engine/generate.py" ]; then
   say "· fetching the model runtime (mlx-engine ${ENGINE_COMMIT%"${ENGINE_COMMIT#???????}"})"
   rm -rf "$APP/.engine"
   mkdir -p "$APP/.engine/mlx-engine"

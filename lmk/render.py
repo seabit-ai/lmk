@@ -15,6 +15,18 @@ FIRST_REQUEST_NOTE = (
     "  After that every step starts in about a second — also after a reboot.")
 
 
+def loading_line(model_id: str, resident_bytes: Optional[int], total_bytes: int) -> str:
+    """Progress by bytes in memory against the model's weight bytes — never by seconds, which say
+    nothing about how far along a load is. Resident overshoots the weights by the runtime's own
+    ~0.4 GB, so it is capped at the total."""
+    if not total_bytes or resident_bytes is None:
+        return f"loading {model_id} …"
+    value, unit = human_bytes(total_bytes).split()  # both numbers in the total's unit: "8.2 of 16.0 GB"
+    scale = total_bytes / float(value) if float(value) else 1
+    loaded = min(resident_bytes, total_bytes) / scale
+    return f"loading {model_id} … {loaded:.{len(value.partition('.')[2])}f} of {value} {unit}"
+
+
 def human_bytes(n: int) -> str:
     value = float(n)
     for unit in ("B", "KB", "MB", "GB"):
