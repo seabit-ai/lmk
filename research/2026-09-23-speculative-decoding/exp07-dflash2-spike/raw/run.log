@@ -1,0 +1,16 @@
+main loaded in 1.2s (mlx_vlm 0.6.16)
+none    story     run1  decode   38.2 tok/s  tokens 400  ttft   161 ms  sha adad345a9c
+none    story     run2  decode   38.1 tok/s  tokens 400  ttft   160 ms  sha adad345a9c
+none    code      run1  decode   38.0 tok/s  tokens 400  ttft   373 ms  sha 58b44530ab
+none    code      run2  decode   38.2 tok/s  tokens 400  ttft   377 ms  sha 58b44530ab
+none    copyedit  run1  decode   37.9 tok/s  tokens 133  ttft   670 ms  sha 8fe1ef2be6
+none    copyedit  run2  decode   37.9 tok/s  tokens 133  ttft   670 ms  sha 8fe1ef2be6
+draft loaded in 0.1s kind=dflash block=None
+dflash2 story     run1  decode   39.2 tok/s  tokens 400  ttft   138 ms  sha adad345a9c  identical  x1.03  tok/round 2.04  accepted 204/392
+dflash2 story     run2  decode   39.3 tok/s  tokens 400  ttft   137 ms  sha adad345a9c  identical  x1.03  tok/round 2.04  accepted 204/392
+dflash2 code      run1  decode   46.6 tok/s  tokens 400  ttft   352 ms  sha 58b44530ab  identical  x1.22  tok/round 4.26  accepted 306/374
+dflash2 code      run2  decode   48.7 tok/s  tokens 400  ttft   351 ms  sha 58b44530ab  identical  x1.27  tok/round 4.26  accepted 306/374
+dflash2 copyedit  run1  decode   55.7 tok/s  tokens 133  ttft   648 ms  sha 8fe1ef2be6  identical  x1.47  tok/round 4.93  accepted 106/106
+dflash2 copyedit  run2  decode   56.5 tok/s  tokens 133  ttft   647 ms  sha 8fe1ef2be6  identical  x1.49  tok/round 4.93  accepted 106/106
+dflash2@temp1 code       decode   45.4 tok/s  tokens 393  tok/round 3.36  accepted 277/348 (80%)
+dflash2@temp1 story      decode   35.9 tok/s  tokens 400  tok/round 1.94  accepted 193/411 (47%)

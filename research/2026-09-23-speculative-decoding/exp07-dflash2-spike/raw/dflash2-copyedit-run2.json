@@ -1,0 +1,16 @@
+{
+ "prompt_tokens": 172,
+ "completion_tokens": 133,
+ "first_token_ms": 647.4237500224262,
+ "total_ms": 2982.899750000797,
+ "decode_tok_s": 56.51952749727356,
+ "text": "The lighthouse keeper had lived on the rock for ninety-one years, or so he told the fishermen who brought his supplies every second Tuesday. Nobody believed him, of course, but nobody argued either; the sea has a way of making arguments feel small. Each evening he climbed the hundred and twelve steps, trimmed the wick that no longer needed trimming since the lamp went electric in 1974, and wrote one line in a ledger that had belonged to his father. The lines were never about the weather. They were about the ships he had not seen: the ones that passed in fog, the ones that turned back, the one that did not.",
+ "sha": "8fe1ef2be6",
+ "rounds": 27,
+ "accepted": 106,
+ "drafted": 106,
+ "tokens_per_round": 4.925925925925926,
+ "arm": "dflash2",
+ "prompt": "copyedit",
+ "rep": 2
+}

@@ -97,7 +97,8 @@
   已合 main（502436f）。② brew（分支 `brew-tap`，OOBE D2）：`packaging/homebrew/lmk.rb` + `try.sh` 本地试装。**待 owner**：建 GitHub 仓库
   `seabit-ai/homebrew-tap`，把 `lmk.rb` 放到 `Formula/`；发 v0.7.0 时填 `url`/`sha256`（`packaging/homebrew/README.md` 有步骤）；
   README 的 brew 一行在 tap 存在之前不要 push。
-  ③ DFlash2：mlx-vlm v0.6.16 已有 `drafters/dflash2`；先 spike 量 27B-4bit 在 M3 Ultra 上的一致性/接受长度/tok/s，再决定升级引擎 + 接第二种草稿器。
+  ③ DFlash2 spike 做完（exp07，SPD-011）：**no-go**——M3 Ultra 上 code 最好 1.26×，不如 MTP 头的 1.49×；逐字节一致倒是全过。不升级引擎。
+  这条线留给 Gemma 4（无 MTP 头）；低带宽 Mac 上要重新量。
 - Splash 评论稿在会话里（#130），等 owner 用 bruce-claw 登 `gh` 后贴。
 
 ## 已裁但还没做的

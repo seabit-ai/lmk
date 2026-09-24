@@ -1,0 +1,16 @@
+{
+ "prompt_tokens": 69,
+ "completion_tokens": 393,
+ "first_token_ms": 890.5922080157325,
+ "total_ms": 9533.61154103186,
+ "decode_tok_s": 45.35452078680067,
+ "text": "```python\nimport re\nimport pytest\n\n\ndef parse_duration(s: str) -> int:\n    \"\"\"Convert a duration string (e.g., '1h30m', '45s', '2h') to total seconds.\n    \n    Supported units: h (hours), m (minutes), s (seconds).\n    Units can be combined, e.g., '1h30m20s' -> 5420.\n    \"\"\"\n    pattern = re.compile(r'(\\d+)([hms])')\n    matches = pattern.findall(s)\n    if not matches:\n        raise ValueError(f\"Invalid duration format: {s!r}\")\n    # Ensure the entire string is consumed (no extra chars)\n    reconstructed = ''.join(f\"{num}{unit}\" for num, unit in matches)\n    if reconstructed != s.strip():\n        raise ValueError(f\"Invalid duration format: {s!r}\")\n    multipliers = {'h': 3600, 'm': 60, 's': 1}\n    total = 0\n    for num, unit in matches:\n        total += int(num) * multipliers[unit]\n    return total\n\n\ndef test_parse_duration():\n    assert parse_duration('2h') == 7200\n    assert parse_duration('45s') == 45\n    assert parse_duration('1h30m') == 5400\n    assert parse_duration('1h30m20s') == 5420\n    assert parse_duration('0s') == 0\n    assert parse_duration('10m') == 600\n    with pytest.raises(ValueError):\n        parse_duration('foo')\n    with pytest.raises(ValueError):\n        parse_duration('1h30x')\n```",
+ "sha": "0dcd58c0a0",
+ "rounds": 117,
+ "accepted": 277,
+ "drafted": 348,
+ "tokens_per_round": 3.358974358974359,
+ "arm": "dflash2-temp1",
+ "prompt": "code",
+ "rep": 1
+}
