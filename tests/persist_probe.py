@@ -1,13 +1,15 @@
 """One process = one life of the server. Loads the model with a persistent
 cache directory, prefills one fixed prompt, prints what the cache gave it."""
 import json
+import os
 import sys
 from pathlib import Path
 
 from lmk.engine import MlxEngine
 
 model_dir, cache_dir = Path(sys.argv[1]), Path(sys.argv[2])
-engine = MlxEngine("probe", model_dir, 32768, cache_dir=cache_dir)
+engine = MlxEngine("probe", model_dir, 32768, cache_dir=cache_dir,
+                   kv_cache_bits=int(os.environ.get("LMK_ITEST_KV_BITS") or 16))
 messages = [{"role": "system", "content": "".join(f"Persist rule {i}: one short sentence only. " for i in range(250))},
             {"role": "user", "content": "Say hello."}]
 prompt = engine.chat_format().render(messages, None)

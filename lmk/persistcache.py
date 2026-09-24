@@ -31,12 +31,16 @@ _LAYOUT_FILE = "layout.json"
 _SUFFIX = ".safetensors"
 
 
-def model_identity(model_path: Path, repo: Optional[str] = None, revision: Optional[str] = None) -> str:
+def model_identity(model_path: Path, repo: Optional[str] = None, revision: Optional[str] = None,
+                   kv_cache_bits: int = 16) -> str:
     """Changes whenever the weights or the model config change. A HuggingFace
     snapshot is named by its commit hash; a local directory has no such name,
-    so its files are fingerprinted."""
+    so its files are fingerprinted. A quantized KV cache writes records of another
+    shape, so it gets its own directory; 16 leaves the identity as it always was."""
     h = hashlib.sha256()
     h.update(f"lmk-cache-v{CACHE_FORMAT_VERSION}|".encode())
+    if kv_cache_bits != 16:
+        h.update(f"kv{kv_cache_bits}|".encode())
     if revision:
         h.update(f"hf:{repo}@{revision}".encode())
     else:

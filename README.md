@@ -289,7 +289,9 @@ tools — skips straight to the new part. The store survives restarts and is sha
 conversations.
 
 The model runtime is [mlx-engine](https://github.com/lmstudio-ai/mlx-engine), the open-source
-engine behind LM Studio, used as it is. How lmk compares with other servers on the same machine,
+engine behind LM Studio, run from lmk's own fork ([seabit-ai/mlx-engine](https://github.com/seabit-ai/mlx-engine),
+branch `lmk`): the upstream code at a pinned commit plus a short list of patches, one commit each — so far, KV
+cache quantization on the batched path. How lmk compares with other servers on the same machine,
 with the raw numbers: [`research/2026-09-20-local-server-survey`](research/2026-09-20-local-server-survey/notes.md)
 (notes are in Chinese).
 

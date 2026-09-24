@@ -14,6 +14,7 @@ class LoadedModel:
     path: Path
     context_length: int  # the value in use — the engine may fit it to the memory it finds
     requested_context_length: Optional[int] = None
+    kv_cache_bits: int = 16
 
 
 @dataclass
@@ -72,7 +73,7 @@ class MlxEngine:
     def __init__(self, model_id: str, model_path: Path, context_length: Optional[int] = None, *,
                  cache_dir: Optional[Path] = None, cache_max_bytes: Optional[int] = None,
                  repo: Optional[str] = None, revision: Optional[str] = None, max_parallel: int = 2,
-                 template_kwargs: Optional[dict] = None):
+                 template_kwargs: Optional[dict] = None, kv_cache_bits: int = 16):
         from mlx_engine.generate import get_runtime_load_info, load_model  # heavy import, kept out of module scope
 
         if not model_path.exists():
@@ -86,13 +87,15 @@ class MlxEngine:
                              "set model.context_length")
         self._cache_stores: list = []
         if cache_dir is not None:
-            _install_persistent_cache(cache_dir, cache_max_bytes, model_path, repo, revision, self._cache_stores)
+            _install_persistent_cache(cache_dir, cache_max_bytes, model_path, repo, revision, self._cache_stores,
+                                      kv_cache_bits=kv_cache_bits)
         # lmk's own queue enforces max_parallel where people can see who waits and why;
         # the engine gets the same number as a backstop
-        self._kit = load_model(model_path, max_kv_size=requested, max_seq_nums=max_parallel)
+        self._kit = load_model(model_path, max_kv_size=requested, max_seq_nums=max_parallel,
+                               kv_bits=None if kv_cache_bits == 16 else kv_cache_bits)
         in_use = get_runtime_load_info(self._kit).get("context_length") or requested
         self._model = LoadedModel(id=model_id, path=model_path, context_length=in_use,
-                                  requested_context_length=requested)
+                                  requested_context_length=requested, kv_cache_bits=kv_cache_bits)
         self._format = TemplateChatFormat(self._kit.tokenizer, template_kwargs)
         self._thinking = bool((template_kwargs or {}).get("enable_thinking", self._format.dialect.thinking_default))
         from lmk.sampling import model_defaults
@@ -206,14 +209,14 @@ def engine_commit() -> str:
 
 
 def _install_persistent_cache(cache_dir: Path, max_bytes: Optional[int], model_path: Path, repo: Optional[str],
-                              revision: Optional[str], created: list) -> None:
+                              revision: Optional[str], created: list, kv_cache_bits: int = 16) -> None:
     """The engine constructs its cache store itself (model_kit.py), with the
     directory hard-coded; the one way in is to swap the class it names."""
     import mlx_engine.model_kit.batched_vision.model_kit as vision_kit
 
     from lmk.persistcache import make_persistent_store_class, model_identity, prepare_cache_root
 
-    identity = model_identity(model_path, repo=repo, revision=revision)
+    identity = model_identity(model_path, repo=repo, revision=revision, kv_cache_bits=kv_cache_bits)
     if max_bytes is None:
         max_bytes = 1 << 62  # no limit of ours; the engine's own budget still applies
     live_budget = prepare_cache_root(cache_dir, identity, max_bytes)

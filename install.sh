@@ -67,7 +67,7 @@ if [ "$(cat "$APP/.engine/COMMIT" 2>/dev/null || true)" != "$ENGINE_COMMIT" ]; t
   say "· fetching the model runtime (mlx-engine ${ENGINE_COMMIT%"${ENGINE_COMMIT#???????}"})"
   rm -rf "$APP/.engine"
   mkdir -p "$APP/.engine/mlx-engine"
-  curl -fsSL "https://github.com/lmstudio-ai/mlx-engine/archive/$ENGINE_COMMIT.tar.gz" \
+  curl -fsSL "https://github.com/seabit-ai/mlx-engine/archive/$ENGINE_COMMIT.tar.gz" \
     | tar -xz -C "$APP/.engine/mlx-engine" --strip-components 1 || fail "could not download mlx-engine"
   printf '%s\n' "$ENGINE_COMMIT" > "$APP/.engine/COMMIT"
 fi

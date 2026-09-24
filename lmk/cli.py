@@ -167,7 +167,8 @@ def cmd_up(_args) -> int:
         from lmk.persistcache import model_identity
 
         was = Path(((running or {}).get("cache") or {}).get("dir") or "").name
-        now = model_identity(resolved.path, repo=cfg.model.source.repo, revision=resolved.revision)
+        now = model_identity(resolved.path, repo=cfg.model.source.repo, revision=resolved.revision,
+                             kv_cache_bits=cfg.model.kv_cache_bits)
         if was and was != now and not (cfg.cache_dir / now).is_dir():
             _say("  The prompt cache starts empty for this model: the first request of each conversation\n"
                  "  reads its whole prompt again (about 3s per 1,000 tokens).")
