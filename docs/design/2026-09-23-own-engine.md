@@ -119,3 +119,10 @@ lmk 的引擎路线图归自己：**投机解码与磁盘 cache 同时有，KV �
 
 **没解的**：每个草稿 token 0.4 步的开销（profile 后再说）；Gemma 家族（草稿器要 shared_kv，且 `_mtp_rounds_batch` 的 shared_kv 切片逻辑
 要搬过来）；外挂 DFlash 草稿器（122B）。
+
+## 2026-09-24 补记：磁盘前缀 cache 是必须项（owner 裁）
+owner（看到 Splash 之后）："be able to use SSD to store prefill cache is a killer feature. that's one of the rare scenario local LLM can beat APIs.
+So IMO this is a must have feature." 裁决：**持久化到 SSD 的前缀 cache 是引擎路线的硬约束**——fork、自写、换引擎，都不得拿它换速度。
+理由：API 的 prompt cache 几分钟过期、按量收费、有上限；本地 SSD 上几百 GB 的会话历史随时约 1 秒接上，重启也在——这是本地模型能赢 API 的少数几格之一。
+推论：Splash 那种"cache 只在 GPU 内存"（SPL-004）不是可选方案；若同机实测（`research/2026-09-24-splash/exp01`）证明内存热层命中明显快于磁盘还原，
+形态是**两层**（热的在内存、全量在 SSD），不是二选一。
