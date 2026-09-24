@@ -183,10 +183,10 @@ def tested_models_markdown() -> str:
         for name in tiers[gb]:
             m = TESTED_MODELS[name]
             default = " (default)" if name == DEFAULT_MODEL_NAME else ""
-            ctx = " / ".join(_k(context_on(m, g)) for g in sizes)
+            ctx = " / ".join(_k(context_on(m, g)) for g in sizes) + " tokens"
             if m.kv_cache_bits != 16:
                 ctx += f" with `kv_cache_bits: {m.kv_cache_bits}`"
-            out.append(f"| [`{name}`](docs/models/{name}.md){default} | {m.good_for} | {ctx} tokens | "
+            out.append(f"| [`{name}`](docs/models/{name}.md){default} | {m.good_for} | {ctx} | "
                        f"{'yes' if m.images else 'no'} | "
                        f"{_k(m.speed.cached_prefill_tok_s)} / {m.speed.prefill_tok_s:,} / {m.speed.decode_tok_s:.0f} |")
         out.append("")

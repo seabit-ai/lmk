@@ -140,7 +140,7 @@ measured is how smart each model is; the default is the one we have used most.
 
 | model | good for | ctx size on 32 GB / 48 GB / 64 GB / 96 GB | images | tok/s: cache hit / miss / decode |
 |---|---|---|---|---|
-| [`qwen3.8-27b-4bit`](docs/models/qwen3.8-27b-4bit.md) (default) | the default; best-tested with `reasoning_effort: low` | 122k / 262k / 262k / 262k with `kv_cache_bits: 8` tokens | yes | 53k / 323 / 40 |
+| [`qwen3.8-27b-4bit`](docs/models/qwen3.8-27b-4bit.md) (default) | the default; best-tested with `reasoning_effort: low` | 122k / 262k / 262k / 262k tokens with `kv_cache_bits: 8` | yes | 53k / 323 / 40 |
 | [`qwen3.8-27b-5bit`](docs/models/qwen3.8-27b-5bit.md) | the 27B between 4- and 8-bit: 19 GB, 20% slower decode than 4-bit | 51k / 190k / 262k / 262k tokens | yes | 57k / 315 / 32 |
 | [`gemma-4-31b-4bit`](docs/models/gemma-4-31b-4bit.md) | Gemma at the 27B's size; slower, shorter ctx | 39k / 150k / 261k / 262k tokens | yes | 26k / 252 / 33 |
 
