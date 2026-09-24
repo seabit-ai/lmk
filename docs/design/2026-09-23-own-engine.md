@@ -134,3 +134,9 @@ exp07（SPD-011）在 M3 Ultra 上量到 DFlash2 code 1.26× < MTP 头 1.49×，
 裁决：**A. 引擎升级 mlx-vlm 到 0.6.16（或更高）→ B. DFlash2 作为第二种草稿器接进批处理路径。** 用户面：`speculative_decoding: true` 不变，
 新增 `model.draft: mtp | dflash2`，缺省由模型页决定（27B 先仍是 mtp，M4 Pro 的实测进来再改），用户可覆盖——"哪个草稿器"是我们封装的知识。
 M4 Pro 的数从早期用户的 `lmk bench` 行来（行里带开关，README 请贴 issue）。被否：等 Splash 修好 / 等更多机器再决定——等不来数据，先把路铺好。
+
+## 2026-09-24 补记（三）：校验不走 0.6.16 的 exact verifier（owner 推翻当天早些的 ①）
+事实（SPD-012）：exact verifier 校验 T=8 要 109 ms（普通批量前向约 47），一轮 127 ms，DFlash2 上限 1.0×；MTP 头也因它从 1.49× 掉到 1.26×。
+mlx-dspark 同机一轮 65 ms。裁决：**校验走普通批量前向，回滚靠记录的 GDN 输入（q,k,v,a,b,初始状态,mask,卷积输入）交给 mlx-vlm 的 `rollback_speculative_cache`
+重跑前缀。** 一致性从"位级等价"退到"贪心正确到浮点平手"（代码一致、散文偶尔分叉，0.6.12 时代的水平）。被否：保留 exact verifier 换一致性——
+代价不是 15%，是 1.2× 对 2× 的差别，且散文本来就分叉。附带规则：每轮接受太低（散文约 2/轮）时应退回普通解码，M3 Ultra 上 DFlash2 对散文是负收益。

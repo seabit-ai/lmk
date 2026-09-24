@@ -1,0 +1,6 @@
+prompt 4041 tokens
+plain             36.5 tok/s  tokens 400  sha dd5d5e9d77
+dflash2 full       42.1 tok/s  x1.15  tokens 400  sha e2f7daa133 DIFFERENT  tok/round 4.40  accepted 309/362
+dflash2 last1024   42.9 tok/s  x1.18  tokens 400  sha e2f7daa133 DIFFERENT  tok/round 4.40  accepted 308/362
+dflash2 last256    42.9 tok/s  x1.18  tokens 400  sha e2f7daa133 DIFFERENT  tok/round 4.35  accepted 308/366
+dflash2 last32     43.2 tok/s  x1.18  tokens 400  sha e2f7daa133 DIFFERENT  tok/round 4.12  accepted 303/360
