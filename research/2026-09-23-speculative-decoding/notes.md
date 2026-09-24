@@ -68,7 +68,7 @@
 - **SPD-017 其余候选与估值（推算，未量）**：按置信度停链 + 按实测校验代价表选 T（SpecDec++ 阈值规则，+7–11% 于 GPU；我们主要赚在散文退回）；
   根部多一个兄弟节点的小树（GDN Tree-Scan，arXiv 2609.23900，Qwen3.6-27B FP8 vLLM B=1，+27% 于 5 步 MTP，收益几乎全来自"第一个草稿被拒"的轮）；
   草稿 lm_head 裁词表（FR-Spec）：248k 词表的 lm_head 约占 MTP 一步读量的 3/4，但一轮里只占约 7%，上限约 5%。不适合本机：lookahead decoding、Saguaro（要富余算力或第二块硬件）。
-- **SPD-013 DFlash2 接进引擎（2026-09-24，exp12，fork 3b493b5）**：第二种草稿器 `dflash`（`Drafter.kind`），prompt 分块抓 5 层隐状态只留窗口尾巴（exp09），
+- **SPD-018 DFlash2 接进引擎（2026-09-24，exp12，fork 3b493b5）**：第二种草稿器 `dflash`（`Drafter.kind`），prompt 分块抓 5 层隐状态只留窗口尾巴（exp09），
   `dflash_round` 用 mlx-vlm 的 `draft_block` / 贪心 walk / 采样 walk，校验走普通前向 + 记录回滚（exp11），单行投机。M3 Ultra 上：code 1.51×（一致）、
   copyedit 1.83×（一致）、story 1.01×（分叉）——与 MTP 头打平（1.53 / 1.51 / 1.20）。kv8 下 code 分叉（量化注意力 L>1 与 L=1 不位级一致）。
   用户面 `model.draft: mtp | dflash2`，缺省按模型页（27B 先 mtp）。DFlash2 的 config `model_type` 写的是目标家族名（"qwen3"），种类看 `architectures` / `dflash_config`。
