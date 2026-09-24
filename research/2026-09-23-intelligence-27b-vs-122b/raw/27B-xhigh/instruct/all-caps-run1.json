@@ -1,0 +1,14 @@
+{
+ "content": "MOUNTAINS RISE HIGH INTO THE SKY.",
+ "reasoning": "We need answer user's request: \"Write one sentence about mountains in ALL CAPITAL LETTERS.\" Need output one sentence all caps. Ensure only one sentence. Simple.\n",
+ "tool_calls": [],
+ "finish": "stop",
+ "tokens": 48,
+ "ms": 1871,
+ "raw_message": {
+  "role": "assistant",
+  "content": "MOUNTAINS RISE HIGH INTO THE SKY.",
+  "reasoning_content": "We need answer user's request: \"Write one sentence about mountains in ALL CAPITAL LETTERS.\" Need output one sentence all caps. Ensure only one sentence. Simple.\n"
+ },
+ "pass": true
+}

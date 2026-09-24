@@ -1,0 +1,54 @@
+{
+ "pass": true,
+ "steps": [
+  {
+   "content": "",
+   "reasoning": "",
+   "tool_calls": [
+    {
+     "id": "call_69eae2b7eb084134",
+     "type": "function",
+     "function": {
+      "name": "file_read",
+      "arguments": "{\"path\": \"notes.md\"}"
+     }
+    }
+   ],
+   "finish": "tool_calls",
+   "tokens": 26,
+   "ms": 2892
+  },
+  {
+   "content": "",
+   "reasoning": "",
+   "tool_calls": [
+    {
+     "id": "call_16c58e06432342db",
+     "type": "function",
+     "function": {
+      "name": "file_edit",
+      "arguments": "{\"path\": \"notes.md\", \"old_text\": \"- buy oat milk\", \"new_text\": \"- buy almond milk\"}"
+     }
+    }
+   ],
+   "finish": "tool_calls",
+   "tokens": 57,
+   "ms": 2147
+  },
+  {
+   "content": "Done. The line \"buy oat milk\" in `notes.md` has been changed to \"buy almond milk\".",
+   "reasoning": "",
+   "tool_calls": [],
+   "finish": "stop",
+   "tokens": 24,
+   "ms": 1085
+  }
+ ],
+ "tokens": 107,
+ "ms": 6124,
+ "finish": "stop",
+ "final_files": {
+  "notes.md": "# notes\n- ship lmk\n- buy almond milk\n- call mom\n"
+ },
+ "content": "Done. The line \"buy oat milk\" in `notes.md` has been changed to \"buy almond milk\"."
+}

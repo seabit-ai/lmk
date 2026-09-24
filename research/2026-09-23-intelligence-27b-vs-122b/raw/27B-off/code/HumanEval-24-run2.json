@@ -1,0 +1,13 @@
+{
+ "content": "```python\ndef largest_divisor(n: int) -> int:\n    \"\"\" For a given number n, find the largest number that divides n evenly, smaller than n\n    >>> largest_divisor(15)\n    5\n    \"\"\"\n    for i in range(n - 1, 0, -1):\n        if n % i == 0:\n            return i\n    return 1\n```",
+ "reasoning": "",
+ "tool_calls": [],
+ "finish": "stop",
+ "tokens": 91,
+ "ms": 3724,
+ "raw_message": {
+  "role": "assistant",
+  "content": "```python\ndef largest_divisor(n: int) -> int:\n    \"\"\" For a given number n, find the largest number that divides n evenly, smaller than n\n    >>> largest_divisor(15)\n    5\n    \"\"\"\n    for i in range(n - 1, 0, -1):\n        if n % i == 0:\n            return i\n    return 1\n```"
+ },
+ "pass": true
+}

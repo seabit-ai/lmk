@@ -1,0 +1,13 @@
+{
+ "content": "```python\n\ndef is_nested(string):\n    '''\n    Create a function that takes a string as input which contains only square brackets.\n    The function should return True if and only if there is a valid subsequence of brackets \n    where at least one bracket in the subsequence is nested.\n\n    is_nested('[[]]') ➞ True\n    is_nested('[]]]]]]][[[[[]') ➞ False\n    is_nested('[][]') ➞ False\n    is_nested('[]') ➞ False\n    is_nested('[[][]]') ➞ True\n    is_nested('[[]][[') ➞ True\n    '''\n    depth = 0\n    max_depth = 0\n    for ch in string:\n        if ch == '[':\n            depth += 1\n            if depth > max_depth:\n                max_depth = depth\n        elif ch == ']':\n            depth -= 1\n            if depth < 0:\n                # invalid sequence, but we can continue; depth reset?\n                # Actually, for the purpose of checking nesting, if we go negative,\n                # we might reset depth to 0 to avoid issues, but let's just track.\n                depth = 0\n    return max_depth >= 2\n\n```",
+ "reasoning": "",
+ "tool_calls": [],
+ "finish": "stop",
+ "tokens": 270,
+ "ms": 9740,
+ "raw_message": {
+  "role": "assistant",
+  "content": "```python\n\ndef is_nested(string):\n    '''\n    Create a function that takes a string as input which contains only square brackets.\n    The function should return True if and only if there is a valid subsequence of brackets \n    where at least one bracket in the subsequence is nested.\n\n    is_nested('[[]]') ➞ True\n    is_nested('[]]]]]]][[[[[]') ➞ False\n    is_nested('[][]') ➞ False\n    is_nested('[]') ➞ False\n    is_nested('[[][]]') ➞ True\n    is_nested('[[]][[') ➞ True\n    '''\n    depth = 0\n    max_depth = 0\n    for ch in string:\n        if ch == '[':\n            depth += 1\n            if depth > max_depth:\n                max_depth = depth\n        elif ch == ']':\n            depth -= 1\n            if depth < 0:\n                # invalid sequence, but we can continue; depth reset?\n                # Actually, for the purpose of checking nesting, if we go negative,\n                # we might reset depth to 0 to avoid issues, but let's just track.\n                depth = 0\n    return max_depth >= 2\n\n```"
+ },
+ "pass": false
+}

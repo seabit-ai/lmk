@@ -1,0 +1,13 @@
+{
+ "content": "Create a cool, dark, and quiet bedroom environment to signal your body it is time to rest. Establish a consistent sleep schedule by going to bed and waking up at the same times every day, even on weekends. Done.",
+ "reasoning": "",
+ "tool_calls": [],
+ "finish": "stop",
+ "tokens": 46,
+ "ms": 2236,
+ "raw_message": {
+  "role": "assistant",
+  "content": "Create a cool, dark, and quiet bedroom environment to signal your body it is time to rest. Establish a consistent sleep schedule by going to bed and waking up at the same times every day, even on weekends. Done."
+ },
+ "pass": true
+}

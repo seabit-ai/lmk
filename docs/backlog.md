@@ -19,6 +19,12 @@
   stop 由 lmk 在回答段匹配；seed 收下不传并记日志。取证 `research/2026-09-21-sampling`（SMP-001..004，exp01/02）。
 - 没做（单独一题）：`response_format` / `json_schema`（引擎有 `json_schema` 参数）。
 
+## 引擎路线（SAD 开题 2026-09-23，未裁）——`docs/design/2026-09-23-own-engine.md`
+- owner 要投机解码 + 磁盘 cache 同时有、KV 量化。我方案：fork mlx-engine 在批处理路径补，不从零写。
+- 下一步：评测跑完后在老路径量投机解码收益（27B + Qwen3.5-4B 草稿），按数定先做哪个。
+- 智能评测 `research/2026-09-23-intelligence-27b-vs-122b/`：三个 27B 臂已完（xhigh 最差、low 最好），122B-off 臂在跑；
+  跑完要写四臂汇总 + "共同错的题"节，模型页据此更新（27B 的推荐配置可能改成 `reasoning_effort: low`）。
+
 ## 已裁但还没做的
 - **kitten 发 `X-Lmk-Purpose` / `X-Lmk-Ref-Id`**：2026-09-20 已在 kitten repo 的分支 `llm-call-identity` 上实现并验证
   （用途 `turn` / `compaction` / `groom`；refId = `<sessionId>/<actionRef>`，groom = `groom/<project>/<startMs>`；未声明的不发头）。

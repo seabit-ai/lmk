@@ -1,0 +1,13 @@
+{
+ "content": "<result>Canberra</result>",
+ "reasoning": "",
+ "tool_calls": [],
+ "finish": "stop",
+ "tokens": 9,
+ "ms": 808,
+ "raw_message": {
+  "role": "assistant",
+  "content": "<result>Canberra</result>"
+ },
+ "pass": true
+}

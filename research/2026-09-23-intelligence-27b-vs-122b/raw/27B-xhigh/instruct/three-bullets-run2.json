@@ -1,0 +1,14 @@
+{
+ "content": "- Data loss from hardware or storage failure\n- Downtime and lost work during accidental deletion or corruption\n- Inability to restore after ransomware or malicious tampering",
+ "reasoning": "We need to respond to user: \"Name three risks of running a database without backups. Answer with exactly three bullet points, each starting with '- ', and nothing else.\"\n\nNeed exactly three bullet points, each starting with '- ', nothing else. Need no extra text. Ensure three lines. Could be:\n- Data loss from hardware or storage failure\n- Downtime and lost work during accidental deletion or corruption\n- Inability to restore after ransomware or malicious tampering\n\nCheck each starts with \"- \". Exactly three bullet points. Nothing else. Final only bullets.\n",
+ "tool_calls": [],
+ "finish": "stop",
+ "tokens": 153,
+ "ms": 5471,
+ "raw_message": {
+  "role": "assistant",
+  "content": "- Data loss from hardware or storage failure\n- Downtime and lost work during accidental deletion or corruption\n- Inability to restore after ransomware or malicious tampering",
+  "reasoning_content": "We need to respond to user: \"Name three risks of running a database without backups. Answer with exactly three bullet points, each starting with '- ', and nothing else.\"\n\nNeed exactly three bullet points, each starting with '- ', nothing else. Need no extra text. Ensure three lines. Could be:\n- Data loss from hardware or storage failure\n- Downtime and lost work during accidental deletion or corruption\n- Inability to restore after ransomware or malicious tampering\n\nCheck each starts with \"- \". Exactly three bullet points. Nothing else. Final only bullets.\n"
+ },
+ "pass": true
+}

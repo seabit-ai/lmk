@@ -1,0 +1,14 @@
+{
+ "content": "apple\nbanana\ngrape\nmango",
+ "reasoning": "We need answer user's request: \"List four fruits in alphabetical order, one per line, all lowercase, no numbering or bullets, nothing else.\" Need final only four lines, lowercase fruits alphabetical. Choose common fruits: apple, banana, cherry, date? Alphabetical: apple, banana, cherry, date. Ensure one per line, no numbering/bullets, nothing else. Final exactly:\napple\nbanana\ncherry\ndate\nCould also use apple, cherry, fig, grape? Alphabetical. Four fruits. Lowercase. \"date\" is fruit? Yes date fruit. But maybe simpler: apple, banana, grape, mango? Alphabetical: apple banana grape mango. That's safe. Need four fruits. Final no extra.\n",
+ "tool_calls": [],
+ "finish": "stop",
+ "tokens": 164,
+ "ms": 5468,
+ "raw_message": {
+  "role": "assistant",
+  "content": "apple\nbanana\ngrape\nmango",
+  "reasoning_content": "We need answer user's request: \"List four fruits in alphabetical order, one per line, all lowercase, no numbering or bullets, nothing else.\" Need final only four lines, lowercase fruits alphabetical. Choose common fruits: apple, banana, cherry, date? Alphabetical: apple, banana, cherry, date. Ensure one per line, no numbering/bullets, nothing else. Final exactly:\napple\nbanana\ncherry\ndate\nCould also use apple, cherry, fig, grape? Alphabetical. Four fruits. Lowercase. \"date\" is fruit? Yes date fruit. But maybe simpler: apple, banana, grape, mango? Alphabetical: apple banana grape mango. That's safe. Need four fruits. Final no extra.\n"
+ },
+ "pass": true
+}

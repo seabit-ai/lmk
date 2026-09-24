@@ -1,0 +1,13 @@
+{
+ "content": "```python\ndef largest_divisor(n: int) -> int:\n    \"\"\" For a given number n, find the largest number that divides n evenly, smaller than n\n    >>> largest_divisor(15)\n    5\n    \"\"\"\n    if n <= 1:\n        raise ValueError(\"n must be greater than 1\")\n    # Find the smallest divisor > 1, then the largest proper divisor = n // smallest_divisor\n    if n % 2 == 0:\n        smallest = 2\n    else:\n        smallest = n  # default if n is prime\n        d = 3\n        while d * d <= n:\n            if n % d == 0:\n                smallest = d\n                break\n            d += 2\n    if smallest == n:\n        return 1\n    return n // smallest\n```",
+ "reasoning": "",
+ "tool_calls": [],
+ "finish": "stop",
+ "tokens": 188,
+ "ms": 7393,
+ "raw_message": {
+  "role": "assistant",
+  "content": "```python\ndef largest_divisor(n: int) -> int:\n    \"\"\" For a given number n, find the largest number that divides n evenly, smaller than n\n    >>> largest_divisor(15)\n    5\n    \"\"\"\n    if n <= 1:\n        raise ValueError(\"n must be greater than 1\")\n    # Find the smallest divisor > 1, then the largest proper divisor = n // smallest_divisor\n    if n % 2 == 0:\n        smallest = 2\n    else:\n        smallest = n  # default if n is prime\n        d = 3\n        while d * d <= n:\n            if n % d == 0:\n                smallest = d\n                break\n            d += 2\n    if smallest == n:\n        return 1\n    return n // smallest\n```"
+ },
+ "pass": true
+}

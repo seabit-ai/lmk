@@ -1,0 +1,54 @@
+{
+ "pass": true,
+ "steps": [
+  {
+   "content": "",
+   "reasoning": "",
+   "tool_calls": [
+    {
+     "id": "call_3c4387e679184d2e",
+     "type": "function",
+     "function": {
+      "name": "file_read",
+      "arguments": "{\"path\": \"notes.md\"}"
+     }
+    }
+   ],
+   "finish": "tool_calls",
+   "tokens": 26,
+   "ms": 1436
+  },
+  {
+   "content": "",
+   "reasoning": "",
+   "tool_calls": [
+    {
+     "id": "call_065940d702c745d5",
+     "type": "function",
+     "function": {
+      "name": "file_edit",
+      "arguments": "{\"path\": \"notes.md\", \"old_text\": \"- buy oat milk\", \"new_text\": \"- buy almond milk\"}"
+     }
+    }
+   ],
+   "finish": "tool_calls",
+   "tokens": 57,
+   "ms": 2875
+  },
+  {
+   "content": "Done. The milk line in notes.md now reads \"buy almond milk\".",
+   "reasoning": "",
+   "tool_calls": [],
+   "finish": "stop",
+   "tokens": 16,
+   "ms": 1267
+  }
+ ],
+ "tokens": 99,
+ "ms": 5578,
+ "finish": "stop",
+ "final_files": {
+  "notes.md": "# notes\n- ship lmk\n- buy almond milk\n- call mom\n"
+ },
+ "content": "Done. The milk line in notes.md now reads \"buy almond milk\"."
+}

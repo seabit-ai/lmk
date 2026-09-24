@@ -1,0 +1,13 @@
+{
+ "content": "MOUNTAINS ARE MIGHTY LANDFORMS THAT RISE STEEPLY FROM THE SURFACE OF THE EARTH.",
+ "reasoning": "",
+ "tool_calls": [],
+ "finish": "stop",
+ "tokens": 26,
+ "ms": 1206,
+ "raw_message": {
+  "role": "assistant",
+  "content": "MOUNTAINS ARE MIGHTY LANDFORMS THAT RISE STEEPLY FROM THE SURFACE OF THE EARTH."
+ },
+ "pass": true
+}

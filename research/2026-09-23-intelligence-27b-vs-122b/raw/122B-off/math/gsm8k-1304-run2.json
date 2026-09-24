@@ -1,0 +1,15 @@
+{
+ "content": "**Step 1: Identify the enrollment at Norman High School.**\nThe problem states that Norman High School enrolls an average of 4000 students every year.\n$N = 4000$\n\n**Step 2: Calculate the enrollment at Butler High School.**\nThe problem states that Butler High School enrolls an average of $3/4$ as many students as Norman High School.\n$B = \\frac{3}{4} \\times N$\n$B = \\frac{3}{4} \\times 4000$\n$B = 3 \\times 1000$\n$B = 3000$\n\n**Step 3: Calculate the difference in enrollment.**\nThe question asks how much greater the enrollment at Norman High School is compared to Butler High School. This requires subtracting the enrollment of Butler from the enrollment of Norman.\nDifference $= N - B$\nDifference $= 4000 - 3000$\nDifference $= 1000$\n\n**Conclusion:**\nThe average enrollment at Norman High School is 1000 students greater than the enrollment at Butler High School.\n\nAnswer: 1000",
+ "reasoning": "",
+ "tool_calls": [],
+ "finish": "stop",
+ "tokens": 260,
+ "ms": 6501,
+ "raw_message": {
+  "role": "assistant",
+  "content": "**Step 1: Identify the enrollment at Norman High School.**\nThe problem states that Norman High School enrolls an average of 4000 students every year.\n$N = 4000$\n\n**Step 2: Calculate the enrollment at Butler High School.**\nThe problem states that Butler High School enrolls an average of $3/4$ as many students as Norman High School.\n$B = \\frac{3}{4} \\times N$\n$B = \\frac{3}{4} \\times 4000$\n$B = 3 \\times 1000$\n$B = 3000$\n\n**Step 3: Calculate the difference in enrollment.**\nThe question asks how much greater the enrollment at Norman High School is compared to Butler High School. This requires subtracting the enrollment of Butler from the enrollment of Norman.\nDifference $= N - B$\nDifference $= 4000 - 3000$\nDifference $= 1000$\n\n**Conclusion:**\nThe average enrollment at Norman High School is 1000 students greater than the enrollment at Butler High School.\n\nAnswer: 1000"
+ },
+ "pass": true,
+ "got": "1000",
+ "want": "1000"
+}

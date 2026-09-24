@@ -1,0 +1,13 @@
+{
+ "content": "```python\ndef is_equal_to_sum_even(n):\n    \"\"\"Evaluate whether the given number n can be written as the sum of exactly 4 positive even numbers\n    Example\n    is_equal_to_sum_even(4) == False\n    is_equal_to_sum_even(6) == False\n    is_equal_to_sum_even(8) == True\n    \"\"\"\n    if n % 2 != 0:\n        return False\n    if n < 8:\n        return False\n    return True\n```",
+ "reasoning": "",
+ "tool_calls": [],
+ "finish": "stop",
+ "tokens": 109,
+ "ms": 3969,
+ "raw_message": {
+  "role": "assistant",
+  "content": "```python\ndef is_equal_to_sum_even(n):\n    \"\"\"Evaluate whether the given number n can be written as the sum of exactly 4 positive even numbers\n    Example\n    is_equal_to_sum_even(4) == False\n    is_equal_to_sum_even(6) == False\n    is_equal_to_sum_even(8) == True\n    \"\"\"\n    if n % 2 != 0:\n        return False\n    if n < 8:\n        return False\n    return True\n```"
+ },
+ "pass": true
+}

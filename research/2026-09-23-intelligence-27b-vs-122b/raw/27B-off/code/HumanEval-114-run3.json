@@ -1,0 +1,13 @@
+{
+ "content": "```python\ndef minSubArraySum(nums):\n    \"\"\"\n    Given an array of integers nums, find the minimum sum of any non-empty sub-array\n    of nums.\n    Example\n    minSubArraySum([2, 3, 4, 1, 2, 4]) == 1\n    minSubArraySum([-1, -2, -3]) == -6\n    \"\"\"\n    min_ending_here = nums[0]\n    min_so_far = nums[0]\n    for x in nums[1:]:\n        min_ending_here = min(x, min_ending_here + x)\n        min_so_far = min(min_so_far, min_ending_here)\n    return min_so_far\n```",
+ "reasoning": "",
+ "tool_calls": [],
+ "finish": "stop",
+ "tokens": 161,
+ "ms": 6190,
+ "raw_message": {
+  "role": "assistant",
+  "content": "```python\ndef minSubArraySum(nums):\n    \"\"\"\n    Given an array of integers nums, find the minimum sum of any non-empty sub-array\n    of nums.\n    Example\n    minSubArraySum([2, 3, 4, 1, 2, 4]) == 1\n    minSubArraySum([-1, -2, -3]) == -6\n    \"\"\"\n    min_ending_here = nums[0]\n    min_so_far = nums[0]\n    for x in nums[1:]:\n        min_ending_here = min(x, min_ending_here + x)\n        min_so_far = min(min_so_far, min_ending_here)\n    return min_so_far\n```"
+ },
+ "pass": true
+}

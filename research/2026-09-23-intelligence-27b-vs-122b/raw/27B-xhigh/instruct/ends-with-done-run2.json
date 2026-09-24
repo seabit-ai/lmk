@@ -1,0 +1,14 @@
+{
+ "content": "1) Keep a consistent sleep and wake time.\n2) Avoid screens for at least 30 minutes before bed. Done.",
+ "reasoning": "We need to respond to user: \"Give two tips for sleeping better. Your answer must end with the single word 'Done.' as the last word.\" Need final only. Must end with Done. Need two tips. Ensure last word Done. Could be concise: \"1) Keep a consistent sleep schedule. 2) Avoid screens before bed. Done.\" Last word Done. Good.\n",
+ "tool_calls": [],
+ "finish": "stop",
+ "tokens": 109,
+ "ms": 4144,
+ "raw_message": {
+  "role": "assistant",
+  "content": "1) Keep a consistent sleep and wake time.\n2) Avoid screens for at least 30 minutes before bed. Done.",
+  "reasoning_content": "We need to respond to user: \"Give two tips for sleeping better. Your answer must end with the single word 'Done.' as the last word.\" Need final only. Must end with Done. Need two tips. Ensure last word Done. Could be concise: \"1) Keep a consistent sleep schedule. 2) Avoid screens before bed. Done.\" Last word Done. Good.\n"
+ },
+ "pass": true
+}

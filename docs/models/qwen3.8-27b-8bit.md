@@ -28,7 +28,7 @@ so it feels closer to 4-bit than the decode number suggests.
 ```yaml
 model:
   name: qwen3.8-27b-8bit
-  # reasoning_effort: low     # this model's template knows low / medium / xhigh; default is xhigh, the highest
+  reasoning_effort: low       # its template knows low / medium / xhigh; the default (xhigh) scored worse on every test
 ```
 
 ## Thinking
@@ -37,6 +37,8 @@ Same as [qwen3.8-27b-4bit](qwen3.8-27b-4bit.md): on by default at the highest le
 
 ## Known issues
 
+- **Use `reasoning_effort: low`**, as for the 4-bit: the default `xhigh` scored worse on every test and
+  ran out of tokens thinking (measured on the 4-bit; the same template).
 - Same as [qwen3.8-27b-4bit](qwen3.8-27b-4bit.md): top-level thinking by default, slower on long
   conversations, a slow first touch after idle.
 - **Writes 40% slower than the 4-bit** (23 against 39 tok/s); reading prompts is as fast.
@@ -44,6 +46,8 @@ Same as [qwen3.8-27b-4bit](qwen3.8-27b-4bit.md): on by default at the highest le
 ## Tested
 
 - Integration tests: tool calls, cache hits, warm-up, image reading, cache surviving a restart — pass.
+
+- Not run through the [intelligence eval](../../research/2026-09-23-intelligence-27b-vs-122b/README.md) itself; the 4-bit was, and the thinking findings carry over (same template).
 
 ## Not tested
 

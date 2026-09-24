@@ -1,0 +1,16 @@
+{
+ "content": "**Step 1:** Find the enrollment at Butler High School.\n\nButler enrolls 3/4 as many students as Norman:\n$$\\frac{3}{4} \\times 4000 = 3000$$\n\n**Step 2:** Find the difference between the two enrollments.\n\n$$4000 - 3000 = 1000$$\n\nAnswer: 1000",
+ "reasoning": "Let me solve this step by step.\n\nNorman High School enrolls 4000 students on average.\nButler High School enrolls 3/4 as many students as Norman High School.\n\nSo Butler's enrollment = 3/4 × 4000 = 3000 students.\n\nThe question asks: How much greater is Norman's enrollment than Butler's?\n\nDifference = 4000 - 3000 = 1000\n",
+ "tool_calls": [],
+ "finish": "stop",
+ "tokens": 200,
+ "ms": 6820,
+ "raw_message": {
+  "role": "assistant",
+  "content": "**Step 1:** Find the enrollment at Butler High School.\n\nButler enrolls 3/4 as many students as Norman:\n$$\\frac{3}{4} \\times 4000 = 3000$$\n\n**Step 2:** Find the difference between the two enrollments.\n\n$$4000 - 3000 = 1000$$\n\nAnswer: 1000",
+  "reasoning_content": "Let me solve this step by step.\n\nNorman High School enrolls 4000 students on average.\nButler High School enrolls 3/4 as many students as Norman High School.\n\nSo Butler's enrollment = 3/4 × 4000 = 3000 students.\n\nThe question asks: How much greater is Norman's enrollment than Butler's?\n\nDifference = 4000 - 3000 = 1000\n"
+ },
+ "pass": true,
+ "got": "1000",
+ "want": "1000"
+}

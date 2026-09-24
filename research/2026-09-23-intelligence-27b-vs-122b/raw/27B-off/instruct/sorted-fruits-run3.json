@@ -1,0 +1,13 @@
+{
+ "content": "apple\nbanana\ncherry\ndate",
+ "reasoning": "",
+ "tool_calls": [],
+ "finish": "stop",
+ "tokens": 9,
+ "ms": 872,
+ "raw_message": {
+  "role": "assistant",
+  "content": "apple\nbanana\ncherry\ndate"
+ },
+ "pass": true
+}

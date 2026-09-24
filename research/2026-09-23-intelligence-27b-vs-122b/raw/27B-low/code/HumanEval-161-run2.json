@@ -1,0 +1,14 @@
+{
+ "content": "```python\ndef solve(s):\n    if any(c.isalpha() for c in s):\n        return ''.join(c.swapcase() if c.isalpha() else c for c in s)\n    else:\n        return s[::-1]\n```",
+ "reasoning": "The function needs to:\n1. Check if the string contains any letters\n2. If no letters: reverse the string\n3. If there are letters: swap the case of each letter (lowercase becomes uppercase, uppercase becomes lowercase), and keep non-letter characters as they are\n\nLet me think through this:\n\n- \"1234\" → no letters → reverse → \"4321\"\n- \"ab\" → has letters → swap case → \"AB\"\n- \"#a@C\" → has letters → swap case of letters, keep others → \"#A@c\"\n\nI need to check if the string contains any letters. I can use `any(c.isalpha() for c in s)`.\n\nIf it contains letters, I swap the case of each letter and keep non-letters as is.\nIf it doesn't contain letters, I reverse the string.\n\nLet me write this:\n\n```python\ndef solve(s):\n    if any(c.isalpha() for c in s):\n        return ''.join(c.swapcase() if c.isalpha() else c for c in s)\n    else:\n        return s[::-1]\n```\n\nThis should handle all the cases correctly. No imports needed.\n",
+ "tool_calls": [],
+ "finish": "stop",
+ "tokens": 315,
+ "ms": 10560,
+ "raw_message": {
+  "role": "assistant",
+  "content": "```python\ndef solve(s):\n    if any(c.isalpha() for c in s):\n        return ''.join(c.swapcase() if c.isalpha() else c for c in s)\n    else:\n        return s[::-1]\n```",
+  "reasoning_content": "The function needs to:\n1. Check if the string contains any letters\n2. If no letters: reverse the string\n3. If there are letters: swap the case of each letter (lowercase becomes uppercase, uppercase becomes lowercase), and keep non-letter characters as they are\n\nLet me think through this:\n\n- \"1234\" → no letters → reverse → \"4321\"\n- \"ab\" → has letters → swap case → \"AB\"\n- \"#a@C\" → has letters → swap case of letters, keep others → \"#A@c\"\n\nI need to check if the string contains any letters. I can use `any(c.isalpha() for c in s)`.\n\nIf it contains letters, I swap the case of each letter and keep non-letters as is.\nIf it doesn't contain letters, I reverse the string.\n\nLet me write this:\n\n```python\ndef solve(s):\n    if any(c.isalpha() for c in s):\n        return ''.join(c.swapcase() if c.isalpha() else c for c in s)\n    else:\n        return s[::-1]\n```\n\nThis should handle all the cases correctly. No imports needed.\n"
+ },
+ "pass": true
+}

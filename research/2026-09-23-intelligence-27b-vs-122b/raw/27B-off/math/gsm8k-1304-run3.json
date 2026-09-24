@@ -1,0 +1,15 @@
+{
+ "content": "To find out how much greater the average enrollment at Norman High School is than the enrollment at Butler High School, we need to determine the enrollment number for Butler High School and then find the difference between the two.\n\n**Step 1: Identify the enrollment at Norman High School.**\nThe problem states that Norman High School enrolls an average of 4,000 students.\n$$ \\text{Norman Enrollment} = 4000 $$\n\n**Step 2: Calculate the enrollment at Butler High School.**\nThe problem states that Butler High School enrolls an average of $\\frac{3}{4}$ as many students as Norman High School.\n$$ \\text{Butler Enrollment} = 4000 \\times \\frac{3}{4} $$\n\nFirst, divide 4,000 by 4:\n$$ 4000 \\div 4 = 1000 $$\n\nThen, multiply by 3:\n$$ 1000 \\times 3 = 3000 $$\n\nSo, Butler High School enrolls 3,000 students.\n\n**Step 3: Calculate the difference between the two enrollments.**\nWe need to find how much greater the enrollment at Norman High School is compared to Butler High School.\n$$ \\text{Difference} = \\text{Norman Enrollment} - \\text{Butler Enrollment} $$\n$$ \\text{Difference} = 4000 - 3000 $$\n$$ \\text{Difference} = 1000 $$\n\nThe average enrollment at Norman High School is 1,000 students greater than the enrollment at Butler High School.\n\nAnswer: 1000",
+ "reasoning": "",
+ "tool_calls": [],
+ "finish": "stop",
+ "tokens": 362,
+ "ms": 12020,
+ "raw_message": {
+  "role": "assistant",
+  "content": "To find out how much greater the average enrollment at Norman High School is than the enrollment at Butler High School, we need to determine the enrollment number for Butler High School and then find the difference between the two.\n\n**Step 1: Identify the enrollment at Norman High School.**\nThe problem states that Norman High School enrolls an average of 4,000 students.\n$$ \\text{Norman Enrollment} = 4000 $$\n\n**Step 2: Calculate the enrollment at Butler High School.**\nThe problem states that Butler High School enrolls an average of $\\frac{3}{4}$ as many students as Norman High School.\n$$ \\text{Butler Enrollment} = 4000 \\times \\frac{3}{4} $$\n\nFirst, divide 4,000 by 4:\n$$ 4000 \\div 4 = 1000 $$\n\nThen, multiply by 3:\n$$ 1000 \\times 3 = 3000 $$\n\nSo, Butler High School enrolls 3,000 students.\n\n**Step 3: Calculate the difference between the two enrollments.**\nWe need to find how much greater the enrollment at Norman High School is compared to Butler High School.\n$$ \\text{Difference} = \\text{Norman Enrollment} - \\text{Butler Enrollment} $$\n$$ \\text{Difference} = 4000 - 3000 $$\n$$ \\text{Difference} = 1000 $$\n\nThe average enrollment at Norman High School is 1,000 students greater than the enrollment at Butler High School.\n\nAnswer: 1000"
+ },
+ "pass": true,
+ "got": "1000",
+ "want": "1000"
+}

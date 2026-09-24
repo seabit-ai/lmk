@@ -1,0 +1,14 @@
+{
+ "content": "Here are two tips for sleeping better:\n\n1. **Keep a consistent sleep schedule.** Go to bed and wake up at the same time every day, even on weekends. This helps regulate your body's internal clock and makes it easier to fall asleep and wake up naturally.\n\n2. **Create a screen-free wind-down routine.** Avoid phones, computers, and TVs at least 30–60 minutes before bed. The blue light they emit suppresses melatonin, the hormone that signals your brain it's time to sleep. Instead, try reading a book, stretching, or practicing deep breathing.\n\nDone.",
+ "reasoning": "The user wants two tips for sleeping better, and my answer must end with the single word \"Done.\" as the last word. Let me think of two solid, practical tips and make sure the response ends with \"Done.\"\n\nTip 1: Keep a consistent sleep schedule.\nTip 2: Avoid screens before bed.\n\nLet me craft a clean response that ends with \"Done.\"\n",
+ "tool_calls": [],
+ "finish": "stop",
+ "tokens": 208,
+ "ms": 7381,
+ "raw_message": {
+  "role": "assistant",
+  "content": "Here are two tips for sleeping better:\n\n1. **Keep a consistent sleep schedule.** Go to bed and wake up at the same time every day, even on weekends. This helps regulate your body's internal clock and makes it easier to fall asleep and wake up naturally.\n\n2. **Create a screen-free wind-down routine.** Avoid phones, computers, and TVs at least 30–60 minutes before bed. The blue light they emit suppresses melatonin, the hormone that signals your brain it's time to sleep. Instead, try reading a book, stretching, or practicing deep breathing.\n\nDone.",
+  "reasoning_content": "The user wants two tips for sleeping better, and my answer must end with the single word \"Done.\" as the last word. Let me think of two solid, practical tips and make sure the response ends with \"Done.\"\n\nTip 1: Keep a consistent sleep schedule.\nTip 2: Avoid screens before bed.\n\nLet me craft a clean response that ends with \"Done.\"\n"
+ },
+ "pass": true
+}

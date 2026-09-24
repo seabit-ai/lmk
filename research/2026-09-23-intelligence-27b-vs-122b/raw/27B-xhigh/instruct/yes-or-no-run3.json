@@ -1,0 +1,14 @@
+{
+ "content": "No",
+ "reasoning": "We need answer user's exact one word: yes or no. Question: Is 91 prime? 91=7*13, so no. Need final exactly one word.\n",
+ "tool_calls": [],
+ "finish": "stop",
+ "tokens": 44,
+ "ms": 3669,
+ "raw_message": {
+  "role": "assistant",
+  "content": "No",
+  "reasoning_content": "We need answer user's exact one word: yes or no. Question: Is 91 prime? 91=7*13, so no. Need final exactly one word.\n"
+ },
+ "pass": true
+}

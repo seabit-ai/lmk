@@ -1,0 +1,13 @@
+{
+ "content": "MOUNTAINS TOWER MIGHTILY ABOVE THE CLOUDS.",
+ "reasoning": "",
+ "tool_calls": [],
+ "finish": "stop",
+ "tokens": 16,
+ "ms": 1012,
+ "raw_message": {
+  "role": "assistant",
+  "content": "MOUNTAINS TOWER MIGHTILY ABOVE THE CLOUDS."
+ },
+ "pass": true
+}

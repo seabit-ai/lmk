@@ -1,0 +1,71 @@
+{
+ "pass": true,
+ "steps": [
+  {
+   "content": "",
+   "reasoning": "",
+   "tool_calls": [
+    {
+     "id": "call_b590639bc8554c02",
+     "type": "function",
+     "function": {
+      "name": "file_read",
+      "arguments": "{\"path\": \"todo.md\"}"
+     }
+    }
+   ],
+   "finish": "tool_calls",
+   "tokens": 26,
+   "ms": 1967
+  },
+  {
+   "content": "",
+   "reasoning": "",
+   "tool_calls": [
+    {
+     "id": "call_ebc33edf3d9d455a",
+     "type": "function",
+     "function": {
+      "name": "file_edit",
+      "arguments": "{\"path\": \"todo.md\", \"old_text\": \"- pay rent\", \"new_text\": \"- pay rent\\n- call the dentist\"}"
+     }
+    }
+   ],
+   "finish": "tool_calls",
+   "tokens": 60,
+   "ms": 4725
+  },
+  {
+   "content": "",
+   "reasoning": "",
+   "tool_calls": [
+    {
+     "id": "call_47d05c45625049bb",
+     "type": "function",
+     "function": {
+      "name": "file_read",
+      "arguments": "{\"path\": \"todo.md\"}"
+     }
+    }
+   ],
+   "finish": "tool_calls",
+   "tokens": 26,
+   "ms": 2460
+  },
+  {
+   "content": "Done. todo.md now contains all three items, with \"call the dentist\" added at the end.",
+   "reasoning": "",
+   "tool_calls": [],
+   "finish": "stop",
+   "tokens": 22,
+   "ms": 1956
+  }
+ ],
+ "tokens": 134,
+ "ms": 11108,
+ "finish": "stop",
+ "final_files": {
+  "todo.md": "- water plants\n- pay rent\n- call the dentist\n"
+ },
+ "content": "Done. todo.md now contains all three items, with \"call the dentist\" added at the end."
+}

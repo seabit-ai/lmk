@@ -1,0 +1,46 @@
+{
+ "pass": true,
+ "steps": [
+  {
+   "content": "",
+   "reasoning": "",
+   "tool_calls": [
+    {
+     "id": "call_514230c014a4427a",
+     "type": "function",
+     "function": {
+      "name": "file_read",
+      "arguments": "{\"path\": \"x.txt\"}"
+     }
+    },
+    {
+     "id": "call_79cdcc2854e34a45",
+     "type": "function",
+     "function": {
+      "name": "file_read",
+      "arguments": "{\"path\": \"y.txt\"}"
+     }
+    }
+   ],
+   "finish": "tool_calls",
+   "tokens": 52,
+   "ms": 1644
+  },
+  {
+   "content": "7",
+   "reasoning": "",
+   "tool_calls": [],
+   "finish": "stop",
+   "tokens": 2,
+   "ms": 172
+  }
+ ],
+ "tokens": 54,
+ "ms": 1816,
+ "finish": "stop",
+ "final_files": {
+  "x.txt": "one\ntwo\nthree\n",
+  "y.txt": "four\nfive\nsix\nseven\n"
+ },
+ "content": "7"
+}

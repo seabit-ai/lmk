@@ -1,0 +1,14 @@
+{
+ "content": "{\"name\":\"Ari Solis\",\"age\":29,\"city\":\"Lunara\"}",
+ "reasoning": "We need answer user's request: \"Describe a fictional person as a JSON object with exactly these keys: name (string), age (integer), city (string). Output only the JSON, no code fence, no prose.\"\nWe need output only JSON. Need ensure valid JSON with exactly keys name, age, city. Maybe {\"name\":\"...\",\"age\":...,\"city\":\"...\"}.\nFinal no code fence/prose.\n",
+ "tool_calls": [],
+ "finish": "stop",
+ "tokens": 110,
+ "ms": 3823,
+ "raw_message": {
+  "role": "assistant",
+  "content": "{\"name\":\"Ari Solis\",\"age\":29,\"city\":\"Lunara\"}",
+  "reasoning_content": "We need answer user's request: \"Describe a fictional person as a JSON object with exactly these keys: name (string), age (integer), city (string). Output only the JSON, no code fence, no prose.\"\nWe need output only JSON. Need ensure valid JSON with exactly keys name, age, city. Maybe {\"name\":\"...\",\"age\":...,\"city\":\"...\"}.\nFinal no code fence/prose.\n"
+ },
+ "pass": true
+}

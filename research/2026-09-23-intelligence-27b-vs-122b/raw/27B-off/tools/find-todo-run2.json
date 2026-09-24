@@ -1,0 +1,72 @@
+{
+ "pass": true,
+ "steps": [
+  {
+   "content": "",
+   "reasoning": "",
+   "tool_calls": [
+    {
+     "id": "call_c371c95d9e354e99",
+     "type": "function",
+     "function": {
+      "name": "file_list",
+      "arguments": "{}"
+     }
+    }
+   ],
+   "finish": "tool_calls",
+   "tokens": 14,
+   "ms": 948
+  },
+  {
+   "content": "",
+   "reasoning": "",
+   "tool_calls": [
+    {
+     "id": "call_e11dea3d7dd94fbd",
+     "type": "function",
+     "function": {
+      "name": "file_read",
+      "arguments": "{\"path\": \"a.py\"}"
+     }
+    },
+    {
+     "id": "call_5b639c35dfed4aab",
+     "type": "function",
+     "function": {
+      "name": "file_read",
+      "arguments": "{\"path\": \"b.py\"}"
+     }
+    },
+    {
+     "id": "call_bf7c28ecccb24440",
+     "type": "function",
+     "function": {
+      "name": "file_read",
+      "arguments": "{\"path\": \"c.py\"}"
+     }
+    }
+   ],
+   "finish": "tool_calls",
+   "tokens": 78,
+   "ms": 3533
+  },
+  {
+   "content": "b.py",
+   "reasoning": "",
+   "tool_calls": [],
+   "finish": "stop",
+   "tokens": 3,
+   "ms": 1517
+  }
+ ],
+ "tokens": 95,
+ "ms": 5998,
+ "finish": "stop",
+ "final_files": {
+  "a.py": "def f():\n    return 1\n",
+  "b.py": "def g():\n    # TODO: handle None\n    return 2\n",
+  "c.py": "x = 3\n"
+ },
+ "content": "b.py"
+}

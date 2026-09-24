@@ -1,0 +1,13 @@
+{
+ "content": "Translates source code to machine",
+ "reasoning": "",
+ "tool_calls": [],
+ "finish": "stop",
+ "tokens": 7,
+ "ms": 636,
+ "raw_message": {
+  "role": "assistant",
+  "content": "Translates source code to machine"
+ },
+ "pass": true
+}

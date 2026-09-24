@@ -66,3 +66,6 @@
   cached 26k（KV 80 KB/token，列表最大）；32 GB 组。进表：同尺寸档的第二个家族选择，速度与 cache 不如 27B，质量未比。
 - **MDL-016 Qwen3.8-27B 5bit/6bit（exp08）**：都进表（32 GB / 36 GB 组）。decode 31.6 / 28.1，与权重字节反比；agent 9/9 各。5bit 思考开时图片题一位数字读错（确定性）。
   Qwen3.8 官方只有 27B / Flash-Next / 2.4T-A95B，Mac 上能跑的就 27B 一个模型四个量化。
+- **MDL-017 智能评测（2026-09-23，`research/2026-09-23-intelligence-27b-vs-122b`）**：四臂 × 四类 × 3 次，机器判分。
+  122B-off 不比 27B 聪明（数学平、代码输、格式略赢），赢在快省（6 s / 218 token 对 9 s / 255）。最好配置 **27B + reasoning_effort low**
+  （代码 99%、格式 100%）。xhigh 最差：20 次思考超限。⇒ 待裁：27B 三个量化版的模型页推荐配置改 `reasoning_effort: low`。

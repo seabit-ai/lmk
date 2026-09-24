@@ -1,0 +1,13 @@
+{
+ "content": "{\n  \"name\": \"Elias Thorne\",\n  \"age\": 34,\n  \"city\": \"Portland\"\n}",
+ "reasoning": "",
+ "tool_calls": [],
+ "finish": "stop",
+ "tokens": 32,
+ "ms": 1346,
+ "raw_message": {
+  "role": "assistant",
+  "content": "{\n  \"name\": \"Elias Thorne\",\n  \"age\": 34,\n  \"city\": \"Portland\"\n}"
+ },
+ "pass": true
+}

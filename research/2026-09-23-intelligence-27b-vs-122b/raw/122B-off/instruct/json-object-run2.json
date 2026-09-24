@@ -1,0 +1,13 @@
+{
+ "content": "{\"name\": \"Elena Vance\", \"age\": 34, \"city\": \"Porto Novo\"}",
+ "reasoning": "",
+ "tool_calls": [],
+ "finish": "stop",
+ "tokens": 24,
+ "ms": 921,
+ "raw_message": {
+  "role": "assistant",
+  "content": "{\"name\": \"Elena Vance\", \"age\": 34, \"city\": \"Porto Novo\"}"
+ },
+ "pass": true
+}

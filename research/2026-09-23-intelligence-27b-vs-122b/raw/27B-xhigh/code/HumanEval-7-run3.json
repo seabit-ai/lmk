@@ -1,0 +1,14 @@
+{
+ "content": "```python\nfrom typing import List\n\n\ndef filter_by_substring(strings: List[str], substring: str) -> List[str]:\n    \"\"\" Filter an input list of strings only for ones that contain given substring\n    >>> filter_by_substring([], 'a')\n    []\n    >>> filter_by_substring(['abc', 'bacd', 'cde', 'array'], 'a')\n    ['abc', 'bacd', 'array']\n    \"\"\"\n    return [s for s in strings if substring in s]\n```",
+ "reasoning": "We need answer user's request. Need complete function in single python code block and nothing else. Need likely just provide import? They said plus any imports it needs. Function signature uses List from typing. Need include from typing import List? The prompt already has import, but asks complete function signature and body, plus any imports it needs. Usually output complete code block including import and function. Ensure only code block, no explanation. Need think if any edge cases: filter strings containing substring. Use [s for s in strings if substring in s]. If substring empty? all strings contain empty; ok.\n\nNeed final only code block. Ensure no extra.\n",
+ "tool_calls": [],
+ "finish": "stop",
+ "tokens": 246,
+ "ms": 9178,
+ "raw_message": {
+  "role": "assistant",
+  "content": "```python\nfrom typing import List\n\n\ndef filter_by_substring(strings: List[str], substring: str) -> List[str]:\n    \"\"\" Filter an input list of strings only for ones that contain given substring\n    >>> filter_by_substring([], 'a')\n    []\n    >>> filter_by_substring(['abc', 'bacd', 'cde', 'array'], 'a')\n    ['abc', 'bacd', 'array']\n    \"\"\"\n    return [s for s in strings if substring in s]\n```",
+  "reasoning_content": "We need answer user's request. Need complete function in single python code block and nothing else. Need likely just provide import? They said plus any imports it needs. Function signature uses List from typing. Need include from typing import List? The prompt already has import, but asks complete function signature and body, plus any imports it needs. Usually output complete code block including import and function. Ensure only code block, no explanation. Need think if any edge cases: filter strings containing substring. Use [s for s in strings if substring in s]. If substring empty? all strings contain empty; ok.\n\nNeed final only code block. Ensure no extra.\n"
+ },
+ "pass": true
+}

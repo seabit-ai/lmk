@@ -1,0 +1,15 @@
+{
+ "content": "To determine how many loads of laundry Greg does in a year, we need to calculate the number of loads required per week and then multiply by the number of weeks in a year.\n\n**Step 1: Calculate the number of loads for twin beds.**\nGreg has 4 twin beds. His washing machine can only wash 2 twin sets at a time.\n$$ \\text{Loads for twins} = \\frac{4 \\text{ twin beds}}{2 \\text{ beds per load}} = 2 \\text{ loads} $$\n\n**Step 2: Calculate the number of loads for the king bed.**\nGreg has 1 king-size bed. His washing machine can only wash 1 king set at a time.\n$$ \\text{Loads for king} = \\frac{1 \\text{ king bed}}{1 \\text{ bed per load}} = 1 \\text{ load} $$\n\n**Step 3: Calculate the total loads per week.**\n$$ \\text{Total weekly loads} = \\text{Loads for twins} + \\text{Loads for king} $$\n$$ \\text{Total weekly loads} = 2 + 1 = 3 \\text{ loads} $$\n\n**Step 4: Calculate the total loads per year.**\nThere are 52 weeks in a year.\n$$ \\text{Total yearly loads} = \\text{Total weekly loads} \\times 52 $$\n$$ \\text{Total yearly loads} = 3 \\times 52 $$\n\nCalculation:\n$$ 3 \\times 50 = 150 $$\n$$ 3 \\times 2 = 6 $$\n$$ 150 + 6 = 156 $$\n\nGreg does 156 loads of laundry in a year.\n\nAnswer: 156",
+ "reasoning": "",
+ "tool_calls": [],
+ "finish": "stop",
+ "tokens": 384,
+ "ms": 12818,
+ "raw_message": {
+  "role": "assistant",
+  "content": "To determine how many loads of laundry Greg does in a year, we need to calculate the number of loads required per week and then multiply by the number of weeks in a year.\n\n**Step 1: Calculate the number of loads for twin beds.**\nGreg has 4 twin beds. His washing machine can only wash 2 twin sets at a time.\n$$ \\text{Loads for twins} = \\frac{4 \\text{ twin beds}}{2 \\text{ beds per load}} = 2 \\text{ loads} $$\n\n**Step 2: Calculate the number of loads for the king bed.**\nGreg has 1 king-size bed. His washing machine can only wash 1 king set at a time.\n$$ \\text{Loads for king} = \\frac{1 \\text{ king bed}}{1 \\text{ bed per load}} = 1 \\text{ load} $$\n\n**Step 3: Calculate the total loads per week.**\n$$ \\text{Total weekly loads} = \\text{Loads for twins} + \\text{Loads for king} $$\n$$ \\text{Total weekly loads} = 2 + 1 = 3 \\text{ loads} $$\n\n**Step 4: Calculate the total loads per year.**\nThere are 52 weeks in a year.\n$$ \\text{Total yearly loads} = \\text{Total weekly loads} \\times 52 $$\n$$ \\text{Total yearly loads} = 3 \\times 52 $$\n\nCalculation:\n$$ 3 \\times 50 = 150 $$\n$$ 3 \\times 2 = 6 $$\n$$ 150 + 6 = 156 $$\n\nGreg does 156 loads of laundry in a year.\n\nAnswer: 156"
+ },
+ "pass": true,
+ "got": "156",
+ "want": "156"
+}
