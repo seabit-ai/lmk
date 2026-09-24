@@ -1,0 +1,42 @@
+[disk_budget][INFO]: VLM prompt cache disk budget: stage=provisional cap_gib=30.00
+[cache_store][INFO]: VLM prompt cache disk store: lifetime=model_load storage=temporary cleanup=model_unload_or_process_exit
+[context_fit][INFO]: Model context auto-fit: family=qwen3_5 max=262,144 fitted=262,144 working_set=77.76GiB reserve=3.00GiB baseline=14.95GiB full_kv=65536B/token prompt_inputs=10240B/token attention_coefficient=48B/context/step rotating_constant=0.00GiB rotating_per_step=0B steps=2048:262,144,1024:262,144,512:262,144
+[cache_store][INFO]: VLM prompt cache context target: configured=32,768 fitted=262,144 effective=262,144
+[coordinator][INFO]: Prompt cache restore: cached_tokens=0 uncached_tokens=25 lifetime_efficiency=0.00%
+[model_kit][INFO]: Request prefill plan: prompt=26 cached=0 segments=2048:26
+[cache_store][INFO]: VLM prompt cache disk usage: used_mib=162.8 cap_mib=30720.0 lifetime_evicted_mib=0.0 records=2 lifetime=model_load
+[disk_budget][INFO]: VLM prompt cache disk budget: stage=final target_tokens=262,144 desired_gib=162.81 cap_gib=153.97 limiter=free_disk_space
+[coordinator][INFO]: Prompt cache restore: cached_tokens=0 uncached_tokens=25 lifetime_efficiency=0.00%
+[model_kit][INFO]: Request prefill plan: prompt=26 cached=0 segments=2048:26
+[coordinator][INFO]: Prompt cache restore: cached_tokens=0 uncached_tokens=68 lifetime_efficiency=0.00%
+[model_kit][INFO]: Request prefill plan: prompt=69 cached=0 segments=2048:69
+[coordinator][INFO]: Prompt cache restore: cached_tokens=0 uncached_tokens=171 lifetime_efficiency=0.00%
+[model_kit][INFO]: Request prefill plan: prompt=172 cached=0 segments=2048:172
+plain  story       39.6 tok/s  tokens 400  sha adad345a9c
+plain  code        39.5 tok/s  tokens 400  sha 58b44530ab
+plain  copyedit    39.4 tok/s  tokens 134  sha 8fe1ef2be6
+[model_kit][INFO]: Loading draft model from /Users/xinkai/.cache/lmk-research/qwen3.8-27b-mtp-draft...
+[model_kit][INFO]: Draft model loaded
+[coordinator][INFO]: Prompt cache restore: cached_tokens=0 uncached_tokens=25 lifetime_efficiency=0.00%
+[model_kit][INFO]: Request prefill plan: prompt=26 cached=0 segments=2048:26
+[coordinator][INFO]: Prompt cache restore: cached_tokens=0 uncached_tokens=25 lifetime_efficiency=0.00%
+[model_kit][INFO]: Request prefill plan: prompt=26 cached=0 segments=2048:26
+[coordinator][INFO]: Prompt cache restore: cached_tokens=0 uncached_tokens=68 lifetime_efficiency=0.00%
+[model_kit][INFO]: Request prefill plan: prompt=69 cached=0 segments=2048:69
+[coordinator][INFO]: Prompt cache restore: cached_tokens=0 uncached_tokens=171 lifetime_efficiency=0.00%
+[model_kit][INFO]: Request prefill plan: prompt=172 cached=0 segments=2048:172
+draft  story       47.7 tok/s  tokens 400  sha 572686175c  DIFFERENT  x1.20
+draft  code        60.6 tok/s  tokens 400  sha 58b44530ab  identical  x1.53
+draft  copyedit    59.4 tok/s  tokens 134  sha 8fe1ef2be6  identical  x1.51
+drafter stats rounds/accepted/drafted 566 764 1129
+[coordinator][INFO]: Prompt cache restore: cached_tokens=0 uncached_tokens=68 lifetime_efficiency=0.00%
+[model_kit][INFO]: Request prefill plan: prompt=69 cached=0 segments=2048:69
+draft  code@temp1   58.5 tok/s  tokens 400  accepted/drafted since 255/288 in 144 rounds
+[coordinator][INFO]: Prompt cache restore: cached_tokens=0 uncached_tokens=25 lifetime_efficiency=0.00%
+[model_kit][INFO]: Request prefill plan: prompt=26 cached=0 segments=2048:26
+[coordinator][INFO]: Prompt cache restore: cached_tokens=0 uncached_tokens=68 lifetime_efficiency=0.00%
+[model_kit][INFO]: Request prefill plan: prompt=69 cached=0 segments=2048:69
+[cache_store][INFO]: VLM prompt cache disk usage: used_mib=667.3 cap_mib=157660.7 lifetime_evicted_mib=0.0 records=9 lifetime=model_load
+pair   story       31.2 tok/s  tokens 400  sha b058517e64  DIFFERENT
+pair   code        31.2 tok/s  tokens 400  sha 58b44530ab  identical
+pair   total 800 tokens in 13.4s = 59.8 tok/s aggregate
