@@ -197,23 +197,40 @@ def run_chat(engine: Engine, body: dict, identity: CallerIdentity,
 
 
 def run_warmup(engine: Engine, body: dict, identity: CallerIdentity,
-               prepared: Optional[PreparedChat] = None) -> dict:
+               prepared: Optional[PreparedChat] = None, should_yield: Callable[[], bool] = lambda: False,
+               on_progress: Callable[[dict], None] = lambda _event: None) -> dict:
     """Prefill a prefix into the cache without generating an answer (wish list
     WISH-019). The caller sends the part it wants warm — typically system +
     tools. A later request that starts the same way restores from the largest
     checkpointed 256-token boundary inside the shared prefix (research LMK-002).
+
+    Checked after every prefill step: once `should_yield` says a request wants the
+    engine, the warmup stops there. The steps already read stay cached (research
+    2026-09-24-prewarm PW-001), so the next warmup of the same prefix carries on.
     """
     clock = get_current_clock()
     started = clock.mono_ms()
     prepared = prepared or prepare_chat(engine, body, warmup=True)
     request_id = identity.ref_id or "warmup-" + uuid.uuid4().hex[:16]
-    generation = engine.generate(prepared.prompt, max_tokens=1, request_id=request_id, on_prefill=lambda *_: True,
+    yielded = {"at": None}
+
+    def on_prefill(processed: int, total: int, cached: int) -> bool:
+        on_progress({"prefill": {"processed": processed, "total": total, "cached": cached}})
+        if should_yield():
+            yielded["at"] = processed
+            return False
+        return True
+
+    generation = engine.generate(prepared.prompt, max_tokens=1, request_id=request_id, on_prefill=on_prefill,
                                  images_b64=prepared.images, tokens=prepared.preflight.tokens)
     for _ in generation:
         pass
     stats = generation.stats
     total_ms = clock.mono_ms() - started
-    log.info("LmkWarmupDone", "prefix warmed", purpose=identity.purpose or "warmup", refId=identity.ref_id,
-             traceparent=identity.traceparent, promptTokens=stats.prompt_tokens,
-             cachedTokens=stats.cached_tokens, totalMs=total_ms)
-    return {"prompt_tokens": stats.prompt_tokens, "cached_tokens": stats.cached_tokens, "total_ms": total_ms}
+    outcome = "done" if yielded["at"] is None else "yielded"
+    log.info("LmkWarmupDone", "prefix warmed" if outcome == "done" else "warmup yielded to a request",
+             purpose=identity.purpose or "warmup", refId=identity.ref_id, traceparent=identity.traceparent,
+             outcome=outcome, promptTokens=stats.prompt_tokens, cachedTokens=stats.cached_tokens,
+             yieldedAtTokens=yielded["at"], totalMs=total_ms)
+    return {"outcome": outcome, "prompt_tokens": stats.prompt_tokens, "cached_tokens": stats.cached_tokens,
+            "total_ms": total_ms}

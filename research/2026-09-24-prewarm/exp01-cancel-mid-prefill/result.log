@@ -1,0 +1,10 @@
+{"event": "start", "model": "qwen3.8-27b-4bit", "system_chars": 71497, "cancel_at": 0.5, "t_ms": 488045843}
+{"step": "A", "event": "headers", "status": 200, "t_ms": 488045893}
+{"step": "A", "event": "prefill", "processed": 0, "total": 14583, "cached": 0, "elapsed_ms": 56, "t_ms": 488045899}
+{"step": "A", "event": "prefill", "processed": 2048, "total": 14583, "cached": 0, "elapsed_ms": 6422, "t_ms": 488052265}
+{"step": "A", "event": "prefill", "processed": 4096, "total": 14583, "cached": 0, "elapsed_ms": 12705, "t_ms": 488058548}
+{"step": "A", "event": "prefill", "processed": 6144, "total": 14583, "cached": 0, "elapsed_ms": 19101, "t_ms": 488064944}
+{"step": "A", "event": "prefill", "processed": 8192, "total": 14583, "cached": 0, "elapsed_ms": 25605, "t_ms": 488071448}
+{"step": "A", "event": "cancel", "processed": 8192, "total": 14583, "cached": 0, "elapsed_ms": 25605, "t_ms": 488071448}
+{"step": "wait", "event": "idle", "waited_ms": 13714, "recent": [{"purpose": "research", "ref_id": "prewarm-exp01-A", "outcome": "cancelled", "prompt_tokens": 14583, "cached_tokens": 0, "first_token_ms": null, "completion_tokens": 0, "decode_tokens_per_s": null, "total_ms": 38897, "ago_ms": 372}], "t_ms": 488085163}
+{"step": "B", "event": "done", "prompt_tokens": 14583, "cached_tokens": 12288, "elapsed_ms": 14520, "t_ms": 488099684}

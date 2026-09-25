@@ -134,3 +134,79 @@ def test_the_place_is_given_back_even_when_the_request_blows_up(memory):
     after = srv.status()
     assert after["in_flight"] == [] and after["waiting"] == []
     assert after["totals"]["failed"] == 2 and [f["outcome"] for f in after["recent"]] == ["failed", "failed"]
+
+
+# Warmup is the lowest priority (kitten design 2026-09-25-prewarm): it yields to a request
+# at the next prefill step and says so; one that never sees an idle engine says that too.
+class SteppedEngine(FakeEngine):
+    """Each prefill step waits for the test to let it through."""
+
+    def __init__(self, steps, **kw):
+        super().__init__(MODEL, chat_format=FakeChatFormat(), script=["</think>", "ok"], **kw)
+        self.step = threading.Semaphore(0)
+        self._steps = steps
+
+    def generate(self, prompt_text, *, on_prefill, **kw):
+        inner = super().generate(prompt_text, on_prefill=lambda *_: True, **kw)
+
+        def pieces():
+            for processed in self._steps:
+                self.step.acquire(timeout=10)
+                if not on_prefill(processed, inner.stats.prompt_tokens, inner.stats.cached_tokens):
+                    return
+            yield from inner.pieces
+
+        return Generation(pieces=pieces(), stats=inner.stats)
+
+
+def warmup_in_background(srv, ref_id):
+    from test_chat_endpoint import post_path
+    box = {}
+
+    def run():
+        box["body"] = post_path(srv, "/lmk/v1/warmup", {"model": "kitten-27b",
+                                                        "messages": [{"role": "system", "content": "SYS"}]},
+                                {"X-Lmk-Purpose": "warmup", "X-Lmk-Ref-Id": ref_id})
+
+    t = threading.Thread(target=run, daemon=True)
+    t.start()
+    time.sleep(0.15)
+    return t, box
+
+
+def test_a_warmup_yields_to_a_request_at_the_next_prefill_step(memory):
+    engine = SteppedEngine([2048, 4096, 6144],
+                           stats=GenerationStats(prompt_tokens=30000, cached_tokens=0, completion_tokens=1))
+    srv = serve(engine, max_parallel=2)
+    try:
+        warm, warm_box = warmup_in_background(srv, "s/warm")
+        engine.step.release()                                    # the warmup reads its first step
+        time.sleep(0.1)
+        mine = [r for r in srv.status()["in_flight"] if r["ref_id"] == "s/warm"]
+        assert mine and mine[0]["prefill"]["processed"] == 2048, "lmk status shows how far a warmup got"
+        turn, turn_box = post_in_background(srv, "s/turn")       # a request arrives
+        engine.step.release(10)                                  # let every step through from here on
+        warm.join(5), turn.join(5)
+    finally:
+        srv.shutdown()
+    assert warm_box["body"]["outcome"] == "yielded"
+    assert turn_box["body"]["choices"][0]["message"]["content"] == "ok"
+    recent = srv.status()["recent"]
+    assert [(f["ref_id"], f["outcome"]) for f in recent] == [("s/turn", "stop"), ("s/warm", "yielded")]
+
+
+def test_a_warmup_that_never_sees_an_idle_engine_answers_not_started(memory):
+    engine = HeldEngine(stats=GenerationStats(prompt_tokens=100, cached_tokens=90, completion_tokens=1))
+    srv = LmkServer(engine, "127.0.0.1", 0,
+                    admission=Admission(1, 16, 30, tick_seconds=0.02, warmup_wait_seconds=1))
+    threading.Thread(target=srv.serve_forever, daemon=True).start()
+    try:
+        busy, _ = post_in_background(srv, "s/busy")
+        from test_chat_endpoint import post_path
+        out = post_path(srv, "/lmk/v1/warmup", {"model": "kitten-27b", "messages": [{"role": "system", "content": "SYS"}]},
+                        {"X-Lmk-Purpose": "warmup", "X-Lmk-Ref-Id": "s/warm"})
+        engine.release.set()
+        busy.join(5)
+    finally:
+        srv.shutdown()
+    assert out == {"outcome": "not_started", "reason": "a warmup waits for an idle engine"}

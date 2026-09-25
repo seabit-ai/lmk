@@ -147,3 +147,64 @@ def test_a_full_queue_refuses_the_next_request_at_once(memory):
     Entering(a, ticket("w1")).settle(0.05), Entering(a, ticket("w2")).settle(0.05)
     with pytest.raises(QueueFull, match="2 requests are already waiting"):
         a.enter(ticket("one-too-many"))
+
+
+# Warmup (kitten design 2026-09-25-prewarm): lowest priority — it starts only on an idle
+# engine, never holds the head of the line, and tells a running warmup when to yield.
+def warm(name, tokens=1000, uncached=30000):
+    return Ticket(purpose="warmup", ref_id=name, tokens=tokens, uncached_tokens=uncached, background=True)
+
+
+def test_a_warmup_starts_only_when_nothing_else_is_answered_or_waiting(memory):
+    a = make(max_parallel=2)
+    a.enter(ticket("writing"))
+    w = Entering(a, warm("w")).settle()
+    assert not w.ticket.admitted and w.ticket.reason == "a warmup waits for an idle engine"
+    a.leave(a._admitted[0])
+    assert w.done().ticket.admitted
+
+
+def test_a_request_that_arrives_while_a_warmup_waits_goes_first(memory):
+    a = make(max_parallel=1)
+    a.enter(ticket("writing"))
+    w = Entering(a, warm("w")).settle(0.05)
+    r = Entering(a, ticket("later")).settle(0.05)
+    a.leave(a._admitted[0])
+    assert r.done().ticket.admitted and not w.ticket.admitted
+    a.leave(r.ticket)
+    assert w.done().ticket.admitted
+
+
+def test_a_running_warmup_is_told_to_yield_while_any_request_waits_or_runs(memory):
+    a = make(max_parallel=2)
+    w = warm("w")
+    a.enter(w)
+    assert not a.foreground_active()
+    long_one = Entering(a, ticket("long", uncached=20000)).settle()
+    assert not long_one.ticket.admitted and a.foreground_active()      # waiting behind the warmup
+    a.leave(w)
+    assert long_one.done().ticket.admitted and a.foreground_active()    # and now running
+
+
+def test_a_short_request_runs_beside_a_warmup_and_the_warmup_is_told_to_yield(memory):
+    a = make(max_parallel=2)
+    a.enter(warm("w"))
+    a.enter(ticket("short", uncached=10))
+    assert a.foreground_active()
+
+
+def test_a_warmup_that_never_sees_an_idle_engine_gives_up_after_its_own_limit(memory):
+    a = Admission(1, 16, max_wait_seconds=30, tick_seconds=0.02, warmup_wait_seconds=1)
+    a.enter(ticket("writing"))
+    w = Entering(a, warm("w")).done(timeout=3.0)
+    assert isinstance(w.error, WaitedTooLong) and w.error.reason == "a warmup waits for an idle engine"
+    assert a.waiting() == []
+
+
+def test_waiting_warmups_are_listed_after_the_requests(memory):
+    a = make(max_parallel=1)
+    a.enter(ticket("writing"))
+    Entering(a, warm("w")).settle(0.05)
+    Entering(a, ticket("r")).settle(0.05)
+    assert [(x["ref_id"], x["purpose"]) for x in a.waiting()] == [("r", "turn"), ("w", "warmup")]
+    assert a.counts()["waiting"] == 2
