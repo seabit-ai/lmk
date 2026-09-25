@@ -160,5 +160,6 @@ class Admission:
     def waiting(self) -> list[dict]:
         now = get_current_clock().mono_ms()
         with self._cond:
-            return [{"purpose": t.purpose, "ref_id": t.ref_id, "reason": t.reason,
-                     "waited_ms": now - t.entered_mono_ms} for t in [*self._queue, *self._warmups]]
+            # ahead: everyone it waits for — the ones being answered, then the ones before it in line
+            return [{"purpose": t.purpose, "ref_id": t.ref_id, "reason": t.reason, "ahead": len(self._admitted) + i,
+                     "waited_ms": now - t.entered_mono_ms} for i, t in enumerate([*self._queue, *self._warmups])]

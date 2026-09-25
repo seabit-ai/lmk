@@ -208,3 +208,14 @@ def test_waiting_warmups_are_listed_after_the_requests(memory):
     Entering(a, ticket("r")).settle(0.05)
     assert [(x["ref_id"], x["purpose"]) for x in a.waiting()] == [("r", "turn"), ("w", "warmup")]
     assert a.counts()["waiting"] == 2
+
+
+# kitten design 2026-09-24-llm-progress §9: a waiting request says how many are ahead of it —
+# the ones being answered plus the ones before it in line.
+def test_a_waiting_request_says_how_many_are_ahead_of_it(memory):
+    a = make(max_parallel=1)
+    a.enter(ticket("writing"))
+    Entering(a, ticket("r1")).settle(0.05)
+    Entering(a, ticket("r2")).settle(0.05)
+    Entering(a, warm("w")).settle(0.05)
+    assert [(x["ref_id"], x["ahead"]) for x in a.waiting()] == [("r1", 1), ("r2", 2), ("w", 3)]

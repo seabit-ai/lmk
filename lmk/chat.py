@@ -146,9 +146,11 @@ def run_chat(engine: Engine, body: dict, identity: CallerIdentity,
     delta({"role": "assistant"})
     splitter = OutputSplitter(Markers(fmt.tool_call_start, fmt.tool_call_end, fmt.think_open, fmt.think_close),
                               fmt.starts_in_reasoning(prompt), on_reasoning, on_text, on_tool_block)
+    decode_seen = {"first_ms": None, "sent_ms": None}
     for piece in generation:
         splitter.write(piece)
         on_progress({"decode": {"part": splitter.part, "completion_tokens": generation.stats.completion_tokens}})
+        report_decode(decode_seen, splitter.part, generation.stats.completion_tokens, send)
         if state["cancelled"] or state["stopped"]:
             generation.pieces.close()  # stops the engine's generator
             break
@@ -194,6 +196,26 @@ def run_chat(engine: Engine, body: dict, identity: CallerIdentity,
     return {"id": completion_id, "finish_reason": finish, "usage": usage, "tool_calls": tool_calls,
             "content": "".join(state["text"]), "reasoning_content": "".join(state["reasoning"]),
             "base": base, "cancelled": state["cancelled"]}
+
+
+# How often a stream carries decode progress (kitten design 2026-09-24-llm-progress §1.8:
+# decode reports once a second; prefill reports once per engine step).
+DECODE_PROGRESS_EVERY_MS = 1000
+
+
+def report_decode(seen: dict, part: str, completion_tokens: int, send: Callable[[dict], None]) -> None:
+    """An `lmk.decode` chunk when the first token is out, then at most once a second — riding the
+    stream with `choices: []` like `lmk.prefill`, so stock OpenAI clients skip it."""
+    now = get_current_clock().mono_ms()
+    if seen["first_ms"] is None:
+        seen["first_ms"] = now
+    elif now - seen["sent_ms"] < DECODE_PROGRESS_EVERY_MS:
+        return
+    seen["sent_ms"] = now
+    elapsed_ms = now - seen["first_ms"]
+    rate = round(completion_tokens / (elapsed_ms / 1000), 1) if elapsed_ms > 0 and completion_tokens >= 2 else None
+    send({"object": "lmk.decode", "choices": [],
+          "lmk": {"decode": {"part": part, "completion_tokens": completion_tokens, "tokens_per_s": rate}}})
 
 
 def run_warmup(engine: Engine, body: dict, identity: CallerIdentity,
