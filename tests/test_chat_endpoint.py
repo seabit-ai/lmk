@@ -294,3 +294,47 @@ def test_stop_applies_to_the_answer_not_the_thinking_and_ends_generation():
     assert deltas(chunks, "reasoning_content") == "Both are done.\n"
     assert deltas(chunks, "content") == "Here's what I"
     assert [c["choices"][0]["finish_reason"] for c in chunks if c["choices"] and c["choices"][0]["finish_reason"]] == ["stop"]
+
+
+class SteppingClock:
+    """Every reading moves time on by `step_ms` — a decode that takes real time, without sleeping."""
+
+    def __init__(self, step_ms):
+        self.now, self.step_ms = 1_000_000, step_ms
+
+    def mono_ms(self):
+        self.now += self.step_ms
+        return self.now
+
+    def wall_ms(self):
+        return self.now
+
+
+def decode_chunks(step_ms):
+    from lmk.clock import get_current_clock, set_current_clock
+    before = get_current_clock()
+    set_current_clock(SteppingClock(step_ms))
+    try:
+        srv, _, _ = serve(TEXT_TURN, stats=GenerationStats(prompt_tokens=441, cached_tokens=256, completion_tokens=88))
+        try:
+            chunks = stream_chunks(post(srv, {"model": "kitten-27b", "stream": True, "messages": []}))
+        finally:
+            srv.shutdown()
+    finally:
+        set_current_clock(before)
+    return [c for c in chunks if c.get("object") == "lmk.decode"]
+
+
+# kitten design 2026-09-24-llm-progress §9: decode progress rides the stream like prefill
+# progress does — once when the first token comes out, then at most once a second.
+def test_decode_progress_rides_the_stream_once_a_second():
+    frozen = decode_chunks(step_ms=0)
+    assert len(frozen) == 1, "no time passes: only the first-token report"
+    assert frozen[0]["choices"] == []
+    first = frozen[0]["lmk"]["decode"]
+    assert first["part"] == "thinking" and first["completion_tokens"] == 88
+
+    moving = decode_chunks(step_ms=600)
+    assert 1 < len(moving) <= len(TEXT_TURN)
+    assert moving[-1]["lmk"]["decode"]["part"] == "answering"
+    assert moving[-1]["lmk"]["decode"]["tokens_per_s"] > 0

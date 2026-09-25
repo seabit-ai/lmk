@@ -82,9 +82,11 @@ def _request_rows(status: dict) -> list[tuple[str, str, str, str]]:
         state, took = r.get("state") or "starting", human_duration(r.get("running_ms", 0))
         prefill = r.get("prefill")
         if state == "prefill" and prefill and prefill.get("total"):
-            done, total = prefill["processed"], prefill["total"]
-            rows.append(("prefill", f"{done * 100 // total}%", _who(r),
-                         f"{done:,} / {total:,} · {prefill.get('cached', 0):,} cached · {took}"))
+            # the engine counts `processed` over the part it reads, its cached part excluded
+            done, cached = prefill["processed"], prefill.get("cached", 0)
+            reading = max(prefill["total"] - cached, 1)
+            rows.append(("prefill", f"{done * 100 // reading}%", _who(r),
+                         f"{done:,} / {reading:,} · {cached:,} cached · {took}"))
         elif state == "decode":
             rows.append(("decode", r.get("part") or "", _who(r), f"{_prompt(r)} · {_rate(r)} · {took}"))
         else:

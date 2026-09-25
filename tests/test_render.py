@@ -75,6 +75,18 @@ def test_every_request_shows_its_state_and_the_numbers_that_go_with_it():
     assert "  queued              turn · o/step-2   2s · 2 requests are being answered (requests.max_parallel)" in lines
 
 
+# The engine counts `processed` over the part it has to read (its cached part excluded), so the
+# percentage is of that part — 45,056 of 87,342 with 12,288 cached is 60%, not 51%.
+def test_prefill_progress_is_of_the_part_being_read():
+    status = json.loads(json.dumps(STATUS))
+    status["in_flight"] = [
+        {"purpose": "turn", "ref_id": "s/t-1.1", "state": "prefill", "part": None, "prompt_tokens": 87342,
+         "cached_tokens": 12288, "prefill": {"processed": 45056, "total": 87342, "cached": 12288},
+         "completion_tokens": 0, "decode_tokens_per_s": None, "running_ms": 194_000}]
+    lines = render.status_block(status, "http://x").splitlines()
+    assert "  prefill  60%        turn · s/t-1.1  45,056 / 75,054 · 12,288 cached · 3m 14s" in lines
+
+
 def test_the_last_answers_stay_on_screen_with_how_they_went():
     status = json.loads(json.dumps(STATUS))
     status["recent"] = [
