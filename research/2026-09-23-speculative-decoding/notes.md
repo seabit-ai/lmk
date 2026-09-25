@@ -80,3 +80,5 @@
 - **SPD-020 DFlash2 的 4 位版在引擎路径上比 bf16 快（2026-09-24，exp14）**：code 1.71×（67.6 tok/s）、copyedit 2.05×、story 1.18×，接受与一致性同 bf16；
   bf16 是 1.51 / 1.83 / 1.01。exp07 的"4 位不改速度"只在 exact verifier 占大头的循环里成立。M3 Ultra 上 4 位 DFlash2 赢 MTP 头（1.53 / 1.51 / 1.20）于 code 与复述。
   发布为 `seabit-ai/Qwen3.8-27B-DFlash2-4bit`（本机 `~/.cache/lmk-research/qwen3.8-27b-dflash2-4bit`，模型卡与 SHA256SUMS 已备）。
+- **SPD-021 两条请求同时投机：仍然不对，也不赚（2026-09-24，exp15，MTP 头，普通前向校验）**：两条相同的 code 同时投机，一条分叉（同配对不投机时两条都一致）；
+  合计速度最好 1.16×，其余持平或更慢（宽校验吃掉收益）。保持 `MAX_ROUND_ROWS = 1`，DFlash2 不做多行。

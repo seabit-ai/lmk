@@ -111,7 +111,7 @@
 - **草稿器已发布**（2026-09-24）：HF 组织 `seabit-ai`（头像 `docs/brand/seabit-ai-logo.png`）；`seabit-ai/Qwen3.8-27B-MTP-draft`（0.8 GB）、
   `seabit-ai/Qwen3.8-27B-DFlash2-4bit`（1.1 GB，exp14：比 bf16 快，code 1.71×）。两者 sha256 与本机一致，空 HF cache 里经 lmk 的下载路径都取得到。
   27B-4bit 的缺省草稿器改成 `dflash2`（owner 2026-09-24；5/6/8 位版仍 mtp，DFlash2 只在 4 位上量过）。
-  多行投机（两条请求同时投机）仍关着（MAX_ROUND_ROWS = 1）；散文接受率低时自动退回普通解码（own-engine 补记三的附带规则）没做。
+  多行投机：exp15 重看过（SPD-021），仍分叉且最多 1.16×，**不做**；散文接受率低时自动退回普通解码（own-engine 补记三的附带规则）没做。
 
 ## 已裁但还没做的
 - **kitten 发 `X-Lmk-Purpose` / `X-Lmk-Ref-Id`**：2026-09-20 已在 kitten repo 的分支 `llm-call-identity` 上实现并验证
