@@ -48,7 +48,9 @@ def chat(srv, messages, **extra):
     calls = [c["choices"][0]["delta"]["tool_calls"][0] for c in chunks if c["choices"] and c["choices"][0]["delta"].get("tool_calls")]
     usage = next(c["usage"] for c in chunks if c.get("usage"))
     prefill = [c["lmk"]["prefill"] for c in chunks if c.get("object") == "lmk.prefill"]
-    return {"content": pick("content"), "reasoning": pick("reasoning_content"), "calls": calls, "usage": usage, "prefill": prefill}
+    decode = [c["lmk"]["decode"] for c in chunks if c.get("object") == "lmk.decode"]
+    return {"content": pick("content"), "reasoning": pick("reasoning_content"), "calls": calls, "usage": usage,
+            "prefill": prefill, "decode": decode}
 
 
 # Same acceptance as kitten's lmstudio provider itest: call out, result back, text answer.
@@ -100,6 +102,15 @@ def test_warmup_makes_the_first_real_request_hit(server):
     hits = real["usage"]["prompt_tokens_details"]["cached_tokens"]
     print(f"warm prompt={warm['prompt_tokens']} real prompt={real['usage']['prompt_tokens']} hits={hits}")
     assert hits >= warm["prompt_tokens"] - (2048 + 256)
+
+
+# kitten design 2026-09-24-llm-progress §9: decode progress rides the stream on a real model too.
+def test_decode_progress_rides_the_stream(server):
+    out = chat(server, [{"role": "user", "content": "Count from 1 to 30, one number per line."}], max_tokens=200)
+    print(f"decode chunks={len(out['decode'])} first={out['decode'][:1]} last={out['decode'][-1:]}")
+    assert out["decode"], "at least the first-token report"
+    assert out["decode"][0]["part"] in ("thinking", "answering")
+    assert out["decode"][-1]["completion_tokens"] > out["decode"][0]["completion_tokens"] or len(out["decode"]) == 1
 
 
 def warmup(srv, messages, ref_id):
