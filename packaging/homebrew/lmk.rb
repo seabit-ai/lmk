@@ -10,8 +10,8 @@
 class Lmk < Formula
   desc "One local model, always on, for your agent — Apple Silicon"
   homepage "https://github.com/seabit-ai/lmk"
-  url "https://github.com/seabit-ai/lmk/archive/refs/tags/v0.7.0.tar.gz"
-  sha256 "0000000000000000000000000000000000000000000000000000000000000000"
+  url "https://github.com/seabit-ai/lmk/archive/refs/tags/v0.7.1.tar.gz"
+  sha256 "212e643eb587c2a72ab8bfd8e85e8c33606b4d6cdd6afe437eb55a99a91bef5b"
   license "MIT"
 
   depends_on :macos
