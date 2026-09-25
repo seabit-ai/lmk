@@ -182,6 +182,8 @@ def test_a_warmup_yields_to_a_request_at_the_next_prefill_step(memory):
         warm, warm_box = warmup_in_background(srv, "s/warm")
         engine.step.release()                                    # the warmup reads its first step
         time.sleep(0.1)
+        mine = [r for r in srv.status()["in_flight"] if r["ref_id"] == "s/warm"]
+        assert mine and mine[0]["prefill"]["processed"] == 2048, "lmk status shows how far a warmup got"
         turn, turn_box = post_in_background(srv, "s/turn")       # a request arrives
         engine.step.release(10)                                  # let every step through from here on
         warm.join(5), turn.join(5)

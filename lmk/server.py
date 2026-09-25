@@ -120,9 +120,9 @@ class LmkServer:
         outcome, stats = "failed", {}
         try:
             if warmup:
-                running.state = "prefill"
                 result = run_warmup(self._engine, body, identity, prepared,
-                                    should_yield=self._admission.foreground_active)
+                                    should_yield=self._admission.foreground_active,
+                                    on_progress=lambda event: running.on_prefill(event["prefill"]))
                 outcome = "warmed" if result["outcome"] == "done" else result["outcome"]
                 stats = {"prompt_tokens": result["prompt_tokens"], "cached_tokens": result["cached_tokens"]}
                 _send_json(h, 200, result)

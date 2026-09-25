@@ -15,6 +15,12 @@
   会去掉更早助手回复里的思考内容。warmup 在历史末尾补一条 `"."` user 消息收尾，真实请求在同一位置是新的 user 消息——
   两者渲染时最后一轮助手回复后面都有 user 消息，改写一致，分叉点仍在补的那条消息处。需要时用一个实验确认。
 
+- **PW-004 实装后的让路实测（itest，2026-09-25）。** 条件：owner 的 Mac，qwen3.8-27b-4bit，进程内 itest 服务（非常驻服务），
+  冷前缀 15,774 token，一个预热 + 一个 55 token 的真实请求（`max_tokens 8`，思考开）。预热在读完第一块后收到请求：
+  预热 `yielded`（自开始 12.5 s）；**真实请求从发出到答完 13.0 s**；再预热同一前缀从 6,144 token 接着算，`done`，31.7 s。
+  13 s 比"一块约 6 s"多出约一倍，拆分（等块、引擎收尾、自身 prefill/decode 各占多少）未量。
+  （`tests/test_itest_chat.py::test_a_warmup_yields_to_a_request_and_the_next_warmup_carries_on`）
+
 ## 决策记录
 
 - 让路机制采用"lmk 每块检查内部标记"（PW-001 使之可行）。

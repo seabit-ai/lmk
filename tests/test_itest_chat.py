@@ -102,6 +102,48 @@ def test_warmup_makes_the_first_real_request_hit(server):
     assert hits >= warm["prompt_tokens"] - (2048 + 256)
 
 
+def warmup(srv, messages, ref_id):
+    req = urllib.request.Request(f"http://127.0.0.1:{srv.port}/lmk/v1/warmup",
+                                 data=json.dumps({"model": "itest-model", "messages": messages}).encode(),
+                                 headers={"Content-Type": "application/json", "X-Lmk-Purpose": "warmup",
+                                          "X-Lmk-Ref-Id": ref_id}, method="POST")
+    return json.loads(urllib.request.urlopen(req, timeout=900).read())
+
+
+# kitten design 2026-09-25-prewarm: a warmup gives the engine up to a request at the next prefill
+# step, and the next warmup of the same prefix carries on from what the first one read (PW-001).
+def test_a_warmup_yields_to_a_request_and_the_next_warmup_carries_on(server):
+    import threading
+    import time
+    import uuid
+
+    system = {"role": "system", "content": f"Nonce {uuid.uuid4().hex}. " +
+              "".join(f"Yield rule {i}: answer in one short sentence. " for i in range(1200))}
+    box = {}
+    first = threading.Thread(target=lambda: box.update(first=warmup(server, [system], "itest/warm-1")), daemon=True)
+    first.start()
+    deadline = time.monotonic() + 300
+    while time.monotonic() < deadline:
+        mine = [r for r in server.status()["in_flight"] if r["ref_id"] == "itest/warm-1"]
+        if mine and (mine[0].get("prefill") or {}).get("processed", 0) >= 2048:
+            break
+        time.sleep(0.2)
+    else:
+        raise AssertionError("the warmup never read its first step")
+
+    sent = time.monotonic()
+    real = chat(server, [{"role": "user", "content": "Say hello."}], max_tokens=8)
+    real_s = time.monotonic() - sent
+    first.join(600)
+    second = warmup(server, [system], "itest/warm-2")
+    print(f"first={box['first']} real_s={real_s:.1f} real_usage={real['usage']} second={second}")
+
+    assert box["first"]["outcome"] == "yielded"
+    assert real_s < 60, "the request waited at most about one prefill step, not the whole warmup"
+    assert second["outcome"] == "done"
+    assert second["cached_tokens"] >= 2048, "the second warmup carried on from the first one's steps"
+
+
 # Image input end to end: a generated PNG with a number only the pixels carry.
 def test_the_model_reads_an_image(server):
     import base64

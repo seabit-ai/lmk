@@ -197,7 +197,8 @@ def run_chat(engine: Engine, body: dict, identity: CallerIdentity,
 
 
 def run_warmup(engine: Engine, body: dict, identity: CallerIdentity,
-               prepared: Optional[PreparedChat] = None, should_yield: Callable[[], bool] = lambda: False) -> dict:
+               prepared: Optional[PreparedChat] = None, should_yield: Callable[[], bool] = lambda: False,
+               on_progress: Callable[[dict], None] = lambda _event: None) -> dict:
     """Prefill a prefix into the cache without generating an answer (wish list
     WISH-019). The caller sends the part it wants warm — typically system +
     tools. A later request that starts the same way restores from the largest
@@ -214,6 +215,7 @@ def run_warmup(engine: Engine, body: dict, identity: CallerIdentity,
     yielded = {"at": None}
 
     def on_prefill(processed: int, total: int, cached: int) -> bool:
+        on_progress({"prefill": {"processed": processed, "total": total, "cached": cached}})
         if should_yield():
             yielded["at"] = processed
             return False
