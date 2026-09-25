@@ -93,22 +93,27 @@ class LmkServer:
                                   traceparent=h.headers.get("traceparent"))
         ticket = Ticket(purpose=identity.purpose, ref_id=identity.ref_id,
                         tokens=prepared.tokens_needed(self._engine.loaded_model().context_length),
-                        uncached_tokens=prepared.preflight.uncached_tokens)
+                        uncached_tokens=prepared.preflight.uncached_tokens, background=warmup)
         # Nothing has been sent yet, and nothing is until the queue lets the request in:
         # one that cannot start gets a plain 503 with the reason, not a broken stream.
         try:
             self._admission.enter(ticket)
-        except QueueFull as e:
+        except (QueueFull, WaitedTooLong) as e:
+            if warmup:
+                # a warmup that cannot start is not an error: its caller asks again later
+                log.info("LmkWarmupNotStarted", "warmup gave up waiting for an idle engine",
+                         purpose=identity.purpose, refId=identity.ref_id, reason=str(e))
+                _send_json(h, 200, {"outcome": "not_started", "reason": getattr(e, "reason", str(e))})
+                return
             self._board.refused()
-            log.warn("LmkQueueFull", "request refused: the queue is full", purpose=identity.purpose,
-                     refId=identity.ref_id, waiting=e.waiting)
-            _send_json(h, 503, {"error": {"type": "queue_full", "message": f"lmk is busy: {e}. Try again shortly."}})
-            return
-        except WaitedTooLong as e:
-            self._board.refused()
-            log.warn("LmkWaitedTooLong", "request refused: it could not start in time", purpose=identity.purpose,
-                     refId=identity.ref_id, waitedS=e.waited_s, reason=e.reason)
-            _send_json(h, 503, {"error": {"type": "waited_too_long", "message": f"lmk {e}"}})
+            if isinstance(e, QueueFull):
+                log.warn("LmkQueueFull", "request refused: the queue is full", purpose=identity.purpose,
+                         refId=identity.ref_id, waiting=e.waiting)
+                _send_json(h, 503, {"error": {"type": "queue_full", "message": f"lmk is busy: {e}. Try again shortly."}})
+            else:
+                log.warn("LmkWaitedTooLong", "request refused: it could not start in time", purpose=identity.purpose,
+                         refId=identity.ref_id, waitedS=e.waited_s, reason=e.reason)
+                _send_json(h, 503, {"error": {"type": "waited_too_long", "message": f"lmk {e}"}})
             return
         running = self._board.begin(identity.purpose, identity.ref_id, identity.traceparent,
                                     prepared.preflight.prompt_tokens)
@@ -116,9 +121,10 @@ class LmkServer:
         try:
             if warmup:
                 running.state = "prefill"
-                result = run_warmup(self._engine, body, identity, prepared)
-                outcome, stats = "warmed", {"prompt_tokens": result["prompt_tokens"],
-                                            "cached_tokens": result["cached_tokens"]}
+                result = run_warmup(self._engine, body, identity, prepared,
+                                    should_yield=self._admission.foreground_active)
+                outcome = "warmed" if result["outcome"] == "done" else result["outcome"]
+                stats = {"prompt_tokens": result["prompt_tokens"], "cached_tokens": result["cached_tokens"]}
                 _send_json(h, 200, result)
             else:
                 result = self._chat_tracked(h, body, identity, running, prepared)

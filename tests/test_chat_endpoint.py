@@ -186,6 +186,7 @@ def test_warmup_prefills_with_one_token_and_reports_hits():
     finally:
         srv.shutdown()
     assert out["prompt_tokens"] == 11172 and out["cached_tokens"] == 0 and out["total_ms"] >= 0
+    assert out["outcome"] == "done"
     assert engine.requests[0]["max_tokens"] == 1 and engine.requests[0]["request_id"] == "warm-1"
     messages, tools = fmt.rendered[0]
     assert messages == [{"role": "system", "content": "SYS"}, {"role": "user", "content": "."}]

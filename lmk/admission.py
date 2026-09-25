@@ -9,6 +9,10 @@ everyone behind it waits too:
   4. this Mac is not critically short of memory
 Nothing is sent to the client before admission, so a request that waited too long
 gets an honest 503.
+
+Warmups (`background` tickets, kitten design 2026-09-25-prewarm) sit apart from that line:
+one starts only when nothing is being answered and nobody waits, so it never holds up a
+request; once running it asks `foreground_active()` after every prefill step and yields.
 """
 import threading
 from collections import deque
@@ -22,6 +26,11 @@ from lmk.memory import get_current_memory
 # One prefill step of the engine (DEFAULT_PREFILL_STEP_SIZE): a prompt whose uncached
 # part fits in it is read in a single scheduler turn and stalls nobody.
 SHORT_PROMPT_TOKENS = 2048
+
+# How long a warmup waits for an idle engine before it gives up. FABRICATED: its caller
+# (kitten) asks again every few minutes, so holding a connection open longer buys nothing.
+WARMUP_WAIT_SECONDS = 60
+WARMUP_WAITS = "a warmup waits for an idle engine"
 
 
 class QueueFull(Exception):
@@ -46,18 +55,22 @@ class Ticket:
     entered_mono_ms: int = 0
     reason: str = ""
     admitted: bool = field(default=False)
+    background: bool = False           # a warmup: lowest priority, yields to any request
 
 
 class Admission:
     def __init__(self, max_parallel: int, max_queue: int, max_wait_seconds: int,
-                 token_budget: Optional[int] = None, tick_seconds: float = 1.0):
+                 token_budget: Optional[int] = None, tick_seconds: float = 1.0,
+                 warmup_wait_seconds: int = WARMUP_WAIT_SECONDS):
         self._max_parallel = max_parallel
         self._max_queue = max_queue
         self._max_wait_ms = max_wait_seconds * 1000
+        self._warmup_wait_ms = warmup_wait_seconds * 1000
         self._token_budget = token_budget    # None: the engine reported no memory fit; rule 3 is off
         self._tick_seconds = tick_seconds    # rule 4 changes with the outside world: re-read while anyone waits
         self._cond = threading.Condition()
         self._queue: deque[Ticket] = deque()
+        self._warmups: deque[Ticket] = deque()
         self._admitted: list[Ticket] = []
         self._was_critical = False
         self._critical_since_ms = 0
@@ -89,19 +102,26 @@ class Admission:
                      lastedMs=now - self._critical_since_ms, freePercent=free_percent)
         self._was_critical = critical
 
+    def _blocked_warmup(self, t: Ticket) -> Optional[str]:
+        if self._admitted or self._queue or self._warmups[0] is not t:
+            return WARMUP_WAITS
+        return self._blocked(t)
+
     def enter(self, ticket: Ticket) -> None:
         clock = get_current_clock()
+        line = self._warmups if ticket.background else self._queue
+        max_wait_ms = self._warmup_wait_ms if ticket.background else self._max_wait_ms
         with self._cond:
-            if len(self._queue) >= self._max_queue:
-                raise QueueFull(len(self._queue))
+            if len(self._queue) + len(self._warmups) >= self._max_queue:
+                raise QueueFull(len(self._queue) + len(self._warmups))
             ticket.entered_mono_ms = clock.mono_ms()
-            self._queue.append(ticket)
+            line.append(ticket)
             try:
                 while True:
-                    if self._queue[0] is ticket:
-                        reason = self._blocked(ticket)
+                    if ticket.background or self._queue[0] is ticket:
+                        reason = self._blocked_warmup(ticket) if ticket.background else self._blocked(ticket)
                         if reason is None:
-                            self._queue.popleft()
+                            line.remove(ticket)
                             ticket.admitted = True
                             ticket.reason = ""
                             self._admitted.append(ticket)
@@ -111,12 +131,12 @@ class Admission:
                     else:
                         ticket.reason = "requests ahead of it are waiting"
                     waited_ms = clock.mono_ms() - ticket.entered_mono_ms
-                    if waited_ms >= self._max_wait_ms:
+                    if waited_ms >= max_wait_ms:
                         raise WaitedTooLong(waited_ms // 1000, ticket.reason)
-                    self._cond.wait(timeout=min(self._tick_seconds, (self._max_wait_ms - waited_ms) / 1000))
+                    self._cond.wait(timeout=min(self._tick_seconds, (max_wait_ms - waited_ms) / 1000))
             except BaseException:
-                if ticket in self._queue:
-                    self._queue.remove(ticket)
+                if ticket in line:
+                    line.remove(ticket)
                 self._cond.notify_all()
                 raise
 
@@ -126,14 +146,19 @@ class Admission:
                 self._admitted.remove(ticket)
             self._cond.notify_all()
 
+    def foreground_active(self) -> bool:
+        """A request (not a warmup) is waiting or being answered: a running warmup should yield."""
+        with self._cond:
+            return bool(self._queue) or any(not a.background for a in self._admitted)
+
     def counts(self) -> dict:
         with self._cond:
             return {"answering": len(self._admitted), "max_parallel": self._max_parallel,
-                    "waiting": len(self._queue), "max_queue": self._max_queue,
+                    "waiting": len(self._queue) + len(self._warmups), "max_queue": self._max_queue,
                     "tokens_in_memory": sum(a.tokens for a in self._admitted), "token_budget": self._token_budget}
 
     def waiting(self) -> list[dict]:
         now = get_current_clock().mono_ms()
         with self._cond:
             return [{"purpose": t.purpose, "ref_id": t.ref_id, "reason": t.reason,
-                     "waited_ms": now - t.entered_mono_ms} for t in self._queue]
+                     "waited_ms": now - t.entered_mono_ms} for t in [*self._queue, *self._warmups]]
