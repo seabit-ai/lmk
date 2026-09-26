@@ -87,6 +87,15 @@ makes every cached conversation cold once.
 
 ## Known issues
 
+- **Do not run this model with thinking off for agent work: it makes up facts instead of using its tools.**
+  One test from our agent's eval set: the previous answer had come back empty with only source links, and
+  the user asks "so what's the answer?" With `thinking: false` the model answered 3 times out of 3 with
+  invented specifics — a table of store addresses, a phone number, "I searched around" — without calling
+  the `web_search` tool it had. With `reasoning_effort: low` it called `web_search` 3 times out of 3, reading
+  the earlier links to pick its query. Same model, same prompt, same tools (27B-4bit, 16-bit KV cache, dflash2
+  draft, 2026-09-26; one test case, 3 runs each — a small sample, and the direction was unanimous). Thinking
+  at `low` costs a few hundred tokens per step; here it was not slower, because it stopped writing long
+  invented answers.
 - **The default thinking level (`xhigh`) is the worst setting we measured.** On 50 GSM8K, 40 HumanEval,
   10 format and 5 tool tasks, 3 runs each, `xhigh` scored below `low` on every category and ran out
   of 8,000 tokens 20 times, thinking; `low` was the best configuration of any model in the test
