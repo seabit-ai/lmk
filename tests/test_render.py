@@ -101,8 +101,27 @@ def test_the_last_answers_stay_on_screen_with_how_they_went():
     assert "  just finished" in lines
     assert ("  turn · s/step-13  27,012 prompt (26,880 cached) · first token 1.1s · 349 tokens at 33/s · "
             "tool call · 12s ago") in lines
-    assert "  warmup            11,174 prompt (11,008 cached) · warmed · 1h 0m ago" in lines
+    assert "  warmup            11,174 prompt (11,008 cached) · warmed 166 new tokens in 0.9s · 1h 0m ago" in lines
     assert not any("unnamed" in l for l in lines)   # everyone here said who they are: no note
+
+
+def test_a_warmup_says_what_it_read_and_how_long_it_took():
+    status = json.loads(json.dumps(STATUS))
+    status["recent"] = [
+        {"purpose": "warmup", "ref_id": "s/warmup", "outcome": "warmed", "prompt_tokens": 87012,
+         "cached_tokens": 12288, "first_token_ms": None, "completion_tokens": 0, "decode_tokens_per_s": None,
+         "total_ms": 195_400, "ago_ms": 5_000},
+        {"purpose": "warmup", "ref_id": "s/warmup", "outcome": "warmed", "prompt_tokens": 13618,
+         "cached_tokens": 13618, "first_token_ms": None, "completion_tokens": 0, "decode_tokens_per_s": None,
+         "total_ms": 40, "ago_ms": 6_000},
+        {"purpose": "warmup", "ref_id": "s/warmup", "outcome": "yielded", "prompt_tokens": 50000,
+         "cached_tokens": 2048, "first_token_ms": None, "completion_tokens": 0, "decode_tokens_per_s": None,
+         "total_ms": 12_300, "ago_ms": 7_000},
+    ]
+    lines = render.status_block(status, "http://x").splitlines()
+    assert any("87,012 prompt (12,288 cached) · warmed 74,724 new tokens in 3m 15s · 5s ago" in l for l in lines)
+    assert any("13,618 prompt (13,618 cached) · already warm · 6s ago" in l for l in lines)
+    assert any("50,000 prompt (2,048 cached) · yielded after 12.3s · 7s ago" in l for l in lines)
 
 
 def test_a_status_from_an_older_lmk_still_renders():
