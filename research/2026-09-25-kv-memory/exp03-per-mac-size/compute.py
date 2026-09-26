@@ -37,63 +37,50 @@ def main():
     e1, limit = load(sys.argv[1]), int(sys.argv[4])
     capped_runs = [(16, r) for r in load(sys.argv[2])] + [(8, r) for r in load(sys.argv[3])]
 
-    # exp01: per bits x context, the worst the process held over the decode requests at that context
-    # (the long prefix restored from the cache, then 256 tokens) and their MLX peak. Cold prefill is left
-    # out on purpose: its peak depends on the prefill step, which the engine lowers on a smaller Mac
-    # (its formula covers that case); restoring a cached prefix is not in the formula.
-    worst = defaultdict(lambda: {"fp": 0, "peak": 0, "held": 0})
-    for r in e1:
-        if r["mode"] != "greedy":
-            continue
-        bits = int(r["cond"][2:])
-        tok = r["done"]["promptTokens"] + r["done"]["completionTokens"]
-        w = worst[(bits, r["ctx"])]
-        w["tok"] = max(w.get("tok", 0), tok)
-        w["fp"] = max(w["fp"], r["mem"]["footprint_max"] or 0)
-        w["peak"] = max(w["peak"], r["mem"]["peak"] or 0)
-        w["held"] = max(w["held"], r["mem"]["held_max"] or 0)
-    # footprint beyond MLX's own active + cache (Metal/driver/Python): median over all exp01 requests
+    # Per bits x context, the worst a decode request made the process hold (the long prefix restored from
+    # the cache, then 256 tokens): max(footprint polled every 0.5 s, MLX peak + the non-MLX part). The peak
+    # is instantaneous (restoring the prefix) and the poll can miss it; the non-MLX part (Metal/driver/
+    # Python, footprint − active − cache) is the median over exp01. Cold prefill is left out on purpose: its
+    # peak depends on the prefill step, which the engine lowers on a smaller Mac (its formula covers that);
+    # restoring a cached prefix is not in the formula.
     extra = statistics.median((r["mem"]["footprint_max"] or 0) - (r["mem"]["held_max"] or 0) for r in e1)
+    worst = defaultdict(dict)   # (model, bits) -> {tokens: bytes}
+
+    def add(model, bits, r):
+        if r["mode"] != "greedy":
+            return
+        tok = r["done"]["promptTokens"] + r["done"]["completionTokens"]
+        v = max(r["mem"]["footprint_max"] or 0, (r["mem"]["peak"] or 0) + extra)
+        d = worst[(model, bits)]
+        d[tok] = max(d.get(tok, 0), v)
+
+    for r in e1:
+        add("uncapped", int(r["cond"][2:]), r)
+    for bits, r in capped_runs:
+        if r["cond"] == "limit1g":
+            add("capped", bits, r)
 
     lines = {}
-    print("## Fitted lines from exp01 decode requests (96 GB Mac, one request at a time, 8k–128k; x = tokens in the request)\n")
-    print("| bits | footprint during (GB) = a + b·tokens | b ÷ KV B/token | MLX peak (GB) = a + b·tokens | b ÷ KV B/token |")
+    print("## Fitted lines (96 GB Mac, one request at a time; t = tokens in the request)\n")
+    print(f"worst held = max(footprint, MLX peak + {extra / GB:.2f} GB non-MLX). Uncapped: exp01 decode requests at "
+          "8k/32k/64k/128k. Capped (1 GiB): exp02 (kv16) / exp04 (kv8) at 32k/128k.\n")
+    print("| model | bits | points (tokens: GB) | worst held (GB) = a + b·t | b ÷ KV B/token |")
     print("|---|---|---|---|---|")
-    for bits in (8, 16):
-        pts = sorted((w["tok"], w) for (b, _), w in worst.items() if b == bits)
-        fa, fb = fit_line([(t, w["fp"]) for t, w in pts])
-        pa, pb = fit_line([(t, w["peak"]) for t, w in pts])
-        lines[bits] = {"fp": (fa, fb), "peak": (pa, pb)}
-        print(f"| {bits} | {fa / GB:.1f} + {fb / 1e3:.0f} kB × t | {fb / KV[bits]:.1f}× | {pa / GB:.1f} + {pb / 1e3:.0f} kB × t | {pb / KV[bits]:.1f}× |")
-    print(f"\nfootprint − (MLX active + cache), median over exp01 requests: {extra / GB:.2f} GB")
+    for (model, bits), d in sorted(worst.items()):
+        a, b = fit_line(sorted(d.items()))
+        lines[(model, bits)] = (a, b)
+        pts = ", ".join(f"{t // 1000}k: {v / GB:.1f}" for t, v in sorted(d.items()))
+        print(f"| {model} | kv{bits} | {pts} | {a / GB:.1f} + {b / 1e3:.0f} kB × t | {b / KV[bits]:.1f}× |")
 
-    # the capped model: footprint <= peak + limit + extra. Check it against exp02 (kv16, capped conditions).
-    print(f"\n## Check of the capped model on exp02 (kv16) and exp04 (kv8): footprint during ≤ MLX peak + limit + {extra / GB:.2f} GB\n")
-    print("| bits | condition | context | limit | footprint during (measured, max of reps) | peak + limit + extra | holds |")
-    print("|---|---|---|---|---|---|---|")
-    lim_of = {}
-    for bits, r in capped_runs:
-        if r["mode"] != "greedy":
-            continue
-        c = r["cond"]
-        lim = {"limit0": 0, "limit1g": 1 << 30, "limit4g": 4 << 30}.get(c)
-        if lim is None:
-            continue
-        k = (bits, c, r["ctx"])
-        lim_of.setdefault(k, [lim, 0, 0])
-        lim_of[k][1] = max(lim_of[k][1], r["mem"]["footprint_max"] or 0)
-        lim_of[k][2] = max(lim_of[k][2], r["mem"]["peak"] or 0)
-    for (bits, c, ctx), (lim, fp, peak) in sorted(lim_of.items()):
-        bound = peak + lim + extra
-        print(f"| kv{bits} | {c} | {ctx // 1024}k | {lim / GIB:.0f} GiB | {fp / GB:.1f} | {bound / GB:.1f} | {'yes' if fp <= bound * 1.02 else 'NO'} |")
-
-    print(f"\n## Per Mac size (computed; only 96 GB was measured). Capped column: MLX cache limit {limit / GIB:.0f} GiB\n")
+    print(f"\n## Per Mac size (computed; only 96 GB was measured). Capped: MLX cache limit {limit / GIB:.0f} GiB\n")
     print("working set = GB × 0.81 GiB (lmk's GPU_SHARE_OF_MEMORY). Window and cap: lmk's formulas (`context_on`, "
-          "`engine.token_budget`). 'Holds at full window': the exp01 lines evaluated at the window (beyond 131k they are "
-          "extrapolated), uncapped = footprint line, capped = peak line + limit + extra.\n")
-    print("| Mac | bits | window (formula) | tokens-in-memory cap (formula) | holds at full window, uncapped: GB (over/under working set) | "
+          "`engine.token_budget`). 'At full window': the lines above evaluated at the formula window (beyond 131k "
+          "extrapolated), minus the working set. 'Largest context': where the line meets the working set — also what "
+          "one request could really use of the tokens-in-memory cap.\n")
+    print("| Mac | bits | window (formula) | tokens-in-memory cap (formula) | at full window vs working set, uncapped (GB) | "
           "capped | largest context under the working set, uncapped | capped |")
     print("|---|---|---|---|---|---|---|---|")
+    k = lambda n: f"{n / 1000:.0f}k" if n < 10 ** 6 else f"{n / 1e6:.2f}M"  # noqa: E731
     for gb in SIZES:
         ws = gb * GPU_SHARE_OF_MEMORY * GIB
         for bits in (8, 16):
@@ -103,16 +90,12 @@ def main():
             if not win or avail <= 0:
                 print(f"| {gb} GB | kv{bits} | does not load | – | – | – | – | – |")
                 continue
-            fa, fb = lines[bits]["fp"]
-            pa, pb = lines[bits]["peak"]
-            un = fa + fb * win
-            ca = pa + pb * win + limit + extra
-            safe_un = max(0, int((ws - fa) // fb))
-            safe_ca = max(0, int((ws - pa - limit - extra) // pb))
-            k = lambda n: f"{n / 1000:.0f}k" if n < 10 ** 6 else f"{n / 1e6:.2f}M"  # noqa: E731
-            print(f"| {gb} GB | kv{bits} | {k(win)} | {k(cap)} | {un / GB:.1f} ({(un - ws) / GB:+.1f}) | {ca / GB:.1f} ({(ca - ws) / GB:+.1f}) | "
-                  f"{k(min(safe_un, M.max_context))} | {k(min(safe_ca, M.max_context))} |")
-
+            cells = []
+            for model in ("uncapped", "capped"):
+                a, b = lines[(model, bits)]
+                cells.append(((a + b * win - ws) / GB, min(M.max_context, max(0, int((ws - a) // b)))))
+            print(f"| {gb} GB | kv{bits} | {k(win)} | {k(cap)} | {cells[0][0]:+.1f} | {cells[1][0]:+.1f} | "
+                  f"{k(cells[0][1])} | {k(cells[1][1])} |")
 
 if __name__ == "__main__":
     main()

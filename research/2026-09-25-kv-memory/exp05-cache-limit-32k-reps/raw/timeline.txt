@@ -1,0 +1,37 @@
+2026-09-26 00:16:34 engine 42a248c, lmk b7941e5, resident on 1235: down
+2026-09-26 00:16:36 free before loading kv8-unset-a: 97 GB
+2026-09-26 00:16:36 start kv8-unset-a (kv 8, cache limit '')
+2026-09-26 00:19:45 stop kv8-unset-a
+2026-09-26 00:19:45 free before loading kv8-1g-a: 97 GB
+2026-09-26 00:19:45 start kv8-1g-a (kv 8, cache limit '1073741824')
+2026-09-26 00:20:54 stop kv8-1g-a
+2026-09-26 00:20:54 free before loading kv8-4g-a: 97 GB
+2026-09-26 00:20:54 start kv8-4g-a (kv 8, cache limit '4294967296')
+2026-09-26 00:22:00 stop kv8-4g-a
+2026-09-26 00:22:00 free before loading kv8-unset-b: 97 GB
+2026-09-26 00:22:00 start kv8-unset-b (kv 8, cache limit '')
+2026-09-26 00:23:06 stop kv8-unset-b
+2026-09-26 00:23:06 free before loading kv8-1g-b: 97 GB
+2026-09-26 00:23:06 start kv8-1g-b (kv 8, cache limit '1073741824')
+2026-09-26 00:24:14 stop kv8-1g-b
+2026-09-26 00:24:14 free before loading kv8-4g-b: 97 GB
+2026-09-26 00:24:14 start kv8-4g-b (kv 8, cache limit '4294967296')
+2026-09-26 00:25:20 stop kv8-4g-b
+2026-09-26 00:25:20 free before loading kv16-unset-a: 97 GB
+2026-09-26 00:25:20 start kv16-unset-a (kv 16, cache limit '')
+2026-09-26 00:28:22 stop kv16-unset-a
+2026-09-26 00:28:22 free before loading kv16-1g-a: 97 GB
+2026-09-26 00:28:22 start kv16-1g-a (kv 16, cache limit '1073741824')
+2026-09-26 00:29:23 stop kv16-1g-a
+2026-09-26 00:29:24 free before loading kv16-4g-a: 97 GB
+2026-09-26 00:29:24 start kv16-4g-a (kv 16, cache limit '4294967296')
+2026-09-26 00:30:25 stop kv16-4g-a
+2026-09-26 00:30:25 free before loading kv16-unset-b: 97 GB
+2026-09-26 00:30:25 start kv16-unset-b (kv 16, cache limit '')
+2026-09-26 00:31:26 stop kv16-unset-b
+2026-09-26 00:31:26 free before loading kv16-1g-b: 97 GB
+2026-09-26 00:31:26 start kv16-1g-b (kv 16, cache limit '1073741824')
+2026-09-26 00:32:27 stop kv16-1g-b
+2026-09-26 00:32:27 free before loading kv16-4g-b: 97 GB
+2026-09-26 00:32:27 start kv16-4g-b (kv 16, cache limit '4294967296')
+2026-09-26 00:33:28 stop kv16-4g-b
