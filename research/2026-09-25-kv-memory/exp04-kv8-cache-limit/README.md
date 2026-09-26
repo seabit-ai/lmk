@@ -1,6 +1,6 @@
 # exp04：exp02 换成 kv8——1 GiB 缓冲池上限在 kv8 上是不是也不拖慢 decode
 
-日期 2026-09-26（起跑约 00:00）。m3u（M3 Ultra，96 GB），lmk worktree `kv-memory`，引擎 42a248c，mlx 0.32.0。常驻服务停着（控制者 2026-09-25 22:49:03 `lmk down`）。
+日期 2026-09-25（23:56 起跑）。m3u（M3 Ultra，96 GB），lmk worktree `kv-memory`，引擎 42a248c，mlx 0.32.0。常驻服务停着（控制者 2026-09-25 22:49:03 `lmk down`）。
 
 ## 为什么加这一组
 exp02 只在 kv16 上量了上限；exp03 要给 kv8 也算"设上限后"的一列。kv8 的注意力路径拆成几段算子（SLC-007：反量化、量化 matmul），
