@@ -96,18 +96,24 @@ def _request_rows(status: dict) -> list[tuple[str, str, str, str]]:
     return rows
 
 
+CHECKPOINT_STEP = 256   # the engine stores a prompt's state on 256-token boundaries (research LMK-002)
+
+
 def _took(ms: int) -> str:
     return f"{ms / 1000:.1f}s" if ms < 60_000 else human_duration(ms)
 
 
 def _outcome(f: dict) -> str:
-    """A warmup's worth is the reading it took off the next request's first token: say how much, how long."""
+    """A warmup's worth is the reading it took off the next request's first token: say how much, how long.
+    Only what lands in a checkpoint counts — the last one sits at floor256(prompt − 1) (research LMK-002);
+    the tail past it is read and thrown away."""
     outcome, took = f.get("outcome") or "?", f.get("total_ms")
     if took is None:
         return outcome
     if outcome == "warmed":
-        new = (f.get("prompt_tokens") or 0) - (f.get("cached_tokens") or 0)
-        return "already warm" if new <= 0 else f"warmed {new:,} new tokens in {_took(took)}"
+        stored = ((f.get("prompt_tokens") or 0) - 1) // CHECKPOINT_STEP * CHECKPOINT_STEP
+        new = stored - (f.get("cached_tokens") or 0)
+        return f"already warm · {_took(took)}" if new <= 0 else f"warmed {new:,} new tokens in {_took(took)}"
     if outcome == "yielded":
         return f"yielded after {_took(took)}"
     return outcome
