@@ -22,6 +22,13 @@
 测试：单测 214、跳过 8（`make test`，468ed98）。集成测试与真机验收的数字按功能分散记在各自 `research/` 里，不在此复述。
 
 
+
+## 2026-09-25 长上下文与 KV 精度（`research/2026-09-25-spec-long-context`）
+- 本机已改 kv16（SLC-007：128k 22.1 对 15.4 tok/s）。在做：MLX 缓冲池上限（128k 时进程 52–54 GB、MLX 峰值 42–43 GB，约 10 GB 是缓冲池；
+  `mx.set_cache_limit` lmk 与引擎都没调）；补量 kv8 的进程内存，定"按内存自动选 KV 精度"的档位线（kv16 同时在内存的 token 1.84M → 0.98M）。
+- 想法（别当计划）：融合反量化的 SDPA 向量 kernel——kv8 慢在算子拆分（每 1k 上下文每步 +0.30 ms 对 kv16 的 +0.15）；先看上游 MLX 有没有在做，不自己写。
+- 想法：采样与贪心的差距在接受率（53% 对 59%，SLC-014），要追需 p/q 拒绝采样，另开题。
+
 ## 2026-09-25 带 tools 的请求用上投机解码（分支 `spec-with-tools`，fork `lmk-spec-proc` 42a248c）
 - 已做：投机轮逐位过 logits processor（设计 `docs/design/2026-09-25-spec-with-tools.md`）；顺带修两个互相掩盖的老 bug：交接处 bonus token 喂两次（SPD-028）、
   在轮里结束的请求热 cache 比 all_tokens 少一个（SPD-032/033，真机 807 对 806）。真机 8/8 个 agent 步起草、接受 65%（SPD-035）。

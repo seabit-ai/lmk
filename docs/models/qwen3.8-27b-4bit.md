@@ -21,9 +21,10 @@ Text and images in, tool calls, thinking. This is the model lmk itself was built
 | the recommended configuration below | 322 tok/s | 49k tok/s | 45.0 tok/s | 60.1 tok/s (88% of drafted tokens accepted) |
 | same, an agent request that carries `tools` | — | — | — | 58.2 tok/s against 36.5 without the draft (a tool call writing a file; 85% of drafted tokens in the call accepted) |
 
-With the draft on, code and copy-editing come out 1.5x faster and token for token the same as plain decoding;
-prose 15% faster, and there the answer can differ from plain decoding's after a few dozen tokens (greedy is
-exact up to floating-point ties, not bit-exact). See "Tested" for how this was measured.
+With the draft on, code and copy-editing come out 1.5x faster, prose 15% faster; answers scored the same as
+plain decoding but are not token-for-token identical to it — at near-tie words (scores one floating-point step
+apart) the checked batch and the one-token step can pick differently. On short prompts code and copy-editing
+happened to match exactly; at 8k–128k context every greedy test diverged somewhere, with 8- and 16-bit KV cache. See "Tested" for how this was measured.
 
 How it holds up as the conversation grows (the recommended configuration, thinking off, one request, the prefix
 already cached; 256 tokens, greedy unless noted; [`research/2026-09-25-spec-long-context`](../../research/2026-09-25-spec-long-context/)):
@@ -60,7 +61,7 @@ model:
   kv_cache_bits: 8            # halves what each token of context costs: 122k tokens on a 32 GB Mac instead of 85k.
                               # Scored the same as 16-bit with 60k tokens of context in front of every task (below)
   speculative_decoding: true  # the model's own draft head (lmk up fetches it): code 1.5x faster when one request is
-                              # being answered, the same answer token for token; prose 1.15x; scored the same (below)
+                              # being answered; prose 1.15x; scored the same (below), not token-for-token identical
 ```
 
 ## Thinking
@@ -95,9 +96,9 @@ makes every cached conversation cold once.
   instead of 1.01 s on a 4k prompt).
 - **`speculative_decoding: true` helps one request at a time.** While two or more requests are being answered
   together lmk decodes them plainly (a mixed-length batch did not reproduce plain decoding on the engine's
-  batched path; recorded in `research/2026-09-23-speculative-decoding/exp03-engine-wiring/`). Prose answers can
-  differ from the plain ones (near-tie words flip); code and copy-editing answers came out token for token the
-  same. With the model's default sampling the gain is smaller than with `temperature: 0`.
+  batched path; recorded in `research/2026-09-23-speculative-decoding/exp03-engine-wiring/`). Answers can
+  differ from the plain ones at near-tie words (on short prompts code and copy-editing matched exactly; at
+  8k–128k context every greedy test diverged somewhere). With the model's default sampling the gain is smaller than with `temperature: 0`.
 
 
 ## Tested
