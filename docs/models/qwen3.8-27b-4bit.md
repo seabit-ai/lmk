@@ -25,6 +25,20 @@ With the draft on, code and copy-editing come out 1.5x faster and token for toke
 prose 15% faster, and there the answer can differ from plain decoding's after a few dozen tokens (greedy is
 exact up to floating-point ties, not bit-exact). See "Tested" for how this was measured.
 
+How it holds up as the conversation grows (the recommended configuration, thinking off, one request, the prefix
+already cached; 256 tokens, greedy unless noted; [`research/2026-09-25-spec-long-context`](../../research/2026-09-25-spec-long-context/)):
+
+| context | code, no draft → draft | prose, no draft → draft |
+|---|---|---|
+| 8k | 35 → 53 tok/s (1.50x) | 35 → 39 (1.12x) |
+| 32k | 28 → 42 (1.51x) | 28 → 35 (1.27x) |
+| 64k | 22 → 31 (1.43x) | 22 → 27 (1.24x) |
+| 128k | 15 → 20 (1.28x) | 15 → 19 (1.23x) |
+| 32k, sampled (temp 1.0) | 27 → 38 (1.40x) | 27 → 28 (1.02x) |
+
+The draft never made decoding slower, up to 128k. Code gains less at long context because a verify step costs more
+there, not because fewer drafts are accepted; sampled prose gains almost nothing.
+
 Two drafts exist for this model; `model.draft` picks one, the default is `dflash2`:
 
 | `draft:` | what it is | download | prose | code | copy-editing |
