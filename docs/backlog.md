@@ -21,6 +21,16 @@
 
 测试：单测 214、跳过 8（`make test`，468ed98）。集成测试与真机验收的数字按功能分散记在各自 `research/` 里，不在此复述。
 
+
+## 2026-09-25 带 tools 的请求用上投机解码（分支 `spec-with-tools`，fork `lmk-spec-proc` 42a248c）
+- 已做：投机轮逐位过 logits processor（设计 `docs/design/2026-09-25-spec-with-tools.md`）；顺带修两个互相掩盖的老 bug：交接处 bonus token 喂两次（SPD-028）、
+  在轮里结束的请求热 cache 比 all_tokens 少一个（SPD-032/033，真机 807 对 806）。真机 8/8 个 agent 步起草、接受 65%（SPD-035）。
+- 跟进（未做）：
+  - **SPD-034** kv8 下同一 prompt 从热 cache 续跑与从磁盘恢复续跑，首位置 logprob 差到 2.75（修复前后都有），可能也是"关草稿冷/热 sha 不同"的根。
+    有鉴别力的实验：关草稿造热 cache 再与磁盘恢复比，kv16 各跑一次。
+  - MTP 行逐位 lm_head 投影串行（可整块算）；DFlash `RoundResult.accepted` 现为 kept，与统计口径不同（无人读）。
+- 结构化输出（分支 `structured-output`，设计已全关、计划 0d0c971）排在它之后，复用这套逐位 walk：计划里"约束期间关投机"一条要改成"照常起草"。
+
 ## 下一个：structured output（`response_format` / `json_schema`）
 owner 已同意方向（2026-09-25），SAD 还没开题。引擎侧已有 `json_schema` 参数；与思考段、工具调用的关系没想清楚（口子留在 `docs/design/2026-09-21-sampling.md`）。
 

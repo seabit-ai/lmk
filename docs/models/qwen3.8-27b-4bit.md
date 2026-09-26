@@ -19,6 +19,7 @@ Text and images in, tool calls, thinking. This is the model lmk itself was built
 |---|---|---|---|---|
 | defaults (16-bit KV cache, no draft) | 323 tok/s | 53k tok/s | 39 tok/s (about 33 on long agent conversations) | — |
 | the recommended configuration below | 322 tok/s | 49k tok/s | 45.0 tok/s | 60.1 tok/s (88% of drafted tokens accepted) |
+| same, an agent request that carries `tools` | — | — | — | 58.2 tok/s against 36.5 without the draft (a tool call writing a file; 85% of drafted tokens in the call accepted) |
 
 With the draft on, code and copy-editing come out 1.5x faster and token for token the same as plain decoding;
 prose 15% faster, and there the answer can differ from plain decoding's after a few dozen tokens (greedy is
@@ -60,10 +61,6 @@ makes every cached conversation cold once.
 
 ## Known issues
 
-- **Requests that carry `tools` do not use speculative decoding yet.** Every agent request lists
-  tools, and the engine then attaches its tool-call guard, which turns drafting off for that request:
-  on the owner's machine 1 of 113 agent steps drafted anything. Such requests run at the speed
-  without a draft; the draft numbers on this page were measured on requests without tools. Being fixed.
 - **The default thinking level (`xhigh`) is the worst setting we measured.** On 50 GSM8K, 40 HumanEval,
   10 format and 5 tool tasks, 3 runs each, `xhigh` scored below `low` on every category and ran out
   of 8,000 tokens 20 times, thinking; `low` was the best configuration of any model in the test

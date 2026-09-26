@@ -1,0 +1,7 @@
+difference at char 210 shared prefix ends '_` block that prints fizzbuzz(30) one per line\n\nThen run it.'
+off continues '\n\nLet me write the file and th' | on continues '\n</think>\n\n<tool_call>\n<functi'
+    24.1250  '\n\n'
+    24.0000  '\n'
+    21.8750  ' Let'
+    17.5000  ' Simple'
+    17.3750  ' I'

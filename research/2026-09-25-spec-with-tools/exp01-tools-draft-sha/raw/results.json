@@ -1,0 +1,131 @@
+{
+ "kv_bits": 8,
+ "thinking": true,
+ "effort": "low",
+ "prompt": "<|im_start|>system\nReasoning effort is set to low. Keep your thinking brief and focused, moving directly to the conclusion without unnecessary elaboration.\n\n# Tools\n\nYou have access to the following functions:\n\n<tools>\n{\"type\": \"function\", \"function\": {\"name\": \"file_read\", \"description\": \"Read a text file and return its contents.\", \"parameters\": {\"type\": \"object\", \"properties\": {\"path\": {\"type\": \"string\"}}, \"required\": [\"path\"]}}}\n{\"type\": \"function\", \"function\": {\"name\": \"file_write\", \"description\": \"Write a text file, replacing it if it exists.\", \"parameters\": {\"type\": \"object\", \"properties\": {\"path\": {\"type\": \"string\"}, \"content\": {\"type\": \"string\"}}, \"required\": [\"path\", \"content\"]}}}\n{\"type\": \"function\", \"function\": {\"name\": \"run_command\", \"description\": \"Run a shell command in the project directory and return its output.\", \"parameters\": {\"type\": \"object\", \"properties\": {\"command\": {\"type\": \"string\"}}, \"required\": [\"command\"]}}}\n</tools>\n\nIf you choose to call a function ONLY reply in the following format with NO suffix:\n\n<tool_call>\n<function=example_function_name>\n<parameter=example_parameter_1>\nvalue_1\n</parameter>\n<parameter=example_parameter_2>\nThis is the value for the second parameter\nthat can span\nmultiple lines\n</parameter>\n</function>\n</tool_call>\n\n<IMPORTANT>\nReminder:\n- Function calls MUST follow the specified format: an inner <function=...></function> block must be nested within <tool_call></tool_call> XML tags\n- Required parameters MUST be specified\n- You may provide optional reasoning for your function call in natural language BEFORE the function call, but NOT after\n- If there is no function call available, answer the question like normal with your current knowledge and do not tell the user about function calls\n</IMPORTANT>\n\nYou are kitten, a coding agent working in the user's project. Use the tools to act; keep prose short.<|im_end|>\n<|im_start|>user\nCreate fizzbuzz.py: a function fizzbuzz(n) returning the list of strings for 1..n (Fizz for multiples of 3, Buzz for 5, FizzBuzz for both), a docstring, and a __main__ block that prints fizzbuzz(30) one per line. Then run it.<|im_end|>\n<|im_start|>assistant\n<think>\n",
+ "runs": [
+  {
+   "name": "off-cold",
+   "spec": false,
+   "tokens": 284,
+   "sha": "0d5ff0db7afa",
+   "text": "The user wants me to create a fizzbuzz.py file with:\n1. A function `fizzbuzz(n)` that returns a list of strings for 1..n\n2. A docstring\n3. A `__main__` block that prints fizzbuzz(30) one per line\n\nThen run it.\n\nLet me write the file and then run it.\n</think>\n\n<tool_call>\n<function=file_write>\n<parameter=path>\nfizzbuzz.py\n</parameter>\n<parameter=content>\ndef fizzbuzz(n):\n    \"\"\"Return a list of strings for 1..n, replacing multiples of 3 with 'Fizz',\n    multiples of 5 with 'Buzz', and multiples of both with 'FizzBuzz'.\"\"\"\n    result = []\n    for i in range(1, n + 1):\n        if i % 15 == 0:\n            result.append(\"FizzBuzz\")\n        elif i % 3 == 0:\n            result.append(\"Fizz\")\n        elif i % 5 == 0:\n            result.append(\"Buzz\")\n        else:\n            result.append(str(i))\n    return result\n\n\nif __name__ == \"__main__\":\n    for line in fizzbuzz(30):\n        print(line)\n\n</parameter>\n</function>\n</tool_call>",
+   "decode_tok_s": 30.0,
+   "total": {
+    "rounds": 0,
+    "accepted": 0,
+    "drafted": 0
+   },
+   "by_segment": {},
+   "ends_in": "tail"
+  },
+  {
+   "name": "off-warm",
+   "spec": false,
+   "tokens": 254,
+   "sha": "ea1f45d8f772",
+   "text": "The user wants me to create a fizzbuzz.py file with:\n1. A function fizzbuzz(n) that returns a list of strings for 1..n\n2. A docstring\n3. A __main__ block that prints fizzbuzz(30) one per line\n\nThen run it.\n</think>\n\n<tool_call>\n<function=file_write>\n<parameter=path>\nfizzbuzz.py\n</parameter>\n<parameter=content>\ndef fizzbuzz(n):\n    \"\"\"Return a list of strings for 1..n, replacing multiples of 3 with 'Fizz',\n    multiples of 5 with 'Buzz', and multiples of both with 'FizzBuzz'.\"\"\"\n    result = []\n    for i in range(1, n + 1):\n        s = \"\"\n        if i % 3 == 0:\n            s += \"Fizz\"\n        if i % 5 == 0:\n            s += \"Buzz\"\n        result.append(s if s else str(i))\n    return result\n\n\nif __name__ == \"__main__\":\n    for line in fizzbuzz(30):\n        print(line)\n\n</parameter>\n</function>\n</tool_call>",
+   "decode_tok_s": 37.1,
+   "total": {
+    "rounds": 0,
+    "accepted": 0,
+    "drafted": 0
+   },
+   "by_segment": {},
+   "ends_in": "tail"
+  },
+  {
+   "name": "on-1",
+   "spec": true,
+   "tokens": 286,
+   "sha": "f9e1be8e5119",
+   "text": "The user wants me to create a fizzbuzz.py file with:\n1. A function `fizzbuzz(n)` that returns a list of strings for 1..n\n2. A docstring\n3. A `__main__` block that prints fizzbuzz(30) one per line\n\nThen run it.\n</think>\n\n<tool_call>\n<function=file_write>\n<parameter=path>\nfizzbuzz.py\n</parameter>\n<parameter=content>\ndef fizzbuzz(n):\n    \"\"\"Return a list of FizzBuzz strings for 1..n.\n\n    Multiples of 3 -> 'Fizz', multiples of 5 -> 'Buzz',\n    multiples of both -> 'FizzBuzz', otherwise the number as a string.\n    \"\"\"\n    result = []\n    for i in range(1, n + 1):\n        if i % 15 == 0:\n            result.append(\"FizzBuzz\")\n        elif i % 3 == 0:\n            result.append(\"Fizz\")\n        elif i % 5 == 0:\n            result.append(\"Buzz\")\n        else:\n            result.append(str(i))\n    return result\n\n\nif __name__ == \"__main__\":\n    for line in fizzbuzz(30):\n        print(line)\n\n</parameter>\n</function>\n</tool_call>",
+   "decode_tok_s": 59.8,
+   "total": {
+    "rounds": 65,
+    "accepted": 220,
+    "drafted": 258
+   },
+   "by_segment": {
+    "thinking": {
+     "rounds": 17,
+     "accepted": 50,
+     "drafted": 66
+    },
+    "text": {
+     "rounds": 1,
+     "accepted": 2,
+     "drafted": 4
+    },
+    "body": {
+     "rounds": 47,
+     "accepted": 168,
+     "drafted": 188
+    }
+   },
+   "ends_in": "tail"
+  },
+  {
+   "name": "on-2",
+   "spec": true,
+   "tokens": 286,
+   "sha": "f9e1be8e5119",
+   "text": "The user wants me to create a fizzbuzz.py file with:\n1. A function `fizzbuzz(n)` that returns a list of strings for 1..n\n2. A docstring\n3. A `__main__` block that prints fizzbuzz(30) one per line\n\nThen run it.\n</think>\n\n<tool_call>\n<function=file_write>\n<parameter=path>\nfizzbuzz.py\n</parameter>\n<parameter=content>\ndef fizzbuzz(n):\n    \"\"\"Return a list of FizzBuzz strings for 1..n.\n\n    Multiples of 3 -> 'Fizz', multiples of 5 -> 'Buzz',\n    multiples of both -> 'FizzBuzz', otherwise the number as a string.\n    \"\"\"\n    result = []\n    for i in range(1, n + 1):\n        if i % 15 == 0:\n            result.append(\"FizzBuzz\")\n        elif i % 3 == 0:\n            result.append(\"Fizz\")\n        elif i % 5 == 0:\n            result.append(\"Buzz\")\n        else:\n            result.append(str(i))\n    return result\n\n\nif __name__ == \"__main__\":\n    for line in fizzbuzz(30):\n        print(line)\n\n</parameter>\n</function>\n</tool_call>",
+   "decode_tok_s": 65.1,
+   "total": {
+    "rounds": 65,
+    "accepted": 220,
+    "drafted": 258
+   },
+   "by_segment": {
+    "thinking": {
+     "rounds": 17,
+     "accepted": 50,
+     "drafted": 66
+    },
+    "text": {
+     "rounds": 1,
+     "accepted": 2,
+     "drafted": 4
+    },
+    "body": {
+     "rounds": 47,
+     "accepted": 168,
+     "drafted": 188
+    }
+   },
+   "ends_in": "tail"
+  },
+  {
+   "name": "on-sampled",
+   "spec": true,
+   "tokens": 233,
+   "sha": "09dacb1dd2da",
+   "text": "Simple task: write the file, run it.\n</think>\n\n<tool_call>\n<function=file_write>\n<parameter=path>\nfizzbuzz.py\n</parameter>\n<parameter=content>\ndef fizzbuzz(n):\n    \"\"\"Return a list of FizzBuzz strings for the integers 1 through n.\n\n    Multiples of 3 are \"Fizz\", multiples of 5 are \"Buzz\",\n    multiples of both are \"FizzBuzz\"; all others are the number as a string.\n    \"\"\"\n    result = []\n    for i in range(1, n + 1):\n        if i % 15 == 0:\n            result.append(\"FizzBuzz\")\n        elif i % 3 == 0:\n            result.append(\"Fizz\")\n        elif i % 5 == 0:\n            result.append(\"Buzz\")\n        else:\n            result.append(str(i))\n    return result\n\n\nif __name__ == \"__main__\":\n    for line in fizzbuzz(30):\n        print(line)\n\n</parameter>\n</function>\n</tool_call>",
+   "decode_tok_s": 51.7,
+   "total": {
+    "rounds": 70,
+    "accepted": 162,
+    "drafted": 190
+   },
+   "by_segment": {
+    "thinking": {
+     "rounds": 4,
+     "accepted": 6,
+     "drafted": 10
+    },
+    "text": {
+     "rounds": 1,
+     "accepted": 2,
+     "drafted": 2
+    },
+    "body": {
+     "rounds": 65,
+     "accepted": 154,
+     "drafted": 178
+    }
+   },
+   "ends_in": "tail"
+  }
+ ]
+}
