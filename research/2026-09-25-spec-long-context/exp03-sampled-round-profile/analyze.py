@@ -69,7 +69,7 @@ for key in sorted(groups):
           f"{statistics.median(rm):.1f} | {acc} / {dr} ({acc / dr * 100:.0f}%) |")
 
 print("\n## Wall profile: one round in the engine's own schedule (ms per round, mean)\n")
-print("| kind | sampling | rounds | verify positions | walked positions | step (next()) | gap between steps | round | "
+print("| kind | sampling | rounds | verify positions | walked positions | step (next()) | gap between steps (median; the mean carries the prefill before round 1) | round | "
       "draft build | draft wait (1st sync) | verify build | verify wait | walk host (pos 1 build/tolist, lse build) | "
       "positions 2.. (build+eval+tolist) | bookkeeping | rollback build | rest |")
 print("|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|")
@@ -84,8 +84,29 @@ for key in sorted(k for k in cells if k[2] == "wall"):
     rnd = f(rs, "round_ms")
     rest = rnd - sum(parts.values())
     print(f"| {key[0]} | {key[1]} | {len(rs)} | {mean([r['block'] for r in rs]):.2f} | {f(rs, 'walk_positions'):.2f} | "
-          f"{f(rs, 'step_ms'):.1f} | {mean([r['gap_before_ms'] or 0 for r in rs]):.1f} | {rnd:.1f} | "
+          f"{f(rs, 'step_ms'):.1f} | {statistics.median([r['gap_before_ms'] or 0 for r in rs]):.2f} | {rnd:.1f} | "
           + " | ".join(f"{v:.2f}" for v in parts.values()) + f" | {rest:.2f} |")
+
+print("\n## Wall profile at the same verify width (the width decides the verify forward; compare greedy and sampled at equal width)\n")
+print("| kind | sampling | verify positions | rounds | round median | round mean | verify wait median | draft wait median | verify build median "
+      "| positions 2.. mean | walked positions | host-slow rounds (round > median + 5 ms) | verify build in host-slow rounds |")
+print("|---|---|---|---|---|---|---|---|---|---|---|---|---|")
+byw = defaultdict(list)
+for (kind, sampling, prof), rs in cells.items():
+    if prof == "wall":
+        for r in rs:
+            byw[(kind, sampling, r["block"])].append(r)
+for key in sorted(byw):
+    rs = byw[key]
+    if len(rs) < 20:
+        continue
+    rm = [r["round_ms"] for r in rs]
+    m = statistics.median(rm)
+    slow = [r for r in rs if r["round_ms"] > m + 5]
+    print(f"| {key[0]} | {key[1]} | {key[2]} | {len(rs)} | {m:.1f} | {mean(rm):.1f} | {statistics.median(verify_wait(r) for r in rs):.1f} | "
+          f"{statistics.median(r['sync_draft_tolist_ms'] for r in rs):.1f} | {statistics.median(r['verify_build_ms'] for r in rs):.2f} | "
+          f"{mean([extra_positions(r) for r in rs]):.2f} | {f(rs, 'walk_positions'):.2f} | {len(slow)} ({len(slow) / len(rs) * 100:.0f}%) | "
+          f"{f(slow, 'verify_build_ms'):.2f} |")
 
 print("\n## Phases profile: a sync after every phase (ms per round, mean; each = that phase's GPU time + one sync)\n")
 print("| kind | sampling | rounds | draft | verify | argmax (greedy) | logsumexp (sampled) | per walked position: build / eval / tolist "
