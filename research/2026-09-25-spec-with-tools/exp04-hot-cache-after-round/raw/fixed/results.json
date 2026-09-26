@@ -1,0 +1,81 @@
+{
+ "turn1": {
+  "finish": "tool_calls",
+  "calls": [
+   "file_write"
+  ],
+  "drafted": 234,
+  "accepted": 224,
+  "hot_tokens": 806,
+  "hot_kv_offsets": [
+   806
+  ],
+  "hot_last_tokens": ">\n</tool_call>"
+ },
+ "turn2_prompt": {
+  "tokens": 833,
+  "common_with_hot": 806,
+  "hot_tokens": 806,
+  "full_prefix": true,
+  "hot_tail": ">\n</tool_call>",
+  "prompt_at": ">\n</tool_call><|im_end|>\n<|im_start|>"
+ },
+ "A_hot": {
+  "text": "Now let me run it.\n</think>\n\n<tool_call>\n<function=run_command>\n<parameter=command>\npython fizzbuzz.py\n</parameter>\n</function>\n</tool_call>",
+  "first_top5": [
+   [
+    "Now",
+    -0.125
+   ],
+   [
+    "The",
+    -2.5
+   ],
+   [
+    "Let",
+    -4.875
+   ],
+   [
+    "Good",
+    -5.375
+   ],
+   [
+    "File",
+    -6.125
+   ]
+  ],
+  "restore": [
+   "Prompt cache restore: cached_tokens=806 uncached_tokens=26 lifetime_efficiency=59.53%"
+  ]
+ },
+ "B_disk": {
+  "text": "Now let me run it.\n</think>\n\n<tool_call>\n<function=run_command>\n<parameter=command>\npython fizzbuzz.py\n</parameter>\n</function>\n</tool_call>",
+  "first_top5": [
+   [
+    "Now",
+    -0.375
+   ],
+   [
+    "The",
+    -1.5
+   ],
+   [
+    "Good",
+    -2.625
+   ],
+   [
+    "Let",
+    -4.125
+   ],
+   [
+    "File",
+    -5.0
+   ]
+  ],
+  "restore": [
+   "Prompt cache restore: cached_tokens=512 uncached_tokens=320 lifetime_efficiency=59.16%"
+  ]
+ },
+ "first_logprob_max_abs_diff": 2.75,
+ "same_text": true
+}

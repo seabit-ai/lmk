@@ -123,3 +123,17 @@ bench/smoke（不带工具）照常起草。编号接 `research/2026-09-23-specu
   `commit(accepted)`；草稿先按 `validate_tokens` 截断；walk 用预算好的掩码。为多行并行准备。
 - 风险：处理器多一套"试探再撤回"状态，思考布尔等 mx 状态也要能撤；与 A 等价的正确性却多一处出错面；今天单行投机用不上它的并行好处（SPD-021 多行仍不对）。
 - 验证：同 A，再加"每个位置的块掩码 = 逐 token 推进时的掩码"的单测，以及 rollback 后 matcher 状态与未试探时相同。
+
+- **SPD-032 在轮里结束的请求交出的热 cache 比它报的 all_tokens 少一个 token；下一轮带 tools 的对话整段命中它（自 b58a72e 起，e053a72 让 agent 轮都碰上）。**
+  轮的最后一个 token（以及 `_emit_pending` 发出的待喂 token）按设计不进 cache，但 `_response` 交出 `all_tokens=list(row.tokens)` 含它；热 entry 以
+  `all_tokens` 为"cache 覆盖的 token"，下一请求整段前缀命中（`coordinator._load_hot_restore_plan`，trim 0）时多报一个。实测（exp04，27B-4bit kv8 dflash2，
+  思考开 + low，fizzbuzz 工具任务）：热 entry 807 token、KV offset 806，缺的是 `<|im_end|>`；Qwen 模板重渲染第一轮与生成的逐 token 相同，第二轮整段命中，
+  引擎报 cached 807。净效应在这一例里小：第二轮首位置 logprob 差 ≤ 0.25，60 token 文本相同——没有观察到"乱码"，但位置错一位、少一个 token 是真的，
+  长对话里会一轮轮叠加（每轮少一个结束标记）。修：`all_tokens` 不含未喂的那个 token（`_response`），而不是交出前再喂一次——前者不多一次前向、
+  不动草稿器状态，代价是下一轮多 prefill 1 个 token；命中数与 cache 实际覆盖一致。fork 42a248c。把握：高（读码 + 单测红→绿 + 真机 offset 对照）。
+- **SPD-033 DFlash 轮按 walk 的接受数回滚、在截断之前：草稿里接受了停止 token 之后的 token 时，结束行的 cache 比 all_tokens 长。** MTP 轮本来就先截断再按
+  `len(cut)-1` 回滚；DFlash 改成同一口径（42a248c）。单测：`max_tokens` 落在块中间（1/7/10/13）与停在块中的 EOS，两种草稿器都断言 `all_tokens == 目标实际喂过的 token`。
+  另：带 processor 的 walk 遇到停止 token 即停（06f73c1），不再把 EOS 之后的草稿喂给 processor。把握：高（单测）。
+- **SPD-034 kv8 上热 cache 续算与"磁盘恢复 + 重新 prefill"给出的 logits 明显不同（首位置 logprob 差到 2.75），修复 SPD-032 之后仍在。** exp04：同一第二轮 prompt，
+  A 热 cache（806 命中，prefill 26）对 B 磁盘恢复（512 命中，prefill 320），两次文本相同但 top-5 logprob 差 2.75–3.0。与 exp01–03 "关草稿冷/热跑 sha 不同"
+  可能同源（kv8 下解码/校验逐步写进的量化 KV 与整块 prefill 写进的不同）。未查。把握：高（数）/低（原因）。
