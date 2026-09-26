@@ -60,6 +60,10 @@ makes every cached conversation cold once.
 
 ## Known issues
 
+- **Requests that carry `tools` do not use speculative decoding yet.** Every agent request lists
+  tools, and the engine then attaches its tool-call guard, which turns drafting off for that request:
+  on the owner's machine 1 of 113 agent steps drafted anything. Such requests run at the speed
+  without a draft; the draft numbers on this page were measured on requests without tools. Being fixed.
 - **The default thinking level (`xhigh`) is the worst setting we measured.** On 50 GSM8K, 40 HumanEval,
   10 format and 5 tool tasks, 3 runs each, `xhigh` scored below `low` on every category and ran out
   of 8,000 tokens 20 times, thinking; `low` was the best configuration of any model in the test

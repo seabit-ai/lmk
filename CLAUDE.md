@@ -127,4 +127,7 @@ Known issues）、启动时校验会炸的配置值。加模型的工作量大�
   launchd 不重拉（2026-09-22 踩过，`lmk up` 拉回）。
 - **`make test` / `make install` 会把 `.engine/mlx-engine` `git checkout` 到 `ENGINE_COMMIT`（Makefile 的 `.pinned`），HEAD 变游离。**在 fork 上提交后
   要 `git -C .engine/mlx-engine branch -f lmk <hash> && git checkout lmk`，否则 owner push `lmk` 分支时漏掉新 commit（2026-09-24 两次都这样）。
+- **验收没覆盖主用法，一个功能就能对 agent 整个失效而不被发现**（2026-09-25，SPD-022/023）：投机解码上线后，带 `tools` 的请求
+  全被引擎的工具守卫挡掉不起草（113 个 agent 步里 1 个），而 bench 与模型页的速度在不带 tools 的请求上量，exp04 的 tools 类只看分数、
+  接受率是各类混算的总数。规矩：验收必须包含"带 tools 的 agent 请求"这个形状；统计量（起草数、接受率、命中率）**按类别拆开报**，不许只报总数。
 - 测试用的临时 `LMK_HOME` 安装不得碰 `~/.local/bin/lmk`（已在 install.sh 里挡住）；launchd label 固定 `ai.kitten.lmk`，换 label 会让新旧服务抢端口。
