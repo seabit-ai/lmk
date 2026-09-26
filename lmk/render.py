@@ -96,6 +96,23 @@ def _request_rows(status: dict) -> list[tuple[str, str, str, str]]:
     return rows
 
 
+def _took(ms: int) -> str:
+    return f"{ms / 1000:.1f}s" if ms < 60_000 else human_duration(ms)
+
+
+def _outcome(f: dict) -> str:
+    """A warmup's worth is the reading it took off the next request's first token: say how much, how long."""
+    outcome, took = f.get("outcome") or "?", f.get("total_ms")
+    if took is None:
+        return outcome
+    if outcome == "warmed":
+        new = (f.get("prompt_tokens") or 0) - (f.get("cached_tokens") or 0)
+        return "already warm" if new <= 0 else f"warmed {new:,} new tokens in {_took(took)}"
+    if outcome == "yielded":
+        return f"yielded after {_took(took)}"
+    return outcome
+
+
 def _finished_line(f: dict, who_width: int) -> str:
     first = f.get("first_token_ms")
     parts = [_prompt(f)]
@@ -103,7 +120,7 @@ def _finished_line(f: dict, who_width: int) -> str:
         parts.append(f"first token {first / 1000:.1f}s")
     if f.get("completion_tokens"):
         parts.append(_rate(f))
-    parts += [f.get("outcome") or "?", f"{human_duration(f.get('ago_ms', 0))} ago"]
+    parts += [_outcome(f), f"{human_duration(f.get('ago_ms', 0))} ago"]
     return f"  {_who(f):<{who_width}}  " + " · ".join(parts)
 
 
