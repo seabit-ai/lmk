@@ -12,8 +12,9 @@
 * `Speculative decoding` with the model's own draft head: Qwen3.8-27B writes code 1.5x faster (39 → 60 tokens/s), same
   answer quality (the text can differ at near-tie words), one line in the config. The draft head is in the original weights but not in any MLX
   conversion; `lmk up` fetches the one we split out and verified.
-* `KV cache at 8 bits`, one line in the config: the 27B fits 122k tokens of context on a 32 GB Mac instead of 85k, and scored
-  the same as 16-bit with 60k tokens of files in front of every task.
+* `KV cache precision chosen by your Mac's memory`: on a Mac with less than 96 GB the 27B keeps its KV cache at 8 bits and fits
+  122k tokens of context on 32 GB instead of 85k (it scored the same as 16-bit with 60k tokens of files in front of every task);
+  from 96 GB up it stays at 16 bits, which decodes up to 44% faster at 128k. One line in the config overrides it.
 * Nine tested models today: Qwen3.8-27B at 4/5/6/8-bit, the Qwen3.5-122B mixture of experts in two sizes, and Gemma 4 in three
   sizes; any MLX model on HuggingFace can be configured, untested by us. `Wish list` items are welcome.
 * Built on [mlx-engine](https://github.com/lmstudio-ai/mlx-engine). Huge thanks to the LM Studio and MLX teams.
@@ -79,7 +80,7 @@ what to paste into your agent:
 ```
 ✓ lmk is up    http://127.0.0.1:1235/v1   (OpenAI-compatible)
   model      qwen3.8-27b-4bit · text, image in · 262,144 tokens
-  settings   thinking off · KV cache 8-bit · speculative decoding on
+  settings   thinking off · KV cache 16-bit (automatic for a 96 GB Mac) · speculative decoding on
   draft      no tokens drafted yet
   about it   https://github.com/seabit-ai/lmk/blob/main/docs/models/qwen3.8-27b-4bit.md
   sampling   temp 1.0 · top_p 0.95 · top_k 20   (the model's generation_config; a request may override)
@@ -183,7 +184,7 @@ measured is how smart each model is; the default is the one we have used most.
 |---|---|---|---|---|
 | [`qwen3.5-122b-a10b-4bit`](docs/models/qwen3.5-122b-a10b-4bit.md) | the biggest here; MoE, faster than the 27B but not smarter on our tests | 165k / 262k tokens | yes | 89k / 753 / 60 |
 
-Where a model's recommended `kv_cache_bits: 8` changes the number, the figure at the model's own 16-bit precision is in parentheses; its page says what the setting costs.
+Below 96 GB lmk keeps the KV cache at 8 bits for a model tested that way (automatic, `kv_cache_bits` in the config overrides it); where that changes the number, the figure at 16 bits is in parentheses. Its page says what the setting costs.
 <!-- /models-table -->
 
 Any other MLX model on HuggingFace loads through `model.repo` (see Configuration), untested by us.
@@ -209,7 +210,7 @@ picked a model and want your agent to be fast on it every day, that is what lmk 
 ## Configuration
 
 There is nothing you have to configure. `~/.lmk/config.yaml` is written at install with every value in use, so what you see is what runs.
-`~/.lmk/config.yaml.example` next to it is a config that runs too — the defaults, plus the three settings the default
+`~/.lmk/config.yaml.example` next to it is a config that runs too — the defaults, plus the two settings the default
 model's page recommends — with every tested model as a line to uncomment and every other choice as a commented
 example; lmk rewrites it at each `lmk up`, so it always matches the installed version. The settings, with their defaults:
 
@@ -222,8 +223,9 @@ model:
                              #                already on this Mac — here, one LM Studio downloaded
   # thinking: false           # the model answers without thinking (default: the template's own, on for Qwen)
   # reasoning_effort: low     # for templates that know it (Qwen3.8: low / medium / xhigh); a server-wide constant
-  # kv_cache_bits: 8          # 8 halves what each token of context costs in memory (about twice the context on the
-                             # same Mac); the model page says whether we tested it. Default 16, the model's own precision
+  # kv_cache_bits: auto       # the default. 16 from 96 GB up: the model's own precision, faster on long contexts.
+                             # Below 96 GB, 8 for a model whose page says we tested it (half what each token of
+                             # context costs in memory: about twice the context), else 16. Or write 16 / 8 / 4
   # speculative_decoding: true  # a draft guesses tokens, the model checks them: same answers on code, faster while one
                              # request is being answered. Needs the draft `lmk up` fetches; the model page says which
                              # models have one. Default false

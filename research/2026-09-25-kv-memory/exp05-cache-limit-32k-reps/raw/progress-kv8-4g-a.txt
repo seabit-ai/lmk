@@ -1,0 +1,6 @@
+kv8-4g-a/32768/code/warm/0: prompt 32840 cached 32768 ttft 1148 ms decode 0.0 tok/s | rss max 19.32 after 18.17; footprint max 21.64 after 19.24 GB; active max 18.91 cache max 1.98 peak 19.57 after: active 18.44 cache 0.00 GB
+kv8-4g-a/32768/code/greedy/1: prompt 32840 cached 32768 ttft 1233 ms decode 43.4 tok/s | rss max 19.47 after 18.17; footprint max 22.36 after 21.57 GB; active max 19.52 cache max 2.48 peak 20.88 after: active 18.63 cache 2.14 GB
+kv8-4g-a/32768/code/greedy/2: prompt 32840 cached 32768 ttft 1260 ms decode 43.5 tok/s | rss max 19.34 after 18.04; footprint max 24.15 after 21.57 GB; active max 19.87 cache max 4.27 peak 20.90 after: active 18.63 cache 2.14 GB
+kv8-4g-a/32768/code/greedy/3: prompt 32840 cached 32768 ttft 1265 ms decode 43.5 tok/s | rss max 19.33 after 18.04; footprint max 24.15 after 21.61 GB; active max 19.87 cache max 4.24 peak 20.90 after: active 18.63 cache 2.18 GB
+kv8-4g-a/32768/code/greedy/4: prompt 32840 cached 32768 ttft 1260 ms decode 43.5 tok/s | rss max 19.34 after 18.04; footprint max 24.15 after 21.61 GB; active max 19.87 cache max 4.27 peak 20.90 after: active 18.63 cache 2.18 GB
+kv8-4g-a/32768/code/greedy/5: prompt 32840 cached 32768 ttft 1327 ms decode 43.5 tok/s | rss max 19.34 after 18.04; footprint max 24.15 after 21.62 GB; active max 19.87 cache max 4.24 peak 20.90 after: active 18.63 cache 2.19 GB

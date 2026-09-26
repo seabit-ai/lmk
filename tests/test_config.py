@@ -119,17 +119,48 @@ def test_thinking_and_effort_are_server_constants_handed_to_the_template(tmp_pat
         load_config(write(tmp_path, "model: {name: qwen3.8-27b-4bit, thinking: sometimes}"))
 
 
-def test_kv_cache_bits_defaults_to_the_models_own_precision_and_accepts_8_and_4(tmp_path):
-    assert load_config(write(tmp_path, "model: {name: qwen3.8-27b-4bit}")).model.kv_cache_bits == 16
-    assert load_config(write(tmp_path, "model: {name: qwen3.8-27b-4bit, kv_cache_bits: 8}")).model.kv_cache_bits == 8
-    assert load_config(write(tmp_path, "model: {name: qwen3.8-27b-4bit, kv_cache_bits: 4}")).model.kv_cache_bits == 4
+@pytest.fixture
+def mac():
+    """mac(96) makes load_config see a 96 GB Mac."""
+    from lmk.memory import MemoryReading, get_current_memory, set_current_memory
+
+    class Fixed:
+        def __init__(self, gb): self.gb = gb
+        def read(self): return MemoryReading("normal", 80, self.gb * 1024**3)
+
+    before = get_current_memory()
+    yield lambda gb: set_current_memory(Fixed(gb))
+    set_current_memory(before)
+
+
+def test_kv_cache_bits_left_out_or_auto_is_chosen_by_the_macs_memory(tmp_path, mac):
+    for text in ("model: {name: qwen3.8-27b-4bit}", "model: {name: qwen3.8-27b-4bit, kv_cache_bits: auto}"):
+        path = write(tmp_path, text)
+        for gb, bits in ((32, 8), (64, 8), (96, 16), (128, 16)):
+            mac(gb)
+            model = load_config(path).model
+            assert (model.kv_cache_bits, model.kv_cache_bits_auto) == (bits, True), (text, gb)
+
+
+def test_kv_cache_bits_stays_16_on_a_small_mac_for_a_model_never_tested_at_8(tmp_path, mac):
+    mac(64)
+    assert load_config(write(tmp_path, "model: {name: gemma-4-31b-4bit}")).model.kv_cache_bits == 16
+    assert load_config(write(tmp_path, "model: {repo: org/Some-Model-MLX}")).model.kv_cache_bits == 16
+
+
+def test_kv_cache_bits_in_the_config_wins_over_the_automatic_choice(tmp_path, mac):
+    for gb in (64, 96):
+        mac(gb)
+        for bits in (16, 8, 4):
+            model = load_config(write(tmp_path, f"model: {{name: qwen3.8-27b-4bit, kv_cache_bits: {bits}}}")).model
+            assert (model.kv_cache_bits, model.kv_cache_bits_auto) == (bits, False), (gb, bits)
 
 
 def test_kv_cache_bits_refuses_other_values_and_says_what_it_takes(tmp_path):
-    for bad in ("12", "true", "'8'", "8.0"):
+    for bad in ("12", "true", "'8'", "8.0", "Auto"):
         with pytest.raises(ConfigError) as e:
             load_config(write(tmp_path, f"model: {{name: qwen3.8-27b-4bit, kv_cache_bits: {bad}}}"))
-        assert "model.kv_cache_bits must be one of 16, 8, 4" in str(e.value)
+        assert "model.kv_cache_bits must be auto or one of 16, 8, 4" in str(e.value)
 
 
 def test_speculative_decoding_is_a_switch_with_an_optional_draft_size(tmp_path):

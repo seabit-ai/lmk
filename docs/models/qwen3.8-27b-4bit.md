@@ -9,7 +9,7 @@ Text and images in, tool calls, thinking. This is the model lmk itself was built
 |---|---|
 | weights in memory | 16 GB |
 | memory when loaded | 15 GiB (measured on the M3 Ultra) |
-| needs at least (expected, not tested) | 32 GB — about 85k of context there; the full 262k from 64 GB up |
+| needs at least (expected, not tested) | 32 GB — about 122k of context there with the 8-bit KV cache lmk picks below 96 GB (85k at 16-bit); the full 262k from 48 GB up |
 | context on a 96 GB Mac | 262,144 (its maximum) |
 | download | 16.1 GB, `lmk pull` |
 
@@ -17,8 +17,8 @@ Text and images in, tool calls, thinking. This is the model lmk itself was built
 
 | | prefill | cached prefill | decode, prose | decode, code |
 |---|---|---|---|---|
-| defaults (16-bit KV cache, no draft) | 323 tok/s | 53k tok/s | 39 tok/s (about 33 on long agent conversations) | — |
-| the recommended configuration below | 322 tok/s | 49k tok/s | 45.0 tok/s | 60.1 tok/s (88% of drafted tokens accepted) |
+| 16-bit KV cache, no draft | 323 tok/s | 53k tok/s | 39 tok/s (about 33 on long agent conversations) | — |
+| 8-bit KV cache, the draft on | 322 tok/s | 49k tok/s | 45.0 tok/s | 60.1 tok/s (88% of drafted tokens accepted) |
 | same, an agent request that carries `tools` | — | — | — | 58.2 tok/s against 36.5 without the draft (a tool call writing a file; 85% of drafted tokens in the call accepted) |
 
 With the draft on, code and copy-editing come out 1.5x faster, prose 15% faster; answers scored the same as
@@ -26,7 +26,7 @@ plain decoding but are not token-for-token identical to it — at near-tie words
 apart) the checked batch and the one-token step can pick differently. On short prompts code and copy-editing
 happened to match exactly; at 8k–128k context every greedy test diverged somewhere, with 8- and 16-bit KV cache. See "Tested" for how this was measured.
 
-How it holds up as the conversation grows (the recommended configuration, thinking off, one request, the prefix
+How it holds up as the conversation grows (8-bit KV cache, thinking off, one request, the prefix
 already cached; 256 tokens, greedy unless noted; [`research/2026-09-25-spec-long-context`](../../research/2026-09-25-spec-long-context/)):
 
 | context | code, no draft → draft | prose, no draft → draft |
@@ -39,6 +39,11 @@ already cached; 256 tokens, greedy unless noted; [`research/2026-09-25-spec-long
 
 The draft never made decoding slower, up to 128k. Code gains less at long context because a verify step costs more
 there, not because fewer drafts are accepted; sampled prose gains almost nothing.
+
+At 16 bits, what lmk picks on a Mac with 96 GB or more, decoding slows down less as the conversation grows: without
+the draft 37 / 32 / 28 / 22 tok/s at 8k / 32k / 64k / 128k, against 35 / 28 / 22 / 15 at 8 bits — 44% faster at 128k;
+with the draft at 128k, code 31 and prose 24 tok/s against 20 and 19. Same machine and prompts, greedy
+([`research/2026-09-25-spec-long-context`](../../research/2026-09-25-spec-long-context/) exp02).
 
 Two drafts exist for this model; `model.draft` picks one, the default is `dflash2`:
 
@@ -58,11 +63,17 @@ ahead — not measured: a `lmk bench` row from such a Mac would settle it.
 model:
   name: qwen3.8-27b-4bit
   reasoning_effort: low       # its template knows low / medium / xhigh; the default (xhigh) scored worse on every test
-  kv_cache_bits: 8            # halves what each token of context costs: 122k tokens on a 32 GB Mac instead of 85k.
-                              # Scored the same as 16-bit with 60k tokens of context in front of every task (below)
   speculative_decoding: true  # the model's own draft head (lmk up fetches it): code 1.5x faster when one request is
                               # being answered; prose 1.15x; scored the same (below), not token-for-token identical
+  kv_cache_bits: auto         # the default: 16 on a Mac with 96 GB or more, 8 below (why: under this block)
 ```
+
+`kv_cache_bits: auto` is the default, and the recommendation. From 96 GB up lmk keeps the KV cache at 16 bits:
+it decodes faster as the conversation grows (44% at 128k, see Speed) and the full 262k still fits. Below 96 GB it uses 8 bits, which halves
+what each token of context costs — 122k tokens on a 32 GB Mac instead of 85k — and scored the same as 16-bit with
+60k tokens of context in front of every task (Tested). The line at 96 GB is measured on one 96 GB Mac only; what a
+smaller Mac can hold at each precision is worked out from it, not run. `lmk status` shows the precision in use and
+whether it was chosen automatically; `kv_cache_bits: 16` or `8` in the config always wins.
 
 ## Thinking
 
@@ -89,7 +100,7 @@ makes every cached conversation cold once.
 - **Slower on long conversations:** ~33 tok/s at 60k+ tokens of context against ~39 fresh.
 - **First touch after hours idle is slow.** If other models were loaded meanwhile, the weights get
   paged back in on the next request: 37 s instead of 13 s for a 4k prompt, once.
-- **`kv_cache_bits: 8` changes answers slightly.** The KV cache holds numbers rounded to 8 bits, so a greedy answer can
+- **At 8 bits (automatic below 96 GB) answers change slightly.** The KV cache holds numbers rounded to 8 bits, so a greedy answer can
   differ from the 16-bit one after a few dozen tokens even on a 3k-token prompt. It did not score lower on our
   tests (Tested), and the prompt cache written at 8 bits lives in its own directory: switching bits starts the
   cache empty for this model. Restoring a cached prompt is about a fifth slower at 8 bits (first token 1.03 s
@@ -131,7 +142,7 @@ makes every cached conversation cold once.
   default sampling. Integration tests 5/5 with the DFlash 2 draft and `kv_cache_bits: 8`. The drafter only sees the part of
   the prompt this request computed — a prefix that came back from the disk cache is not fed to it — which costs nothing
   measurable (research exp09: the last 256 tokens carry all of the acceptance rate).
-- **Both together — `kv_cache_bits: 8` with `speculative_decoding: true`, the configuration recommended above** (2026-09-24,
+- **Both together — `kv_cache_bits: 8` with `speculative_decoding: true`, the configuration recommended below 96 GB** (2026-09-24,
   `research/2026-09-23-speculative-decoding/exp05-kv8-with-draft/`): the first request crashed on the engine as shipped
   (its verify step could not read a quantized cache; fixed in our engine fork). After the fix: greedy code and copy-editing
   output identical to plain 8-bit decoding at 1.49x, 86% of drafted tokens accepted with the model's default sampling,
@@ -140,5 +151,6 @@ makes every cached conversation cold once.
 
 ## Not tested
 
-- Other Macs than the M3 Ultra 96 GB.
+- Other Macs than the M3 Ultra 96 GB — including whether 96 GB is the right place for the automatic switch from 8-bit
+  to 16-bit KV cache; below it the numbers are worked out from this Mac, not run.
 - `reasoning_effort` levels: wired through, not yet measured for speed or quality.

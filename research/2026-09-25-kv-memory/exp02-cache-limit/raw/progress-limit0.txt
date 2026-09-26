@@ -1,0 +1,8 @@
+limit0/32768/code/warm/0: prompt 32840 cached 32768 ttft 947 ms decode 0.0 tok/s | rss max 20.05 after 18.01; footprint max 20.97 after 20.23 GB; active max 19.78 cache max - peak 21.59 after: active 19.46 cache - GB
+limit0/32768/code/greedy/1: prompt 32840 cached 32768 ttft 1172 ms decode 47.8 tok/s | rss max 20.26 after 18.02; footprint max 22.49 after 20.44 GB; active max 22.50 cache max - peak 23.91 after: active 19.66 cache - GB
+limit0/32768/code/greedy/2: prompt 32840 cached 32768 ttft 1167 ms decode 47.9 tok/s | rss max 20.14 after 18.02; footprint max 22.40 after 20.45 GB; active max 22.53 cache max - peak 23.94 after: active 19.66 cache - GB
+limit0/32768/code/greedy/3: prompt 32840 cached 32768 ttft 1164 ms decode 47.7 tok/s | rss max 20.31 after 18.02; footprint max 22.56 after 20.45 GB; active max 21.53 cache max - peak 23.94 after: active 19.66 cache - GB
+limit0/131072/code/warm/0: prompt 131144 cached 131072 ttft 2830 ms decode 0.0 tok/s | rss max 26.88 after 18.05; footprint max 37.25 after 26.68 GB; active max 31.18 cache max - peak 36.82 after: active 25.91 cache - GB
+limit0/131072/code/greedy/1: prompt 131144 cached 131072 ttft 3011 ms decode 28.2 tok/s | rss max 26.89 after 18.14; footprint max 39.69 after 26.81 GB; active max 37.60 cache max - peak 43.24 after: active 25.95 cache - GB
+limit0/131072/code/greedy/2: prompt 131144 cached 131072 ttft 3014 ms decode 28.2 tok/s | rss max 26.90 after 18.15; footprint max 39.75 after 26.82 GB; active max 41.92 cache max - peak 43.26 after: active 25.95 cache - GB
+limit0/131072/code/greedy/3: prompt 131144 cached 131072 ttft 3089 ms decode 28.1 tok/s | rss max 26.90 after 18.16; footprint max 38.79 after 26.83 GB; active max 37.63 cache max - peak 43.26 after: active 25.95 cache - GB

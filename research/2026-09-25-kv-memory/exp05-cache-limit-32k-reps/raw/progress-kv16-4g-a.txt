@@ -1,0 +1,6 @@
+kv16-4g-a/32768/code/warm/0: prompt 32840 cached 32768 ttft 1118 ms decode 0.0 tok/s | rss max 20.32 after 18.16; footprint max 24.55 after 20.30 GB; active max 20.18 cache max 4.02 peak 21.59 after: active 19.46 cache 0.06 GB
+kv16-4g-a/32768/code/greedy/1: prompt 32840 cached 32768 ttft 1149 ms decode 51.0 tok/s | rss max 20.46 after 18.17; footprint max 25.16 after 23.65 GB; active max 22.50 cache max 4.30 peak 23.91 after: active 19.66 cache 3.20 GB
+kv16-4g-a/32768/code/greedy/2: prompt 32840 cached 32768 ttft 1200 ms decode 51.1 tok/s | rss max 20.46 after 18.17; footprint max 25.77 after 23.65 GB; active max 22.53 cache max 4.25 peak 23.94 after: active 19.66 cache 3.20 GB
+kv16-4g-a/32768/code/greedy/3: prompt 32840 cached 32768 ttft 1194 ms decode 51.3 tok/s | rss max 20.41 after 18.17; footprint max 25.77 after 23.66 GB; active max 21.50 cache max 4.30 peak 23.94 after: active 19.66 cache 3.21 GB
+kv16-4g-a/32768/code/greedy/4: prompt 32840 cached 32768 ttft 1196 ms decode 51.0 tok/s | rss max 20.29 after 18.17; footprint max 25.74 after 23.67 GB; active max 22.53 cache max 4.23 peak 23.94 after: active 19.66 cache 3.22 GB
+kv16-4g-a/32768/code/greedy/5: prompt 32840 cached 32768 ttft 1189 ms decode 50.9 tok/s | rss max 20.34 after 18.18; footprint max 25.79 after 23.68 GB; active max 22.53 cache max 4.22 peak 23.94 after: active 19.66 cache 3.22 GB

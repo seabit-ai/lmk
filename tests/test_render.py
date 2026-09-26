@@ -28,6 +28,10 @@ def test_the_header_says_where_it_is_what_runs_memory_cache_and_limits():
     assert "  settings   thinking on · KV cache 16-bit · speculative decoding off" in text
     off = dict(STATUS, model=dict(STATUS["model"], thinking=False, reasoning_effort="low", kv_cache_bits=8))
     assert "  settings   thinking off (effort low) · KV cache 8-bit · speculative decoding off" in render.status_block(off, "http://127.0.0.1:1235")
+    auto = dict(STATUS, model=dict(STATUS["model"], kv_cache_bits_auto=True, mac_memory_gb=96))
+    assert "  settings   thinking on · KV cache 16-bit (automatic for a 96 GB Mac) · speculative decoding off" in render.status_block(auto, "u")
+    pinned = dict(STATUS, model=dict(STATUS["model"], kv_cache_bits_auto=False, mac_memory_gb=96))
+    assert "  settings   thinking on · KV cache 16-bit (set in config) · speculative decoding off" in render.status_block(pinned, "u")
     assert "  about it   https://github.com/seabit-ai/lmk/blob/main/docs/models/qwen3.8-27b-4bit.md" in text
     assert "about it" not in render.status_block(dict(STATUS, model=dict(STATUS["model"], id="my-own-model")), "u")
     assert "sampling" not in text                       # an older server without the field: no line

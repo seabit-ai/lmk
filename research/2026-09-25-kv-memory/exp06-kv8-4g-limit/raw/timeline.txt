@@ -1,0 +1,7 @@
+2026-09-26 00:34:16 engine 42a248c, lmk d09ec63, resident on 1235: down
+2026-09-26 00:34:19 free before loading unset: 97 GB
+2026-09-26 00:34:19 start unset (cache limit '', clear at end '')
+2026-09-26 00:49:00 stop unset
+2026-09-26 00:49:00 free before loading limit4g: 97 GB
+2026-09-26 00:49:00 start limit4g (cache limit '4294967296', clear at end '')
+2026-09-26 00:51:07 stop limit4g

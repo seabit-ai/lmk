@@ -1,0 +1,19 @@
+2026-09-25 23:33:22 engine 42a248c, lmk 9e24a76, resident on 1235: down
+2026-09-25 23:33:26 free before loading unset1: 97 GB
+2026-09-25 23:33:26 start unset1 (cache limit '', clear at end '')
+2026-09-25 23:46:06 stop unset1
+2026-09-25 23:46:06 free before loading limit0: 97 GB
+2026-09-25 23:46:06 start limit0 (cache limit '0', clear at end '')
+2026-09-25 23:47:59 stop limit0
+2026-09-25 23:47:59 free before loading limit1g: 97 GB
+2026-09-25 23:47:59 start limit1g (cache limit '1073741824', clear at end '')
+2026-09-25 23:49:48 stop limit1g
+2026-09-25 23:49:48 free before loading limit4g: 97 GB
+2026-09-25 23:49:48 start limit4g (cache limit '4294967296', clear at end '')
+2026-09-25 23:51:36 stop limit4g
+2026-09-25 23:51:36 free before loading clear: 97 GB
+2026-09-25 23:51:36 start clear (cache limit '', clear at end '1')
+2026-09-25 23:53:24 stop clear
+2026-09-25 23:53:24 free before loading unset2: 97 GB
+2026-09-25 23:53:24 start unset2 (cache limit '', clear at end '')
+2026-09-25 23:55:12 stop unset2
