@@ -1,0 +1,2 @@
+✗ lmk is not running.
+  start it:  lmk up

@@ -1,0 +1,110 @@
+2026-09-25 21:27:34 free before loading: 97 GB
+8192 8192 34700
+32768 32768 142914
+65536 65536 286708
+131072 131072 551041
+2026-09-25 21:27:37 start off
+off 8192 prose warm: prompt 8266 cached 0 ttft 25817 ms (26s wall)
+off 8192 prose greedy #1: prompt 8266 cached 8192 completion 256 length ttft 582 ms decode 37.0 tok/s drafted None accepted None sha 4c366bbc2cce rounds 0 gpu 18.29 GB
+off 8192 prose greedy #2: prompt 8266 cached 8192 completion 256 length ttft 577 ms decode 37.0 tok/s drafted None accepted None sha 4c366bbc2cce rounds 0 gpu 18.87 GB
+off 8192 prose greedy #3: prompt 8266 cached 8192 completion 256 length ttft 577 ms decode 37.0 tok/s drafted None accepted None sha 4c366bbc2cce rounds 0 gpu 18.83 GB
+off 8192 code warm: prompt 8264 cached 8192 ttft 577 ms (1s wall)
+off 8192 code greedy #1: prompt 8264 cached 8192 completion 256 length ttft 576 ms decode 37.0 tok/s drafted None accepted None sha 33b7f1a93938 rounds 0 gpu 18.26 GB
+off 8192 code greedy #2: prompt 8264 cached 8192 completion 256 length ttft 577 ms decode 37.0 tok/s drafted None accepted None sha 33b7f1a93938 rounds 0 gpu 18.82 GB
+off 8192 code greedy #3: prompt 8264 cached 8192 completion 256 length ttft 574 ms decode 37.0 tok/s drafted None accepted None sha 33b7f1a93938 rounds 0 gpu 18.85 GB
+off 32768 prose warm: prompt 32842 cached 8192 ttft 86334 ms (86s wall)
+off 32768 prose greedy #1: prompt 32842 cached 32768 completion 256 length ttft 984 ms decode 32.0 tok/s drafted None accepted None sha a5cb0f87e5d5 rounds 0 gpu 23.06 GB
+off 32768 prose greedy #2: prompt 32842 cached 32768 completion 256 length ttft 996 ms decode 32.2 tok/s drafted None accepted None sha a5cb0f87e5d5 rounds 0 gpu 25.48 GB
+off 32768 prose greedy #3: prompt 32842 cached 32768 completion 256 length ttft 1033 ms decode 32.3 tok/s drafted None accepted None sha a5cb0f87e5d5 rounds 0 gpu 22.93 GB
+off 32768 prose sampled #1: prompt 32842 cached 32768 completion 256 length ttft 998 ms decode 31.7 tok/s drafted None accepted None sha 9316c5a506c2 rounds 0 gpu 25.04 GB
+off 32768 prose sampled #2: prompt 32842 cached 32768 completion 256 length ttft 1050 ms decode 31.8 tok/s drafted None accepted None sha ec4d5768049f rounds 0 gpu 22.89 GB
+off 32768 prose sampled #3: prompt 32842 cached 32768 completion 256 length ttft 1016 ms decode 31.8 tok/s drafted None accepted None sha 1e2b3eb218ff rounds 0 gpu 25.49 GB
+off 32768 code warm: prompt 32840 cached 32768 ttft 1032 ms (1s wall)
+off 32768 code greedy #1: prompt 32840 cached 32768 completion 256 length ttft 984 ms decode 32.3 tok/s drafted None accepted None sha f49f19af144c rounds 0 gpu 23.03 GB
+off 32768 code greedy #2: prompt 32840 cached 32768 completion 256 length ttft 997 ms decode 32.2 tok/s drafted None accepted None sha f49f19af144c rounds 0 gpu 25.47 GB
+off 32768 code greedy #3: prompt 32840 cached 32768 completion 256 length ttft 1031 ms decode 32.2 tok/s drafted None accepted None sha f49f19af144c rounds 0 gpu 22.88 GB
+off 32768 code sampled #1: prompt 32840 cached 32768 completion 256 length ttft 1003 ms decode 31.8 tok/s drafted None accepted None sha 600aaec7bcd4 rounds 0 gpu 25.23 GB
+off 32768 code sampled #2: prompt 32840 cached 32768 completion 256 length ttft 1039 ms decode 31.7 tok/s drafted None accepted None sha 9c618c281daa rounds 0 gpu 25.48 GB
+off 32768 code sampled #3: prompt 32840 cached 32768 completion 256 length ttft 1000 ms decode 31.8 tok/s drafted None accepted None sha 26ab3dd44f76 rounds 0 gpu 25.25 GB
+off 65536 prose warm: prompt 65610 cached 32768 ttft 143839 ms (144s wall)
+off 65536 prose greedy #1: prompt 65610 cached 65536 completion 256 length ttft 1553 ms decode 27.8 tok/s drafted None accepted None sha 2a9d5e3cbec0 rounds 0 gpu 29.93 GB
+off 65536 prose greedy #2: prompt 65610 cached 65536 completion 256 length ttft 1722 ms decode 27.8 tok/s drafted None accepted None sha 2a9d5e3cbec0 rounds 0 gpu 34.24 GB
+off 65536 prose greedy #3: prompt 65610 cached 65536 completion 256 length ttft 1604 ms decode 27.8 tok/s drafted None accepted None sha 2a9d5e3cbec0 rounds 0 gpu 34.13 GB
+off 65536 code warm: prompt 65608 cached 65536 ttft 1590 ms (2s wall)
+off 65536 code greedy #1: prompt 65608 cached 65536 completion 256 length ttft 1644 ms decode 27.8 tok/s drafted None accepted None sha 52ff39b8aac2 rounds 0 gpu 29.89 GB
+off 65536 code greedy #2: prompt 65608 cached 65536 completion 256 length ttft 1623 ms decode 27.9 tok/s drafted None accepted None sha 52ff39b8aac2 rounds 0 gpu 33.97 GB
+off 65536 code greedy #3: prompt 65608 cached 65536 completion 256 length ttft 1581 ms decode 27.8 tok/s drafted None accepted None sha 52ff39b8aac2 rounds 0 gpu 34.24 GB
+off 131072 prose warm: prompt 131146 cached 65536 ttft 393232 ms (394s wall)
+off 131072 prose greedy #1: prompt 131146 cached 131072 completion 256 length ttft 4672 ms decode 22.1 tok/s drafted None accepted None sha 92296745e672 rounds 0 gpu 43.28 GB
+off 131072 prose greedy #2: prompt 131146 cached 131072 completion 256 length ttft 3091 ms decode 22.1 tok/s drafted None accepted None sha 92296745e672 rounds 0 gpu 51.91 GB
+off 131072 prose greedy #3: prompt 131146 cached 131072 completion 256 length ttft 3051 ms decode 22.1 tok/s drafted None accepted None sha 92296745e672 rounds 0 gpu 51.95 GB
+off 131072 code warm: prompt 131144 cached 131072 ttft 3181 ms (3s wall)
+off 131072 code greedy #1: prompt 131144 cached 131072 completion 256 length ttft 2956 ms decode 22.1 tok/s drafted None accepted None sha a02ed279fdf1 rounds 0 gpu 43.21 GB
+off 131072 code greedy #2: prompt 131144 cached 131072 completion 256 length ttft 2973 ms decode 22.1 tok/s drafted None accepted None sha a02ed279fdf1 rounds 0 gpu 48.08 GB
+off 131072 code greedy #3: prompt 131144 cached 131072 completion 256 length ttft 3004 ms decode 22.1 tok/s drafted None accepted None sha a02ed279fdf1 rounds 0 gpu 51.92 GB
+2026-09-25 21:44:37 stop off
+2026-09-25 21:44:37 start on
+on 8192 prose warm: prompt 8266 cached 8192 ttft 537 ms (1s wall)
+on 8192 prose greedy #1: prompt 8266 cached 8192 completion 256 length ttft 615 ms decode 43.6 tok/s drafted 235 accepted 138 sha 1dc0b02072e4 rounds 118 gpu 19.54 GB
+on 8192 prose greedy #2: prompt 8266 cached 8192 completion 256 length ttft 615 ms decode 43.9 tok/s drafted 235 accepted 138 sha 1dc0b02072e4 rounds 118 gpu 20.87 GB
+on 8192 prose greedy #3: prompt 8266 cached 8192 completion 256 length ttft 616 ms decode 43.9 tok/s drafted 235 accepted 138 sha 1dc0b02072e4 rounds 118 gpu 20.86 GB
+on 8192 code warm: prompt 8264 cached 8192 ttft 566 ms (1s wall)
+on 8192 code greedy #1: prompt 8264 cached 8192 completion 256 length ttft 614 ms decode 53.7 tok/s drafted 253 accepted 188 sha 61d2da7888ab rounds 68 gpu 19.43 GB
+on 8192 code greedy #2: prompt 8264 cached 8192 completion 256 length ttft 618 ms decode 56.4 tok/s drafted 253 accepted 188 sha 61d2da7888ab rounds 68 gpu 20.76 GB
+on 8192 code greedy #3: prompt 8264 cached 8192 completion 256 length ttft 616 ms decode 50.1 tok/s drafted 253 accepted 188 sha 61d2da7888ab rounds 68 gpu 20.76 GB
+on 32768 prose warm: prompt 32842 cached 32768 ttft 1011 ms (1s wall)
+on 32768 prose greedy #1: prompt 32842 cached 32768 completion 256 length ttft 1033 ms decode 38.1 tok/s drafted 226 accepted 143 sha d6c16dcf5764 rounds 113 gpu 24.36 GB
+on 32768 prose greedy #2: prompt 32842 cached 32768 completion 256 length ttft 1046 ms decode 37.6 tok/s drafted 226 accepted 143 sha d6c16dcf5764 rounds 113 gpu 27.67 GB
+on 32768 prose greedy #3: prompt 32842 cached 32768 completion 256 length ttft 1036 ms decode 37.7 tok/s drafted 226 accepted 143 sha d6c16dcf5764 rounds 113 gpu 27.67 GB
+on 32768 prose sampled #1: prompt 32842 cached 32768 completion 256 length ttft 1052 ms decode 32.3 tok/s drafted 258 accepted 127 sha 3a7e0d3c82b4 rounds 129 gpu 27.67 GB
+on 32768 prose sampled #2: prompt 32842 cached 32768 completion 256 length ttft 1071 ms decode 36.5 tok/s drafted 232 accepted 140 sha efbdda366fd1 rounds 116 gpu 27.27 GB
+on 32768 prose sampled #3: prompt 32842 cached 32768 completion 256 length ttft 1038 ms decode 33.7 tok/s drafted 251 accepted 130 sha 488b37ab6747 rounds 126 gpu 27.49 GB
+on 32768 code warm: prompt 32840 cached 32768 ttft 970 ms (1s wall)
+on 32768 code greedy #1: prompt 32840 cached 32768 completion 256 length ttft 1017 ms decode 49.6 tok/s drafted 233 accepted 189 sha f46b4dea92bc rounds 67 gpu 24.24 GB
+on 32768 code greedy #2: prompt 32840 cached 32768 completion 256 length ttft 1036 ms decode 49.7 tok/s drafted 233 accepted 189 sha f46b4dea92bc rounds 67 gpu 27.13 GB
+on 32768 code greedy #3: prompt 32840 cached 32768 completion 256 length ttft 1024 ms decode 49.3 tok/s drafted 233 accepted 189 sha f46b4dea92bc rounds 67 gpu 27.13 GB
+on 32768 code sampled #1: prompt 32840 cached 32768 completion 256 length ttft 1039 ms decode 43.7 tok/s drafted 246 accepted 178 sha dcc1eebc10c6 rounds 78 gpu 27.55 GB
+on 32768 code sampled #2: prompt 32840 cached 32768 completion 256 length ttft 1075 ms decode 40.6 tok/s drafted 251 accepted 170 sha 69686a95439b rounds 86 gpu 27.10 GB
+on 32768 code sampled #3: prompt 32840 cached 32768 completion 256 length ttft 1025 ms decode 47.6 tok/s drafted 241 accepted 194 sha dc1ea1f42e94 rounds 62 gpu 27.06 GB
+on 65536 prose warm: prompt 65610 cached 65536 ttft 1594 ms (2s wall)
+on 65536 prose greedy #1: prompt 65610 cached 65536 completion 256 length ttft 1718 ms decode 32.3 tok/s drafted 229 accepted 142 sha 61f816b8e579 rounds 114 gpu 30.99 GB
+on 65536 prose greedy #2: prompt 65610 cached 65536 completion 256 length ttft 1807 ms decode 32.3 tok/s drafted 229 accepted 142 sha 61f816b8e579 rounds 114 gpu 36.63 GB
+on 65536 prose greedy #3: prompt 65610 cached 65536 completion 256 length ttft 1622 ms decode 32.3 tok/s drafted 229 accepted 142 sha 61f816b8e579 rounds 114 gpu 36.65 GB
+on 65536 code warm: prompt 65608 cached 65536 ttft 1529 ms (2s wall)
+on 65536 code greedy #1: prompt 65608 cached 65536 completion 256 length ttft 1582 ms decode 41.5 tok/s drafted 237 accepted 187 sha 9fb00bd6eca4 rounds 68 gpu 30.96 GB
+on 65536 code greedy #2: prompt 65608 cached 65536 completion 256 length ttft 1683 ms decode 41.6 tok/s drafted 237 accepted 187 sha 9fb00bd6eca4 rounds 68 gpu 36.41 GB
+on 65536 code greedy #3: prompt 65608 cached 65536 completion 256 length ttft 1800 ms decode 41.6 tok/s drafted 237 accepted 187 sha 9fb00bd6eca4 rounds 68 gpu 36.40 GB
+on 131072 prose warm: prompt 131146 cached 131072 ttft 2966 ms (3s wall)
+on 131072 prose greedy #1: prompt 131146 cached 131072 completion 256 length ttft 2970 ms decode 24.0 tok/s drafted 243 accepted 143 sha 6a0cec2efce1 rounds 113 gpu 44.31 GB
+on 131072 prose greedy #2: prompt 131146 cached 131072 completion 256 length ttft 3093 ms decode 24.0 tok/s drafted 243 accepted 143 sha 6a0cec2efce1 rounds 113 gpu 54.19 GB
+on 131072 prose greedy #3: prompt 131146 cached 131072 completion 256 length ttft 3224 ms decode 23.9 tok/s drafted 243 accepted 143 sha 6a0cec2efce1 rounds 113 gpu 54.15 GB
+on 131072 code warm: prompt 131144 cached 131072 ttft 2935 ms (3s wall)
+on 131072 code greedy #1: prompt 131144 cached 131072 completion 256 length ttft 2980 ms decode 31.1 tok/s drafted 252 accepted 192 sha 88b325a233bf rounds 64 gpu 44.28 GB
+on 131072 code greedy #2: prompt 131144 cached 131072 completion 256 length ttft 3082 ms decode 31.2 tok/s drafted 252 accepted 192 sha 88b325a233bf rounds 64 gpu 53.92 GB
+on 131072 code greedy #3: prompt 131144 cached 131072 completion 256 length ttft 3121 ms decode 31.2 tok/s drafted 252 accepted 192 sha 88b325a233bf rounds 64 gpu 53.88 GB
+2026-09-25 21:49:47 stop on
+## Decode: kv8 (exp01) vs kv16 (exp02)
+
+| context | kind | mode | off ms/step kv8 → kv16 | off tok/s kv8 → kv16 (kv16 min–max) | on tok/s kv8 → kv16 (kv16 min–max) | speedup kv8 → kv16 | accepted kv8 → kv16 | round ms kv8 (est.) → kv16 (exact) | greedy text off = on, kv16 |
+|---|---|---|---|---|---|---|---|---|---|
+| 8k | code | greedy | 28.3 → 27.0 | 35.3 → 37.0 (37.0–37.0) | 53.0 → 53.7 (50.1–56.4) | 1.50× → 1.45× | 73% → 74% | 71 → 70 | no (1 off / 1 on distinct) |
+| 8k | prose | greedy | 28.3 → 27.0 | 35.4 → 37.0 (37.0–37.0) | 39.4 → 43.9 (43.6–43.9) | 1.12× → 1.19× | 56% → 59% | 54 → 49 | no (1 off / 1 on distinct) |
+| 32k | code | greedy | 36.2 → 31.0 | 27.6 → 32.2 (32.2–32.3) | 41.6 → 49.6 (49.3–49.7) | 1.51× → 1.54× | 83% → 81% | 94 → 77 | no (1 off / 1 on distinct) |
+| 32k | prose | greedy | 36.1 → 31.1 | 27.7 → 32.2 (32.0–32.3) | 35.3 → 37.7 (37.6–38.0) | 1.27× → 1.17× | 63% → 63% | 64 → 60 | no (1 off / 1 on distinct) |
+| 64k | code | greedy | 46.3 → 35.9 | 21.6 → 27.8 (27.8–27.9) | 30.9 → 41.6 (41.5–41.6) | 1.43× → 1.49× | 81% → 79% | 123 → 90 | no (1 off / 1 on distinct) |
+| 64k | prose | greedy | 46.6 → 36.0 | 21.5 → 27.8 (27.8–27.8) | 26.6 → 32.3 (32.3–32.3) | 1.24× → 1.16× | 63% → 62% | 86 → 69 | no (1 off / 1 on distinct) |
+| 128k | code | greedy | 65.1 → 45.2 | 15.4 → 22.1 (22.1–22.1) | 19.7 → 31.2 (31.1–31.2) | 1.28× → 1.41× | 71% → 76% | 179 → 128 | no (1 off / 1 on distinct) |
+| 128k | prose | greedy | 65.6 → 45.2 | 15.2 → 22.1 (22.1–22.1) | 18.8 → 24.0 (23.9–24.0) | 1.23× → 1.08× | 63% → 59% | 120 → 94 | no (1 off / 1 on distinct) |
+| 32k | code | sampled | 36.5 → 31.5 | 27.4 → 31.8 (31.7–31.8) | 38.3 → 43.7 (40.6–47.6) | 1.40× → 1.37× | 74% → 73% | 70 → 75 | — |
+| 32k | prose | sampled | 36.4 → 31.5 | 27.4 → 31.8 (31.7–31.8) | 28.1 → 33.7 (32.3–36.5) | 1.02× → 1.06× | 54% → 54% | 73 → 60 | — |
+
+## Memory (kv16 measured; kv8 derived)
+
+| context (prompt tokens) | KV bytes kv8 → kv16 (engine bytes/token × tokens) | kv16 lmk_gpu_bytes max during decode, off / on | kv8 derived = kv16 − KV difference, off |
+|---|---|---|---|
+| 8k (8522) | 0.30 → 0.56 GB | 18.87 / 20.87 GB | 18.60 GB |
+| 32k (33098) | 1.15 → 2.17 GB | 25.48 / 27.67 GB | 24.46 GB |
+| 64k (65866) | 2.29 → 4.32 GB | 34.24 / 36.65 GB | 32.22 GB |
+| 128k (131402) | 4.57 → 8.61 GB | 51.95 / 54.19 GB | 47.91 GB |
+
+runs discarded because the resident lmk was busy: exp01 3, exp02 0

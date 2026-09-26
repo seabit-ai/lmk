@@ -1,0 +1,26 @@
+prose warm: prompt 32842 cached 0 ttft 113102 ms
+prose/wall/greedy/1/a1: decode 33.3 tok/s drafted 233 accepted 138
+prose/wall/greedy/2/a1: decode 31.7 tok/s drafted 233 accepted 138
+prose/wall/greedy/3/a1: decode 34.0 tok/s drafted 233 accepted 138
+prose/wall/sampled/1/a1: decode 30.8 tok/s drafted 244 accepted 133
+prose/wall/sampled/2/a1: decode 30.9 tok/s drafted 240 accepted 136
+prose/wall/sampled/3/a1: decode 27.3 tok/s drafted 263 accepted 124
+prose/phases/greedy/1/a1: decode 33.2 tok/s drafted 233 accepted 138
+prose/phases/greedy/2/a1: decode 33.3 tok/s drafted 233 accepted 138
+prose/phases/greedy/3/a1: decode 33.3 tok/s drafted 233 accepted 138
+prose/phases/sampled/1/a1: decode 32.3 tok/s drafted 233 accepted 138
+prose/phases/sampled/2/a1: decode 29.0 tok/s drafted 247 accepted 132
+prose/phases/sampled/3/a1: decode 28.6 tok/s drafted 266 accepted 122
+code warm: prompt 32840 cached 32768 ttft 1113 ms
+code/wall/greedy/1/a1: decode 41.0 tok/s drafted 229 accepted 190
+code/wall/greedy/2/a1: decode 43.3 tok/s drafted 229 accepted 190
+code/wall/greedy/3/a1: decode 43.4 tok/s drafted 229 accepted 190
+code/wall/sampled/1/a1: decode 36.6 tok/s drafted 223 accepted 170
+code/wall/sampled/2/a1: decode 36.7 tok/s drafted 252 accepted 179
+code/wall/sampled/3/a1: decode 39.3 tok/s drafted 210 accepted 164
+code/phases/greedy/1/a1: decode 42.0 tok/s drafted 229 accepted 190
+code/phases/greedy/2/a1: decode 42.1 tok/s drafted 229 accepted 190
+code/phases/greedy/3/a1: decode 42.0 tok/s drafted 229 accepted 190
+code/phases/sampled/1/a1: decode 35.3 tok/s drafted 236 accepted 163
+code/phases/sampled/2/a1: decode 35.2 tok/s drafted 220 accepted 161
+code/phases/sampled/3/a1: decode 38.2 tok/s drafted 219 accepted 171
