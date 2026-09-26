@@ -46,11 +46,11 @@ def chat(srv, messages, **extra):
     chunks = [json.loads(l[6:]) for l in raw.split("\n") if l.startswith("data: ") and l != "data: [DONE]"]
     pick = lambda key: "".join(c["choices"][0]["delta"].get(key) or "" for c in chunks if c["choices"])
     calls = [c["choices"][0]["delta"]["tool_calls"][0] for c in chunks if c["choices"] and c["choices"][0]["delta"].get("tool_calls")]
-    usage = next(c["usage"] for c in chunks if c.get("usage"))
+    usage_chunk = next(c for c in chunks if c.get("usage"))
     prefill = [c["lmk"]["prefill"] for c in chunks if c.get("object") == "lmk.prefill"]
     decode = [c["lmk"]["decode"] for c in chunks if c.get("object") == "lmk.decode"]
-    return {"content": pick("content"), "reasoning": pick("reasoning_content"), "calls": calls, "usage": usage,
-            "prefill": prefill, "decode": decode}
+    return {"content": pick("content"), "reasoning": pick("reasoning_content"), "calls": calls,
+            "usage": usage_chunk["usage"], "lmk": usage_chunk.get("lmk") or {}, "prefill": prefill, "decode": decode}
 
 
 # Same acceptance as kitten's lmstudio provider itest: call out, result back, text answer.
@@ -74,6 +74,24 @@ def test_tool_call_round_trip(server):
                   tools=TOOLS)
     assert "oat milk" in second["content"].lower()
     assert second["calls"] == []
+
+
+# research 2026-09-25-spec-with-tools: a request with tools carries the engine's tool guard, and until
+# the fork walked processors through speculative rounds it never drafted (SPD-022/023).
+def test_a_request_with_tools_drafts_when_a_draft_is_loaded(server):
+    if server.engine.draft_stats() is None:
+        pytest.skip("no draft model loaded (LMK_ITEST_DRAFT)")
+    write = {"type": "function", "function": {
+        "name": "file_write", "description": "Write a text file, replacing it if it exists.",
+        "parameters": {"type": "object", "properties": {"path": {"type": "string"}, "content": {"type": "string"}},
+                       "required": ["path", "content"]}}}
+    out = chat(server, [{"role": "system", "content": "You are kitten, a coding agent. Use tools to act."},
+                        {"role": "user", "content": "Create fizzbuzz.py printing FizzBuzz for 1..30."}],
+               tools=TOOLS + [write], max_tokens=400)
+    print("itest: tools request drafted", out["lmk"].get("draft_drafted"), "accepted", out["lmk"].get("draft_accepted"),
+          "completion", out["usage"]["completion_tokens"], "calls", [c["function"]["name"] for c in out["calls"]])
+    assert [c["function"]["name"] for c in out["calls"]] == ["file_write"]
+    assert out["lmk"]["draft_drafted"] > 0
 
 
 # The number LM Studio never gave us (wish list WISH-002): cache hits, in usage.
