@@ -1,0 +1,39 @@
+off 8192 prose warm: prompt 8266 cached 0 ttft 25986 ms (26s wall)
+off 8192 prose greedy #1: prompt 8266 cached 8192 completion 256 length ttft 603 ms decode 35.3 tok/s drafted None accepted None sha 7b641ebec5eb
+off 8192 prose greedy #2: prompt 8266 cached 8192 completion 256 length ttft 598 ms decode 35.4 tok/s drafted None accepted None sha 7b641ebec5eb
+off 8192 prose greedy #3: DISCARDED, resident busy [{'answered': 14, 'in_flight': 1, 'active': 1}, {'answered': 14, 'in_flight': 1, 'active': 1}]
+off 8192 prose greedy #3: prompt 8266 cached 8192 completion 256 length ttft 812 ms decode 35.3 tok/s drafted None accepted None sha 7b641ebec5eb
+off 8192 code warm: prompt 8264 cached 8192 ttft 575 ms (1s wall)
+off 8192 code greedy #1: prompt 8264 cached 8192 completion 256 length ttft 594 ms decode 35.3 tok/s drafted None accepted None sha e6e1a821e678
+off 8192 code greedy #2: prompt 8264 cached 8192 completion 256 length ttft 597 ms decode 35.3 tok/s drafted None accepted None sha e6e1a821e678
+off 8192 code greedy #3: prompt 8264 cached 8192 completion 256 length ttft 599 ms decode 35.3 tok/s drafted None accepted None sha e6e1a821e678
+off 32768 prose warm: prompt 32842 cached 8192 ttft 87558 ms (88s wall)
+off 32768 prose greedy #1: prompt 32842 cached 32768 completion 256 length ttft 1088 ms decode 27.9 tok/s drafted None accepted None sha 094e1a042771
+off 32768 prose greedy #2: prompt 32842 cached 32768 completion 256 length ttft 1063 ms decode 27.7 tok/s drafted None accepted None sha 094e1a042771
+off 32768 prose greedy #3: prompt 32842 cached 32768 completion 256 length ttft 1070 ms decode 27.7 tok/s drafted None accepted None sha 094e1a042771
+off 32768 prose sampled #1: prompt 32842 cached 32768 completion 256 length ttft 1076 ms decode 27.4 tok/s drafted None accepted None sha 84dd93813987
+off 32768 prose sampled #2: prompt 32842 cached 32768 completion 256 length ttft 1133 ms decode 27.5 tok/s drafted None accepted None sha 6284c4637c12
+off 32768 prose sampled #3: prompt 32842 cached 32768 completion 256 length ttft 1070 ms decode 27.5 tok/s drafted None accepted None sha 0fddc62c0908
+off 32768 code warm: prompt 32840 cached 32768 ttft 1062 ms (1s wall)
+off 32768 code greedy #1: prompt 32840 cached 32768 completion 256 length ttft 1066 ms decode 27.7 tok/s drafted None accepted None sha e5d68c104251
+off 32768 code greedy #2: prompt 32840 cached 32768 completion 256 length ttft 1072 ms decode 27.6 tok/s drafted None accepted None sha e5d68c104251
+off 32768 code greedy #3: prompt 32840 cached 32768 completion 256 length ttft 1080 ms decode 27.5 tok/s drafted None accepted None sha e5d68c104251
+off 32768 code sampled #1: prompt 32840 cached 32768 completion 256 length ttft 1082 ms decode 27.4 tok/s drafted None accepted None sha 86d228bb5547
+off 32768 code sampled #2: prompt 32840 cached 32768 completion 256 length ttft 1142 ms decode 27.2 tok/s drafted None accepted None sha 49772fa23780
+off 32768 code sampled #3: prompt 32840 cached 32768 completion 256 length ttft 1059 ms decode 27.4 tok/s drafted None accepted None sha 2350f756c3a8
+off 65536 prose warm: prompt 65610 cached 32768 ttft 158439 ms (159s wall)
+off 65536 prose greedy #1: prompt 65610 cached 65536 completion 256 length ttft 1863 ms decode 21.8 tok/s drafted None accepted None sha 2a9d5e3cbec0
+off 65536 prose greedy #2: prompt 65610 cached 65536 completion 256 length ttft 2127 ms decode 21.3 tok/s drafted None accepted None sha 2a9d5e3cbec0
+off 65536 prose greedy #3: prompt 65610 cached 65536 completion 256 length ttft 2045 ms decode 21.5 tok/s drafted None accepted None sha 2a9d5e3cbec0
+off 65536 code warm: prompt 65608 cached 65536 ttft 1808 ms (2s wall)
+off 65536 code greedy #1: prompt 65608 cached 65536 completion 256 length ttft 1812 ms decode 21.6 tok/s drafted None accepted None sha 52ff39b8aac2
+off 65536 code greedy #2: prompt 65608 cached 65536 completion 256 length ttft 2038 ms decode 21.8 tok/s drafted None accepted None sha 52ff39b8aac2
+off 65536 code greedy #3: prompt 65608 cached 65536 completion 256 length ttft 2075 ms decode 21.3 tok/s drafted None accepted None sha 52ff39b8aac2
+off 131072 prose warm: prompt 131146 cached 65536 ttft 477254 ms (478s wall)
+off 131072 prose greedy #1: prompt 131146 cached 131072 completion 256 length ttft 5876 ms decode 15.3 tok/s drafted None accepted None sha 0135003aca9f
+off 131072 prose greedy #2: prompt 131146 cached 131072 completion 256 length ttft 3643 ms decode 15.2 tok/s drafted None accepted None sha 0135003aca9f
+off 131072 prose greedy #3: prompt 131146 cached 131072 completion 256 length ttft 3700 ms decode 15.0 tok/s drafted None accepted None sha 0135003aca9f
+off 131072 code warm: prompt 131144 cached 131072 ttft 3593 ms (4s wall)
+off 131072 code greedy #1: prompt 131144 cached 131072 completion 256 length ttft 3625 ms decode 15.4 tok/s drafted None accepted None sha b23cef14ba88
+off 131072 code greedy #2: prompt 131144 cached 131072 completion 256 length ttft 3724 ms decode 15.0 tok/s drafted None accepted None sha b23cef14ba88
+off 131072 code greedy #3: prompt 131144 cached 131072 completion 256 length ttft 3451 ms decode 15.4 tok/s drafted None accepted None sha b23cef14ba88

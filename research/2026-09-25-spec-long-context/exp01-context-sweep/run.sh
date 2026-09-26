@@ -23,7 +23,7 @@ trap cleanup EXIT
 status() { curl -s -m 5 "http://127.0.0.1:$1/lmk/v1/status"; }
 
 MODEL_DIR="$(status 1235 | python3 -c 'import sys,json; print(json.load(sys.stdin)["model"]["path"])')"
-lmk status > "$RAW/resident-before.txt" 2>&1
+lmk status 2>&1 | sed -n 1,10p > "$RAW/resident-before.txt"   # header only: "just finished" names the owner's sessions
 
 # prefixes: public source of mlx-engine, mlx_lm, mlx_vlm, cut at exact token counts
 .venv/bin/python "$HERE/prefix.py" "$MODEL_DIR" "$WORK/prefix" $CTXS | tee "$RAW/prefix.txt"
@@ -51,6 +51,6 @@ YAML
   cp "$H/logs/lmk.jsonl" "$RAW/lmk-$COND.jsonl"
   echo "$(date '+%F %T') stop $COND" | tee -a "$RAW/timeline.txt"
 done
-lmk status > "$RAW/resident-after.txt" 2>&1
+lmk status 2>&1 | sed -n 1,10p > "$RAW/resident-after.txt"
 
 .venv/bin/python "$HERE/table.py" "$RAW/runs.jsonl" | tee "$HERE/results.md"
