@@ -139,7 +139,12 @@ def model_settings(model: dict) -> str:
     speculative = "on" if model.get("speculative_decoding") else "off"
     if model.get("speculative_decoding") and model.get("draft_kind"):
         speculative += f" ({model['draft_kind']})"
-    return (f"thinking {thinking} · KV cache {model.get('kv_cache_bits', 16)}-bit · "
+    kv = f"{model.get('kv_cache_bits', 16)}-bit"
+    if model.get("kv_cache_bits_auto"):
+        kv += f" (automatic for a {model['mac_memory_gb']} GB Mac)"
+    elif "kv_cache_bits_auto" in model:
+        kv += " (set in config)"
+    return (f"thinking {thinking} · KV cache {kv} · "
             f"speculative decoding {speculative}")
 
 

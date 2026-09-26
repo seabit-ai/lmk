@@ -11,7 +11,7 @@ from pathlib import Path
 
 from lmk.config import (DEFAULT_CACHE_MAX_SIZE, lmk_home, DEFAULT_HOST, DEFAULT_MAX_PARALLEL, DEFAULT_MAX_QUEUE,
                         DEFAULT_MAX_WAIT_SECONDS, DEFAULT_PORT)
-from lmk.models import DEFAULT_MODEL_NAME, TESTED_MODELS, smallest_mac_gb
+from lmk.models import DEFAULT_MODEL_NAME, KV16_FROM_MAC_GB, TESTED_MODELS, smallest_mac_gb
 
 # One line per setting, shared by the seed and the example so the two never say different things.
 # What each setting does and what we measured lives in README "Configuration" and the model pages, not here.
@@ -19,7 +19,8 @@ _WHAT = {
     "repo": "instead of name: any MLX model on HuggingFace (address after huggingface.co/); untested by us",
     "path": "instead of name: an MLX model folder already on this Mac — here, one LM Studio downloaded",
     "reasoning_effort": "Qwen3.8: low / medium / xhigh (other models: their page); server-wide",
-    "kv_cache_bits": "16 = the model's own precision; 8 = about twice the context on the same Mac",
+    "kv_cache_bits": (f"by this Mac's memory: 16 from {KV16_FROM_MAC_GB} GB up (faster on long contexts), "
+                      "8 below where the model page tested it (about twice the context); `lmk status` shows which"),
     "speculative_decoding": "a draft guesses tokens, the model checks them (`lmk up` fetches the draft)",
     "draft": "which drafter: mtp (the model's own head, 0.8 GB) or dflash2 (z-lab's, 1.1 GB, guesses more per round); default: the model page's",
     "thinking": "answer without thinking; default: the template's own (on for Qwen, off for Gemma)",
@@ -44,7 +45,8 @@ model:
   # repo: mlx-community/Qwen3-30B-A3B-4bit   # {_WHAT["repo"]}
   # path: ~/.lmstudio/models/lmstudio-community/Qwen3.8-27B-MLX-4bit   # {_WHAT["path"]}
   # reasoning_effort: low        # {_WHAT["reasoning_effort"]}
-  # kv_cache_bits: 8             # {_WHAT["kv_cache_bits"]}
+  kv_cache_bits: auto            # {_WHAT["kv_cache_bits"]}
+  # kv_cache_bits: 16            # 16 on any Mac, or 8: about twice the context, slower on long ones
   # speculative_decoding: true   # {_WHAT["speculative_decoding"]}
   # draft: dflash2               # {_WHAT["draft"]}
   # thinking: false              # {_WHAT["thinking"]}
@@ -87,7 +89,7 @@ def example_text() -> str:
     return f"""\
 # config.yaml.example — every setting, as a config that runs. lmk rewrites this file at each `lmk up` so it always
 # matches the installed version: do not edit it; copy it, or the lines you want, into config.yaml next to it,
-# then `lmk up`. The values are the defaults, except the three the {DEFAULT_MODEL_NAME} page recommends.
+# then `lmk up`. The values are the defaults, except the two the {DEFAULT_MODEL_NAME} page recommends.
 # What each setting does and what we measured: README.md "Configuration" and docs/models/<name>.md.
 
 model:
@@ -95,13 +97,14 @@ model:
 {_model_lines()}
   # repo: mlx-community/Qwen3-30B-A3B-4bit   # {_WHAT["repo"]}
   # path: ~/.lmstudio/models/lmstudio-community/Qwen3.8-27B-MLX-4bit   # {_WHAT["path"]}
-  # The next three are the {DEFAULT_MODEL_NAME} page's recommendation; for another model its page says which to keep.
+  # The next two are the {DEFAULT_MODEL_NAME} page's recommendation; for another model its page says which to keep.
   reasoning_effort: low          # {_WHAT["reasoning_effort"]}
   # reasoning_effort: xhigh      # the template's own default; scored worse than low on every test
-  kv_cache_bits: 8               # {_WHAT["kv_cache_bits"]}
-  # kv_cache_bits: 16            # for a model whose page does not recommend 8
   speculative_decoding: true     # {_WHAT["speculative_decoding"]}
   # speculative_decoding: false  # for a model without a draft: today all but {_draft_family()}
+  kv_cache_bits: auto            # {_WHAT["kv_cache_bits"]}
+  # kv_cache_bits: 16            # 16 on any Mac
+  # kv_cache_bits: 8             # 8 on any Mac; on a model whose page does not list it, untested by us
   # draft: dflash2               # {_WHAT["draft"]}
   # thinking: false              # {_WHAT["thinking"]}
   # context_length: 65536        # {_WHAT["context_length"]}

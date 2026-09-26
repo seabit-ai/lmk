@@ -98,6 +98,9 @@ class _Clock:
 
 class _Memory:
     def __init__(self, resident): self.resident = resident
+    def read(self):
+        from lmk.memory import MemoryReading
+        return MemoryReading("normal", 80, 64 * 1024**3)
     def resident_bytes(self, pid): return self.resident
 
 

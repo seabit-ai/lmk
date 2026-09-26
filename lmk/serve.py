@@ -60,7 +60,8 @@ def serve() -> int:
 
     log.info("LmkStarting", "loading the resident model", model=cfg.model.id, path=str(resolved.path),
              requestedContextLength=cfg.model.context_length, build=build_id(),
-             kvCacheBits=cfg.model.kv_cache_bits, speculativeDecoding=cfg.model.speculative_decoding,
+             kvCacheBits=cfg.model.kv_cache_bits, kvCacheBitsAuto=cfg.model.kv_cache_bits_auto,
+             speculativeDecoding=cfg.model.speculative_decoding,
              draftPath=None if draft_path is None else str(draft_path), draftKind=draft_kind, thinking=cfg.model.thinking,
              reasoningEffort=cfg.model.reasoning_effort)
     engine = MlxEngine(cfg.model.id, resolved.path, cfg.model.context_length, cache_dir=cfg.cache_dir,
@@ -83,7 +84,8 @@ def serve() -> int:
                  requested=model.requested_context_length, inUse=model.context_length)
     try:
         server = LmkServer(engine, cfg.host, cfg.port, build=build_id(),
-                           config_fingerprint=fingerprint(cfg, resolved.revision), requests=cfg.requests)
+                           config_fingerprint=fingerprint(cfg, resolved.revision), requests=cfg.requests,
+                           kv_cache_bits_auto=cfg.model.kv_cache_bits_auto)
     except OSError as e:
         if e.errno != errno.EADDRINUSE:
             raise
@@ -92,7 +94,7 @@ def serve() -> int:
         return EXIT_WILL_NOT_FIX_ITSELF
     log.info("LmkReady", "serving", host=cfg.host, port=server.port, model=cfg.model.id,
              contextLength=model.context_length, maxParallel=cfg.requests.max_parallel,
-             tokenBudget=engine.token_budget(), kvCacheBits=model.kv_cache_bits,
+             tokenBudget=engine.token_budget(), kvCacheBits=model.kv_cache_bits, kvCacheBitsAuto=cfg.model.kv_cache_bits_auto,
              speculativeDecoding=model.speculative_decoding, draftKind=model.draft_kind, thinking=engine.thinking_enabled(),
              reasoningEffort=engine.reasoning_effort(), bufferCacheLimitBytes=BUFFER_CACHE_LIMIT_BYTES)
 

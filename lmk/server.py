@@ -14,12 +14,15 @@ from lmk.config import RequestsConfig
 from lmk.engine import Engine, engine_commit
 from lmk.sampling import SamplingError
 from lmk.memory import get_current_memory
+from lmk.models import mac_memory_gb
 
 
 class LmkServer:
     def __init__(self, engine: Engine, host: str, port: int, build: str = "dev", config_fingerprint: str = "",
-                 requests: RequestsConfig = RequestsConfig(2, 16, 600), admission: Admission = None):
+                 requests: RequestsConfig = RequestsConfig(2, 16, 600), admission: Admission = None,
+                 kv_cache_bits_auto: bool = False):
         self._engine = engine
+        self._kv_cache_bits_auto = kv_cache_bits_auto
         self._admission = admission or Admission(requests.max_parallel, requests.max_queue,
                                                  requests.max_wait_seconds, token_budget=engine.token_budget())
         self._build = build
@@ -203,6 +206,8 @@ class LmkServer:
                       "thinking": self._engine.thinking_enabled(),
                       "reasoning_effort": self._engine.reasoning_effort(),
                       "kv_cache_bits": m.kv_cache_bits,
+                      "kv_cache_bits_auto": self._kv_cache_bits_auto,
+                      "mac_memory_gb": mac_memory_gb(get_current_memory().read().total_bytes),
                       "speculative_decoding": getattr(m, "speculative_decoding", False),
                       "draft_kind": getattr(m, "draft_kind", None)},
             "sampling_defaults": self._engine.sampling_defaults(),

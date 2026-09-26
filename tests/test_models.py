@@ -130,8 +130,26 @@ def test_models_are_grouped_by_the_smallest_mac_with_a_useful_context():
     assert md.index("### Needs at least 32 GB") < md.index("### Needs at least 48 GB") < md.index("### Needs at least 96 GB")
     assert "| ctx size on 32 GB / 48 GB / 64 GB / 96 GB |" in md   # up to where every model in the group maxes out
     assert "| 122k (85k at 16-bit) / 262k (223k at 16-bit) / 262k / 262k tokens |" in md   # the 8-bit recommendation, and what 16-bit gives
-    assert md.rstrip().endswith("its page says what the setting costs.")
+    assert md.rstrip().endswith("Its page says what the setting costs.")
     assert "| 165k / 262k tokens |" in md                                # 96 GB measured, 128 GB from the formula
+
+
+def test_automatic_kv_cache_bits_is_16_from_96_gb_up_and_8_below_where_8_was_tested():
+    from lmk.models import TESTED_MODELS, auto_kv_cache_bits, mac_memory_gb
+
+    tested8 = TESTED_MODELS["qwen3.8-27b-4bit"]
+    assert [auto_kv_cache_bits(gb, tested8) for gb in (16, 32, 48, 64, 96, 128, 192)] == [8, 8, 8, 8, 16, 16, 16]
+    assert auto_kv_cache_bits(64, TESTED_MODELS["qwen3.8-27b-8bit"]) == 16     # never run at 8 bits
+    assert auto_kv_cache_bits(32, None) == 16                                  # not a tested model
+    assert [mac_memory_gb(gb * 1024**3) for gb in (36, 64, 96)] == [36, 64, 96]  # hw.memsize is whole GiB
+
+
+def test_the_table_uses_the_automatic_kv_cache_bits_for_each_mac_size():
+    from lmk.models import TESTED_MODELS, context_on
+
+    m27 = TESTED_MODELS["qwen3.8-27b-4bit"]
+    assert context_on(m27, 32) == context_on(m27, 32, 8) > context_on(m27, 32, 16)
+    assert context_on(m27, 128) == context_on(m27, 128, 16)
 
 
 def _draft_in_cache(tmp_path, monkeypatch, complete=True):

@@ -13,7 +13,8 @@ from typing import Optional
 
 import yaml
 
-from lmk.models import DEFAULT_MODEL_NAME, TESTED_MODELS
+from lmk.memory import get_current_memory
+from lmk.models import DEFAULT_MODEL_NAME, TESTED_MODELS, auto_kv_cache_bits, mac_memory_gb
 
 DEFAULT_HOST = "127.0.0.1"
 DEFAULT_PORT = 1235
@@ -69,6 +70,7 @@ class ModelConfig:
     thinking: Optional[bool]       # None: the template's default (Qwen: on). False: the model answers without thinking
     reasoning_effort: Optional[str]  # for templates that know it (Qwen3.8: low / medium / xhigh); None: the template's default
     kv_cache_bits: int = 16        # 16 = the model's own precision; 8 / 4 quantize the KV cache (more context, same memory)
+    kv_cache_bits_auto: bool = False  # not set in config.yaml: chosen by this Mac's memory (models.auto_kv_cache_bits)
     speculative_decoding: bool = False  # draft tokens and let the model check them; needs the draft lmk up fetched
     draft: Optional[str] = None         # which drafter: mtp (the model's own head) / dflash2; None: the model page's default
     draft_tokens: Optional[int] = None  # tokens drafted per round; None: the draft model's own setting
@@ -175,10 +177,15 @@ def load_config(path: Optional[Path] = None) -> LmkConfig:
     effort = model.get("reasoning_effort")
     if effort is not None and (not isinstance(effort, str) or not effort):
         raise ConfigError("model.reasoning_effort must be a word the model's chat template knows, such as low / medium / xhigh")
-    kv_bits = model.get("kv_cache_bits", 16)
+    kv_bits = model.get("kv_cache_bits")
+    kv_bits_auto = kv_bits is None or kv_bits == "auto"
+    if kv_bits_auto:
+        kv_bits = auto_kv_cache_bits(mac_memory_gb(get_current_memory().read().total_bytes),
+                                     TESTED_MODELS.get(source.value) if source.kind == "name" else None)
     if isinstance(kv_bits, bool) or not isinstance(kv_bits, int) or kv_bits not in KV_CACHE_BITS:
-        raise ConfigError(f"model.kv_cache_bits must be one of {', '.join(map(str, KV_CACHE_BITS))} "
-                          f"(16 = the model's own precision; 8 halves what each token of context costs in memory) — got {kv_bits!r}")
+        raise ConfigError(f"model.kv_cache_bits must be auto or one of {', '.join(map(str, KV_CACHE_BITS))} "
+                          f"(auto = chosen by this Mac's memory; 16 = the model's own precision; "
+                          f"8 halves what each token of context costs in memory) — got {kv_bits!r}")
     speculative = model.get("speculative_decoding", False)
     if not isinstance(speculative, bool):
         raise ConfigError("model.speculative_decoding must be true or false")
@@ -193,7 +200,7 @@ def load_config(path: Optional[Path] = None) -> LmkConfig:
     return LmkConfig(
         model=ModelConfig(id=_default_model_id(source), source=source,
                           context_length=context_length, thinking=thinking, reasoning_effort=effort,
-                          kv_cache_bits=int(kv_bits), speculative_decoding=speculative, draft=draft, draft_tokens=draft_tokens),
+                          kv_cache_bits=int(kv_bits), kv_cache_bits_auto=kv_bits_auto, speculative_decoding=speculative, draft=draft, draft_tokens=draft_tokens),
         host=str(listen.get("host") or DEFAULT_HOST),
         port=int(listen.get("port") or DEFAULT_PORT),
         cache_dir=Path(str(cache.get("dir") or lmk_home() / "cache")).expanduser(),

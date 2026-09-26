@@ -49,3 +49,9 @@ KVM-001、003、004 高；002 高（量）/ 中（拆解）；005 高；006、00
 1. lmk 在加载引擎前 `mx.set_cache_limit(4 GiB)`（KVM-005）：本机 kv16 128k 时少占约 13 GB，decode 不变。
 2. 按内存选 KV 精度：≥ 96 GB kv16、≤ 64 GB kv8（KVM-007）；模型页分档。
 3. 小内存上的窗口与 tokens-in-memory 上限要把"还原前缀约 3 × KV"与草稿器算进去（KVM-004、006）——在能量到一台 32/48/64 GB 机器之前，是先按外推收紧还是先保持引擎公式。
+
+## 裁决（owner，2026-09-25，"y"）
+- 待裁 2 通过：`model.kv_cache_bits` 缺省 = 按内存自动（≥ 96 GB 16 位，以下 8 位），config 里写的值永远优先。落地：`models.auto_kv_cache_bits`
+  （常量 `KV16_FROM_MAC_GB`），种子 config 写 `kv_cache_bits: auto`，`lmk status` / bench / LmkReady 标出"自动还是配置"。
+- 落地时的一处收窄（待 owner 确认）：96 GB 以下只对**以 8 位过了进表门槛**的模型选 8（`TestedModel.kv8_tested`，今天只有 qwen3.8-27b-4bit），
+  其余模型与 repo/path 来源仍是 16——kv8 在它们身上没跑过验收。放开 = 删掉那个条件。
