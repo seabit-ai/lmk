@@ -48,7 +48,7 @@ def serve() -> int:
         log.error("LmkModelDoesNotFit", too_big.replace("\n  ", " "), path=str(resolved.path))
         return EXIT_WILL_NOT_FIX_ITSELF
 
-    from lmk.engine import MlxEngine, runtime_import_error
+    from lmk.engine import BUFFER_CACHE_LIMIT_BYTES, MlxEngine, runtime_import_error
     from lmk.server import LmkServer
 
     not_importable = runtime_import_error()
@@ -94,7 +94,7 @@ def serve() -> int:
              contextLength=model.context_length, maxParallel=cfg.requests.max_parallel,
              tokenBudget=engine.token_budget(), kvCacheBits=model.kv_cache_bits,
              speculativeDecoding=model.speculative_decoding, draftKind=model.draft_kind, thinking=engine.thinking_enabled(),
-             reasoningEffort=engine.reasoning_effort())
+             reasoningEffort=engine.reasoning_effort(), bufferCacheLimitBytes=BUFFER_CACHE_LIMIT_BYTES)
 
     def stop(signum, _frame):  # launchd stops us with SIGTERM
         raise KeyboardInterrupt

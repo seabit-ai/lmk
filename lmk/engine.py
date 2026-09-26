@@ -86,6 +86,16 @@ def runtime_import_error() -> Optional[str]:
     return None
 
 
+# research/2026-09-25-kv-memory (KVM): at 128k with 16-bit KV the buffer cache MLX keeps for reuse took the
+# process from 42 to 55 GB while decoding; capped at 4 GiB decode speed was unchanged (-0.4%, text identical),
+# 1 GiB slowed 8-bit KV by 7% at 32k, 0 slowed everything by 14%. Set before the model loads.
+BUFFER_CACHE_LIMIT_BYTES = 4 * 1024**3
+
+
+def limit_buffer_cache(mx) -> None:
+    mx.set_cache_limit(BUFFER_CACHE_LIMIT_BYTES)
+
+
 class MlxEngine:
     """Loads the resident model at construction: there is no lazy / just-in-time
     loading in lmk (design §6.7)."""
@@ -106,6 +116,8 @@ class MlxEngine:
         if requested is None:
             raise ValueError(f"{model_path}/config.json does not say how long the model's context is — "
                              "set model.context_length")
+        import mlx.core as mx
+        limit_buffer_cache(mx)
         self._cache_stores: list = []
         if cache_dir is not None:
             _install_persistent_cache(cache_dir, cache_max_bytes, model_path, repo, revision, self._cache_stores,
