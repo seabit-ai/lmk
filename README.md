@@ -9,8 +9,8 @@
 * A step answers in `about a second` on a small cache miss — also after lmk has been restarted, because the cache is on disk, not in memory.
 * Good visibility: `lmk status` shows every request in flight and where it is — starting, prefilling, decoding, waiting for its turn.
 * Parallel requests, configurable, if you have the memory.
-* `Speculative decoding` with the model's own draft head: Qwen3.8-27B writes code 1.5x faster (39 → 60 tokens/s) with the
-  answer token for token the same, one line in the config. The draft head is in the original weights but not in any MLX
+* `Speculative decoding` with the model's own draft head: Qwen3.8-27B writes code 1.5x faster (39 → 60 tokens/s), same
+  answer quality (the text can differ at near-tie words), one line in the config. The draft head is in the original weights but not in any MLX
   conversion; `lmk up` fetches the one we split out and verified.
 * `KV cache at 8 bits`, one line in the config: the 27B fits 122k tokens of context on a 32 GB Mac instead of 85k, and scored
   the same as 16-bit with 60k tokens of files in front of every task.
@@ -321,9 +321,10 @@ conversations.
 
 Writing the answer is the other half. With `speculative_decoding: true` a small draft — Qwen3.8's own
 multi-token-prediction head, which the original weights ship and the MLX conversions drop — guesses the
-next few tokens and the model checks them in one pass. Guesses it agrees with are free; on code and
-copy-editing the answer is token for token the one the model would have written alone, on prose it can
-differ after a few dozen tokens (greedy is exact up to floating-point ties). On the M3 Ultra the 27B goes
+next few tokens and the model checks them in one pass. Guesses it agrees with are free; the answers
+come from the same distribution and scored the same, but they are not token-for-token identical to the
+model writing alone: at near-tie words the two paths can pick differently (seen at every context length
+we measured, 8k–128k, with 8- and 16-bit KV cache). On the M3 Ultra the 27B goes
 from 39 to 60 tokens/s on code and copy-editing, with 86–89% of its guesses accepted across our agent
 tests, and to 45 on prose.
 It runs while one request is being answered; several at once are decoded plainly.
