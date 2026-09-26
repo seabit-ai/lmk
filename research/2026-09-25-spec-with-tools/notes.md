@@ -137,3 +137,8 @@ bench/smoke（不带工具）照常起草。编号接 `research/2026-09-23-specu
 - **SPD-034 kv8 上热 cache 续算与"磁盘恢复 + 重新 prefill"给出的 logits 明显不同（首位置 logprob 差到 2.75），修复 SPD-032 之后仍在。** exp04：同一第二轮 prompt，
   A 热 cache（806 命中，prefill 26）对 B 磁盘恢复（512 命中，prefill 320），两次文本相同但 top-5 logprob 差 2.75–3.0。与 exp01–03 "关草稿冷/热跑 sha 不同"
   可能同源（kv8 下解码/校验逐步写进的量化 KV 与整块 prefill 写进的不同）。未查。把握：高（数）/低（原因）。
+
+### SPD-035 真机验收：kitten 真实会话的 agent 步全部起草
+2026-09-25，owner 机器，build 1001eca（引擎 42a248c），27B-4bit、thinking off、kv8、dflash2；owner 在 nova 的会话里正常使用若干轮。
+`LmkChatDone` 按 purpose 拆：turn 8 个请求，**8 个都起草**，drafted 856 / accepted 557（65%），completion 926 token，其中 3 个以工具调用收尾；
+自安装以来 `LmkRequestFailed` 0 条。对照修复前：113 个 turn 里 1 个 drafted>0（SPD-023）。把握：高（日志）。
