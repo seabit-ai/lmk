@@ -1,0 +1,131 @@
+{
+ "kv_bits": 16,
+ "thinking": true,
+ "effort": "low",
+ "prompt": "<|im_start|>system\nReasoning effort is set to low. Keep your thinking brief and focused, moving directly to the conclusion without unnecessary elaboration.\n\n# Tools\n\nYou have access to the following functions:\n\n<tools>\n{\"type\": \"function\", \"function\": {\"name\": \"file_read\", \"description\": \"Read a text file and return its contents.\", \"parameters\": {\"type\": \"object\", \"properties\": {\"path\": {\"type\": \"string\"}}, \"required\": [\"path\"]}}}\n{\"type\": \"function\", \"function\": {\"name\": \"file_write\", \"description\": \"Write a text file, replacing it if it exists.\", \"parameters\": {\"type\": \"object\", \"properties\": {\"path\": {\"type\": \"string\"}, \"content\": {\"type\": \"string\"}}, \"required\": [\"path\", \"content\"]}}}\n{\"type\": \"function\", \"function\": {\"name\": \"run_command\", \"description\": \"Run a shell command in the project directory and return its output.\", \"parameters\": {\"type\": \"object\", \"properties\": {\"command\": {\"type\": \"string\"}}, \"required\": [\"command\"]}}}\n</tools>\n\nIf you choose to call a function ONLY reply in the following format with NO suffix:\n\n<tool_call>\n<function=example_function_name>\n<parameter=example_parameter_1>\nvalue_1\n</parameter>\n<parameter=example_parameter_2>\nThis is the value for the second parameter\nthat can span\nmultiple lines\n</parameter>\n</function>\n</tool_call>\n\n<IMPORTANT>\nReminder:\n- Function calls MUST follow the specified format: an inner <function=...></function> block must be nested within <tool_call></tool_call> XML tags\n- Required parameters MUST be specified\n- You may provide optional reasoning for your function call in natural language BEFORE the function call, but NOT after\n- If there is no function call available, answer the question like normal with your current knowledge and do not tell the user about function calls\n</IMPORTANT>\n\nYou are kitten, a coding agent working in the user's project. Use the tools to act; keep prose short.<|im_end|>\n<|im_start|>user\nSave this text exactly as RELEASE.md, then show me the file with cat:\n\n# Release checklist\n\n1. Run make test, make lint and make itest; all three must pass.\n2. Install the branch with make install and run lmk status; it must show answering 0 before you restart.\n3. Tag the release on main as vX.Y.Z and push the tag.\n4. Check that the install script picks up the new tag.<|im_end|>\n<|im_start|>assistant\n<think>\n",
+ "runs": [
+  {
+   "name": "off-cold",
+   "spec": false,
+   "tokens": 137,
+   "sha": "a7cf3581f669",
+   "text": "The user wants me to save a specific text as RELEASE.md and then display it with cat.\n</think>\n\n<tool_call>\n<function=file_write>\n<parameter=path>\nRELEASE.md\n</parameter>\n<parameter=content>\n# Release checklist\n\n1. Run make test, make lint and make itest; all three must pass.\n2. Install the branch with make install and run lmk status; it must show answering 0 before you restart.\n3. Tag the release on main as vX.Y.Z and push the tag.\n4. Check that the install script picks up the new tag.\n</parameter>\n</function>\n</tool_call>",
+   "decode_tok_s": 27.6,
+   "total": {
+    "rounds": 0,
+    "accepted": 0,
+    "drafted": 0
+   },
+   "by_segment": {},
+   "ends_in": "tail"
+  },
+  {
+   "name": "off-warm",
+   "spec": false,
+   "tokens": 147,
+   "sha": "427485f02f0f",
+   "text": "The user wants me to save a specific text as RELEASE.md and then display it with cat. Let me write the file and then cat it.\n</think>\n\n<tool_call>\n<function=file_write>\n<parameter=path>\nRELEASE.md\n</parameter>\n<parameter=content>\n# Release checklist\n\n1. Run make test, make lint and make itest; all three must pass.\n2. Install the branch with make install and run lmk status; it must show answering 0 before you restart.\n3. Tag the release on main as vX.Y.Z and push the tag.\n4. Check that the install script picks up the new tag.\n\n</parameter>\n</function>\n</tool_call>",
+   "decode_tok_s": 37.6,
+   "total": {
+    "rounds": 0,
+    "accepted": 0,
+    "drafted": 0
+   },
+   "by_segment": {},
+   "ends_in": "tail"
+  },
+  {
+   "name": "on-1",
+   "spec": true,
+   "tokens": 143,
+   "sha": "34fe38138a6b",
+   "text": "The user wants me to save a specific text as RELEASE.md and then show it with cat. Let me do both steps.\n</think>\n\n<tool_call>\n<function=file_write>\n<parameter=path>\nRELEASE.md\n</parameter>\n<parameter=content>\n# Release checklist\n\n1. Run make test, make lint and make itest; all three must pass.\n2. Install the branch with make install and run lmk status; it must show answering 0 before you restart.\n3. Tag the release on main as vX.Y.Z and push the tag.\n4. Check that the install script picks up the new tag.\n</parameter>\n</function>\n</tool_call>",
+   "decode_tok_s": 59.0,
+   "total": {
+    "rounds": 41,
+    "accepted": 101,
+    "drafted": 128
+   },
+   "by_segment": {
+    "thinking": {
+     "rounds": 12,
+     "accepted": 14,
+     "drafted": 26
+    },
+    "text": {
+     "rounds": 1,
+     "accepted": 2,
+     "drafted": 2
+    },
+    "body": {
+     "rounds": 28,
+     "accepted": 85,
+     "drafted": 100
+    }
+   },
+   "ends_in": "tail"
+  },
+  {
+   "name": "on-2",
+   "spec": true,
+   "tokens": 143,
+   "sha": "34fe38138a6b",
+   "text": "The user wants me to save a specific text as RELEASE.md and then show it with cat. Let me do both steps.\n</think>\n\n<tool_call>\n<function=file_write>\n<parameter=path>\nRELEASE.md\n</parameter>\n<parameter=content>\n# Release checklist\n\n1. Run make test, make lint and make itest; all three must pass.\n2. Install the branch with make install and run lmk status; it must show answering 0 before you restart.\n3. Tag the release on main as vX.Y.Z and push the tag.\n4. Check that the install script picks up the new tag.\n</parameter>\n</function>\n</tool_call>",
+   "decode_tok_s": 59.1,
+   "total": {
+    "rounds": 41,
+    "accepted": 101,
+    "drafted": 128
+   },
+   "by_segment": {
+    "thinking": {
+     "rounds": 12,
+     "accepted": 14,
+     "drafted": 26
+    },
+    "text": {
+     "rounds": 1,
+     "accepted": 2,
+     "drafted": 2
+    },
+    "body": {
+     "rounds": 28,
+     "accepted": 85,
+     "drafted": 100
+    }
+   },
+   "ends_in": "tail"
+  },
+  {
+   "name": "on-sampled",
+   "spec": true,
+   "tokens": 153,
+   "sha": "57c00f2bf0b0",
+   "text": "The user wants me to save a specific text as RELEASE.md, then display it with cat. The text is a release checklist. Let me write it and then cat it.\n</think>\n\n<tool_call>\n<function=file_write>\n<parameter=path>\nRELEASE.md\n</parameter>\n<parameter=content>\n# Release checklist\n\n1. Run make test, make lint and make itest; all three must pass.\n2. Install the branch with make install and run lmk status; it must show answering 0 before you restart.\n3. Tag the release on main as vX.Y.Z and push the tag.\n4. Check that the install script picks up the new tag.\n</parameter>\n</function>\n</tool_call>",
+   "decode_tok_s": 59.2,
+   "total": {
+    "rounds": 42,
+    "accepted": 110,
+    "drafted": 134
+   },
+   "by_segment": {
+    "thinking": {
+     "rounds": 14,
+     "accepted": 21,
+     "drafted": 30
+    },
+    "text": {
+     "rounds": 1,
+     "accepted": 2,
+     "drafted": 2
+    },
+    "body": {
+     "rounds": 27,
+     "accepted": 87,
+     "drafted": 102
+    }
+   },
+   "ends_in": "tail"
+  }
+ ]
+}
