@@ -1,7 +1,8 @@
 """exp03: per Mac size, kv8 vs kv16 — the engine's window and lmk's tokens-in-memory cap (lmk's formulas),
 and what a process would really hold with the window full (formula + what exp01/exp02 measured on the 96 GB Mac).
 
-usage: compute.py <exp01 runs.jsonl> <exp02 runs.jsonl (kv16)> <exp04 runs.jsonl (kv8)> <cache limit bytes for the capped column>
+usage: compute.py <exp01 runs.jsonl> <kv16 capped runs.jsonl> <kv8 capped runs.jsonl> <cache limit bytes>
+  (results.md: exp02 and exp06 at 4 GiB; the capped lines use the runs named limit1g / limit4g for that limit)
 Run with the lmk checkout on the import path (PYTHONPATH=<worktree>).
 """
 import json
@@ -57,13 +58,13 @@ def main():
     for r in e1:
         add("uncapped", int(r["cond"][2:]), r)
     for bits, r in capped_runs:
-        if r["cond"] == "limit1g":
+        if r["cond"] == {1 << 30: "limit1g", 4 << 30: "limit4g"}[limit]:
             add("capped", bits, r)
 
     lines = {}
     print("## Fitted lines (96 GB Mac, one request at a time; t = tokens in the request)\n")
     print(f"worst held = max(footprint, MLX peak + {extra / GB:.2f} GB non-MLX). Uncapped: exp01 decode requests at "
-          "8k/32k/64k/128k. Capped (1 GiB): exp02 (kv16) / exp04 (kv8) at 32k/128k.\n")
+          f"8k/32k/64k/128k. Capped ({limit / GIB:.0f} GiB): the kv16 / kv8 capped runs at 32k/128k.\n")
     print("| model | bits | points (tokens: GB) | worst held (GB) = a + b·t | b ÷ KV B/token |")
     print("|---|---|---|---|---|")
     for (model, bits), d in sorted(worst.items()):

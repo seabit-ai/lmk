@@ -1,0 +1,4 @@
+model: {name: qwen3.8-27b-4bit, kv_cache_bits: 8, thinking: false, speculative_decoding: true, draft: dflash2}
+listen: {port: 1236}
+cache: {dir: "/tmp/lmk-kvm6.UdeH1K/cache"}
+log: {dir: "/tmp/lmk-kvm6.UdeH1K/unset/logs"}
