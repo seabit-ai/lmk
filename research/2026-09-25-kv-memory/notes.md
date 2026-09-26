@@ -55,3 +55,7 @@ KVM-001、003、004 高；002 高（量）/ 中（拆解）；005 高；006、00
   （常量 `KV16_FROM_MAC_GB`），种子 config 写 `kv_cache_bits: auto`，`lmk status` / bench / LmkReady 标出"自动还是配置"。
 - 落地时的一处收窄（待 owner 确认）：96 GB 以下只对**以 8 位过了进表门槛**的模型选 8（`TestedModel.kv8_tested`，今天只有 qwen3.8-27b-4bit），
   其余模型与 repo/path 来源仍是 16——kv8 在它们身上没跑过验收。放开 = 删掉那个条件。
+
+## 验收：推荐组合 16 位 KV + dflash2（2026-09-26）
+`LMK_ITEST_KV_BITS=16 LMK_ITEST_DRAFT=<Qwen3.8-27B-DFlash2-4bit> make itest`，27B-4bit，m3u：8 passed、1 skipped（cache 兼容，另有专门目标）、126 s。
+包括带 tools 的请求起草那一条。补上了"推荐配置是一个组合、按组合验收"的缺口（此前只有 exp11/12 的逐 token 对照与 owner 日常使用）。
