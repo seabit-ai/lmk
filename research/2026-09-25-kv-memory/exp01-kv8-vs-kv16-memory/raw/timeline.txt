@@ -1,0 +1,7 @@
+2026-09-25 22:55:10 engine 42a248c, lmk c5bab6d, resident on 1235: down
+2026-09-25 22:55:13 free before loading kv8: 97 GB
+2026-09-25 22:55:13 start kv8
+2026-09-25 23:15:28 stop kv8
+2026-09-25 23:15:28 free before loading kv16: 97 GB
+2026-09-25 23:15:28 start kv16
+2026-09-25 23:33:12 stop kv16
