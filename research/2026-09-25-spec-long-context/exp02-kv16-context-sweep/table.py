@@ -64,9 +64,9 @@ for key in keys:
           f"{tps(n8) / tps(o8):.2f}× → {tps(n16) / tps(o16):.2f}× | {a8 / dr8 * 100:.0f}% → {a16 / dr16 * 100:.0f}% | "
           f"{round_ms(n8, False):.0f} → {round_ms(n16, True):.0f} | {same} |")
 
-print("\n## Memory (kv16 measured; kv8 derived)\n")
+print("\n## Memory (kv16 measured; kv8's process bytes were not measured in exp01)\n")
 print("| context (prompt tokens) | KV bytes kv8 → kv16 (engine bytes/token × tokens) | kv16 lmk_gpu_bytes max during decode, off / on "
-      "| kv8 derived = kv16 − KV difference, off |")
+      "| kv16 MLX peak in use (process peak so far), off / on |")
 print("|---|---|---|---|")
 for ctx in sorted({k[0] for k in kv16}):
     o16 = kv16.get((ctx, "code", "greedy", "off")) + kv16.get((ctx, "prose", "greedy", "off"))
@@ -74,7 +74,10 @@ for ctx in sorted({k[0] for k in kv16}):
     tokens = max(x["done"]["promptTokens"] + x["done"]["completionTokens"] for x in o16)
     g_off = max(x["gpu_bytes_max"] for x in o16)
     g_on = max(x["gpu_bytes_max"] for x in n16)
-    diff = (KV16_BYTES_PER_TOKEN - KV8_BYTES_PER_TOKEN) * tokens
+    p_off = max(x["gpu_peak_in_use_bytes"] for x in o16)
+    p_on = max(x["gpu_peak_in_use_bytes"] for x in n16)
     print(f"| {ctx // 1024}k ({tokens}) | {KV8_BYTES_PER_TOKEN * tokens / 1e9:.2f} → {KV16_BYTES_PER_TOKEN * tokens / 1e9:.2f} GB | "
-          f"{g_off / 1e9:.2f} / {g_on / 1e9:.2f} GB | {(g_off - diff) / 1e9:.2f} GB |")
+          f"{g_off / 1e9:.2f} / {g_on / 1e9:.2f} GB | {p_off / 1e9:.2f} / {p_on / 1e9:.2f} GB |")
+print("\nlmk_gpu_bytes = MLX active + MLX buffer cache (lmk/engine.py gpu_memory_bytes): what the process holds, "
+      "including freed buffers MLX keeps for reuse — not the KV alone.")
 print(f"\nruns discarded because the resident lmk was busy: exp01 {d8}, exp02 {d16}")

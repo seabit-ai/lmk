@@ -163,7 +163,7 @@ def main():
                         tps = (d["completionTokens"] - 1) / dec_ms * 1000 if dec_ms > 0 else 0.0
                         rec = {"cond": cond, "ctx": ctx, "kind": kind, "mode": mode, "rep": rep, "done": d,
                                "decode_tps": round(tps, 2), "attempt": attempt,
-                               "rounds": after["draft"]["rounds"] - before["draft"]["rounds"],
+                               "rounds": (after.get("draft") or {}).get("rounds", 0) - (before.get("draft") or {}).get("rounds", 0),
                                "gpu_bytes_max": mem.max_gpu, "gpu_peak_in_use_bytes": after["memory"]["lmk_gpu_peak_in_use_bytes"], "resident_poll_errors": watch.errors, "sha": hashlib.sha256(text.encode()).hexdigest()[:12],
                                "text": text}
                         f.write(json.dumps(rec) + "\n")
