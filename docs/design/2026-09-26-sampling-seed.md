@@ -8,7 +8,7 @@ kitten 从 lmk 拿到一个坏答案（qwen3.8-27b-4bit，temp 1.0 / top_p 0.95 
 采样是随机的，而 lmk 把 `seed` 丢了（`sampling.IGNORED_KEYS`，因为引擎批处理路径上 "Seed arg is ignored for batched gen"）。
 事故不能重放，就只能猜。
 
-## 裁决：事故可重放 = 同一请求 + 同一 seed + 同一 cache 状态，单独跑
+## 裁决：事故可重放 = 同一请求 + 同一 seed，单独跑
 1. **引擎（fork）按请求吃 seed，按位置取随机数。** 带 seed 的请求拿到 `SeededSampler`：生成序列第 p 个 token 的抽样用
    `key(seed, p)`（splitmix64 混合后 `mx.random.key`），是 (seed, p) 的纯函数，不是一条随用随推的随机流。于是：
    - 一行的随机数与批里别的行无关（全局 PRNG 与别的请求都挪不动它）。
@@ -26,7 +26,8 @@ kitten 从 lmk 拿到一个坏答案（qwen3.8-27b-4bit，temp 1.0 / top_p 0.95 
    - `LmkParamIgnored` 机制保留（`IGNORED_KEYS` 现为空）。
 
 ## 能保证什么，不能保证什么
-- **保证（单测锁住，itest 验）**：同一请求、同一 seed、同一 cache 状态、单独跑 → 逐 token 相同；另一个 seed → 另一个答案。
+- **保证（单测锁住，itest 验）**：同一请求、同一 seed、单独跑 → 逐 token 相同；另一个 seed → 另一个答案。itest 在同一 cache
+  状态下断言逐字相同；冷算对恢复续跑只打印（预期也相同，见下一条之后的 cache 一节）。
 - **批的组成是条件。** 两个请求同时解码时，引擎走多行普通步（投机只在一行时跑，SPD-021），多行的矩阵运算与单行的舍入不同；
   随机数不受影响，但 logits 的舍入差可能在近乎平票的位置翻转一次抽样。所以重放要单独跑，日志里的 `othersPeak` 告诉你原来那次是不是单独跑的。
   原来那次不是单独跑的，重放出同一答案的概率仍高（翻转只发生在平票处），但不是逐字保证。
