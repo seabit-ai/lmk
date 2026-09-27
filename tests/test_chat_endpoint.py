@@ -293,17 +293,31 @@ def _logged(capsys, event):
             if l["event"] == event]
 
 
-def test_a_requests_seed_reaches_the_engine_comes_back_and_is_logged(capsys, seeds):
-    srv, engine = serve_with_defaults(TEXT_TURN, {})
+@pytest.mark.parametrize("seed", [7, 2**64 - 1])
+def test_a_requests_seed_reaches_the_engine_comes_back_and_is_logged(capsys, seeds, seed):
+    srv, engine = serve_with_defaults(TEXT_TURN, {"temp": 1.0})
     try:
-        chunks = stream_chunks(post(srv, {"model": "kitten-27b", "messages": [], "seed": 7, "stream": True}))
+        chunks = stream_chunks(post(srv, {"model": "kitten-27b", "messages": [], "seed": seed, "stream": True}))
     finally:
         srv.shutdown()
-    assert engine.requests[0]["sampling"] == {"seed": 7}
-    assert [c["lmk"]["seed"] for c in chunks if "usage" in c] == [7]
+    assert engine.requests[0]["sampling"] == {"temp": 1.0, "seed": seed}
+    assert [c["lmk"]["seed"] for c in chunks if "usage" in c] == [seed]
     done = _logged(capsys, "LmkChatDone")[0]
-    assert (done["seed"], done["seedFrom"], done["sampling"]) == (7, "request", {})
+    assert (done["seed"], done["seedFrom"], done["sampling"]) == (seed, "request", {"temp": 1.0})
     assert seeds.next == 1000   # nothing drawn
+
+
+@pytest.mark.parametrize("defaults, body", [({}, {}), ({"temp": 1.0}, {"temperature": 0}),
+                                            ({"temp": 1.0}, {"temperature": 0, "seed": 5})])
+def test_a_greedy_answer_has_no_seed(capsys, seeds, defaults, body):
+    srv, engine = serve_with_defaults(TEXT_TURN, defaults)
+    try:
+        answer = json.loads(post(srv, {"model": "kitten-27b", "messages": [], **body}).read())
+    finally:
+        srv.shutdown()
+    assert "seed" not in engine.requests[0]["sampling"] and answer["lmk"]["seed"] is None
+    done = _logged(capsys, "LmkChatDone")[0]
+    assert (done["seed"], done["seedFrom"]) == (None, "greedy") and seeds.next == 1000
 
 
 def test_without_a_seed_lmk_draws_one_and_says_so(capsys, seeds):
@@ -329,14 +343,16 @@ def test_a_warmup_draws_no_seed(seeds):
     assert engine.requests[0]["sampling"] is None and seeds.next == 1000
 
 
-def test_a_seed_that_is_not_an_integer_is_a_400(seeds):
-    srv, engine = serve_with_defaults(TEXT_TURN, {})
+@pytest.mark.parametrize("seed", ["abc", -1, 2**64, 1.5])
+def test_a_seed_outside_uint64_is_a_400_that_says_the_range(seeds, seed):
+    srv, engine = serve_with_defaults(TEXT_TURN, {"temp": 1.0})
     try:
         with pytest.raises(urllib.error.HTTPError) as e:
-            post(srv, {"model": "kitten-27b", "messages": [], "seed": "abc"})
+            post(srv, {"model": "kitten-27b", "messages": [], "seed": seed})
     finally:
         srv.shutdown()
-    assert e.value.code == 400 and json.loads(e.value.read())["error"]["param"] == "seed"
+    err = json.loads(e.value.read())["error"]
+    assert e.value.code == 400 and err["param"] == "seed" and "0 to 18446744073709551615" in err["message"]
     assert engine.requests == []
 
 
@@ -394,3 +410,36 @@ def test_decode_progress_rides_the_stream_once_a_second():
     assert 1 < len(moving) <= len(TEXT_TURN)
     assert moving[-1]["lmk"]["decode"]["part"] == "answering"
     assert moving[-1]["lmk"]["decode"]["tokens_per_s"] > 0
+
+
+def test_stopping_early_closes_the_engines_generator(monkeypatch):
+    # the fork's generator takes the row out of the batch when closed; MlxEngine must close it, not drop it
+    import sys
+    import types
+
+    from lmk.engine import MlxEngine
+
+    closed = []
+
+    held = []   # a reference elsewhere (as the engine's own bookkeeping may keep): garbage collection won't close it
+
+    def create_generator(kit, tokens, **kwargs):
+        def gen():
+            try:
+                for piece in ["a", "b", "c"]:
+                    yield types.SimpleNamespace(text=piece, tokens=[1])
+            finally:
+                closed.append(kwargs["request_id"])
+        held.append(gen())
+        return held[-1]
+
+    monkeypatch.setitem(sys.modules, "mlx_engine.generate",
+                        types.SimpleNamespace(create_generator=create_generator, tokenize=lambda kit, text: [1]))
+    monkeypatch.setitem(sys.modules, "mlx_engine.utils.prompt_progress_reporter",
+                        types.SimpleNamespace(PromptProgressReporter=object))
+    engine = object.__new__(MlxEngine)
+    engine._kit, engine._draft_tokens = types.SimpleNamespace(), None
+    generation = engine.generate("p", max_tokens=None, request_id="r-1", on_prefill=lambda *a: True, tokens=[1])
+    assert next(iter(generation)) == "a"
+    generation.pieces.close()
+    assert closed == ["r-1"]

@@ -308,11 +308,12 @@ keep working and yours can do better:
   a value out of range is a 400 naming the field. A request that sets none of them runs with the
   model's own `generation_config.json` (`lmk status` shows those values). `stop` strings match the
   **answer only** — a stop string that shows up inside the model's thinking does not end the request.
-- **Every answer has a seed, so a bad one can be replayed.** Send `seed` (an integer) or let lmk pick one; either way
-  it comes back as `lmk.seed` and is in the request's log line (`LmkChatDone`, with `othersPeak`: how many other
-  requests shared the engine with it). Sending the same request again with that seed gives the same answer, token
-  for token, when both runs had the engine alone (`othersPeak` 0); if such a replay differs, please
-  report it. A request that shared the engine can differ at a near-tie word: the batch changes the rounding, not the randomness.
+- **Every sampled answer has a seed, so a bad one can be replayed.** Send `seed` (an integer from 0 to 2^64−1) or let
+  lmk pick one; either way it comes back as `lmk.seed` and is in the request's log line (`LmkChatDone`, with
+  `othersPeak`: how many other requests shared the engine with it). A greedy answer (`temperature: 0`) has no
+  seed: `lmk.seed` is null. Sending the same request again with that seed gives the same answer, token for token,
+  when both runs had the engine alone (`othersPeak` 0); if such a replay differs, please report it. A request that
+  shared the engine can differ at a near-tie word: the batch changes the rounding, not the randomness.
 - Closing the connection cancels the request (at the next progress step — within a few seconds). `GET /lmk/v1/status` is what `lmk status` prints.
 
 

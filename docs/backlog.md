@@ -40,7 +40,7 @@
 - 结构化输出（分支 `structured-output`，设计已全关、计划 0d0c971）排在它之后，复用这套逐位 walk：计划里"约束期间关投机"一条要改成"照常起草"。
 
 ## 2026-09-26 seed 可重放（分支 `sampling-seed`，fork `lmk-seed`）
-- 已做：见设计文档；单测（引擎 24 个新、lmk 共 233 过）+ lint。
+- 已做：见设计文档；单测（引擎 test_seeded_sampling 33 个、lmk 241 过）+ lint。review 修正：seed 定为 uint64、顺序路径、贪心不抽、提前结束的请求离开引擎批（SEED-008..011）。
 - 欠：itest（命令在 `research/2026-09-26-sampling-seed/notes.md`）→ 真机照用户的样子跑（kitten 一轮，看 `LmkChatDone` 的 seed 与 othersPeak）→
   owner push fork `lmk-seed` → 合。合并前 `ENGINE_COMMIT` 指向的 fork commit 必须已在 GitHub 上（install.sh 按 hash 下 tarball）。
 - 重放把 SPD-034 变成可测的：同 seed 下冷算与恢复续跑分叉即是线索（owner 2026-09-26：prefix cache 只允许浮点舍入级的差别，更大就是 bug）。

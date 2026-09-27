@@ -254,10 +254,16 @@ class MlxEngine:
 
         def pieces():
             before = self._drafter_counters()
-            for result in create_generator(self._kit, tokens, **kwargs):
-                stats.completion_tokens += len(result.tokens)
-                if result.text:
-                    yield result.text
+            results = create_generator(self._kit, tokens, **kwargs)
+            try:
+                for result in results:
+                    stats.completion_tokens += len(result.tokens)
+                    if result.text:
+                        yield result.text
+            finally:
+                # stopping early (client gone, a stop string) takes the row out of the engine's batch now, queued
+                # ahead of any request admitted after this one (the fork's _batched_generation removes on close)
+                results.close()
             after = self._drafter_counters()
             if before is not None and after is not None:
                 stats.draft_accepted = after[1] - before[1]

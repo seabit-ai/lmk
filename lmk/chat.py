@@ -52,7 +52,7 @@ class PreparedChat:
     sampling: dict            # engine kwargs (lmk.sampling); never stop_strings — see stop_strings below
     stop_strings: list[str]   # OpenAI `stop`, matched by lmk on the answer part only (lmk.stopmatch)
     ignored_params: list[str]  # request fields lmk understood but cannot honour (logged, not refused)
-    seed_from: Optional[str] = None  # "request" / "lmk" (drawn because the request named none); None for a warmup
+    seed_from: Optional[str] = None  # "request" / "lmk" (drawn: the request named none) / "greedy"; None for a warmup
 
     def tokens_needed(self, context_length: int) -> int:
         """Its share of the KV memory: the prompt plus what it may write, capped by the window."""
@@ -74,9 +74,15 @@ def prepare_chat(engine: Engine, body: dict, warmup: bool = False) -> PreparedCh
     stop_strings = sampling.pop("stop_strings", [])
     seed_from = None
     if not warmup:
-        # every answer has a known seed, so any answer can be replayed (design 2026-09-26-sampling-seed)
-        seed_from = "request" if "seed" in sampling else "lmk"
-        if seed_from == "lmk":
+        # every sampled answer has a known seed, so any answer can be replayed (design 2026-09-26-sampling-seed);
+        # a greedy one (temp 0, or no temperature at all: the engine's default) has no randomness to seed
+        if sampling.get("temp", 0) == 0:
+            seed_from = "greedy"
+            sampling.pop("seed", None)
+        elif "seed" in sampling:
+            seed_from = "request"
+        else:
+            seed_from = "lmk"
             sampling["seed"] = get_current_seed_source().draw()
     return PreparedChat(prompt=prompt, images=images, tools=tools, max_tokens=max_tokens,
                         preflight=engine.preflight(prompt, images), sampling=sampling, stop_strings=stop_strings,

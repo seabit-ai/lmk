@@ -6,8 +6,8 @@
 **那一次本身重放不了**：它发生在这个改动之前，没有 seed。这个改动让以后的每一次都能重放。
 
 ## 分支
-- 引擎：fork `seabit-ai/mlx-engine` 分支 `lmk-seed`，基于 `42a248c`，一个 commit `bab3536`（未 push）。
-- lmk：分支 `sampling-seed`，`ENGINE_COMMIT` → `bab353600efddd9abe762ae0838194ef4dae59e3`（未 push，未合）。
+- 引擎：fork `seabit-ai/mlx-engine` 分支 `lmk-seed`，基于 `42a248c`：`bab3536`、`c2c6f9e`（未 push）。
+- lmk：分支 `sampling-seed`，`ENGINE_COMMIT` 指向 fork `lmk-seed` 的最新 commit（第一轮 bab3536，第二轮 c2c6f9e；未 push，未合）。
   **合并前 owner 先 push fork**，否则 install.sh 按 hash 取 tarball 会失败（CLAUDE.md 地图 `.engine/mlx-engine` 一行）。
 - 工作树在 `~/src/lmk-seed`（引擎是其下 `.engine/mlx-engine`，另一个 git worktree，自带 `.venv`），没碰 `~/src/lmk` 与它的引擎工作树。
 
@@ -38,8 +38,7 @@
   一块位置逐位调用，原来是一次整块——块长 ≤ 16，预期可忽略，但**没量**）。
 
 ## lmk 侧
-- `sampling.parse_sampling`：`seed` 收任意 64 位整数（有符号或无符号范围，`-(2^63)`…`2^64-1`），非整数 / 布尔 / 越界回 400 点名 `seed`。
-  理由：旧裁决提过"客户端库常默认带 seed"，不因为符号把人挡在门外；引擎取低 64 位。
+- `sampling.parse_sampling`：`seed` 是 uint64，收 0…2^64−1，非整数 / 布尔 / 负数 / 越界回 400 点名 `seed` 并说出范围（第一轮曾收有符号范围，owner 改为 uint64，见 SEED-008）。
 - 没带就由 `SeedSource.draw()` 抽 31 位（`secrets.randbelow`），`get/set_current_seed_source` 可注入（照 clock 的样子）。warmup 不抽。
 - 回传：流式 usage chunk 的 `lmk.seed`；非流式应答新增 `lmk` 对象（与流式同一组字段）。
 - `LmkChatDone`：`seed`、`seedFrom`（request / lmk）、`othersAtStart`、`othersPeak`；`sampling` 字段去掉 seed 不重复。
@@ -73,3 +72,25 @@ LMK_ITEST=1 LMK_ITEST_DRAFT=$HOME/.cache/huggingface/hub/models--seabit-ai--Qwen
 - seed+1 与之不同：把握高（temp 1、160 token、思考段）。
 - 冷算的第一次与恢复续跑的重放逐字相同：把握中。预期相同（owner：cache 只允许舍入级差别）；kv16 上 SPD-034 那种差别没量过。
   不同就打印分叉点——那是 cache 的线索，不是 seed 的失败。
+
+## 第二轮（review 修正，2026-09-26）
+- **SEED-008** 顺序路径（`ModelKit`，lmk 在 `max_parallel: 1` 且模型不是视觉套件时会走到）：`set_seed` 对负数抛错（请求变 500），
+  且把 seed 截到低 32 位（s 与 s+2^32 撞）。修：seed 定为 uint64（owner）；lmk 只收 0..2^64−1，其余 400；`set_seed` 收整个范围，
+  MLX 拿全值、NumPy / Python 拿 splitmix64 混合后的高 32 位；顺序路径的采样器也换成 `SeededSampler`（按调用顺序取位置）。
+- **SEED-009** 提前结束的请求**不会离开引擎的批**：lmk 关掉 `create_generator` 返回的生成器，但 fork（与上游）的 `_batched_generation`
+  没有 finally，从不调用 `remove`；只有 prefill 阶段取消与引擎自己匹配 stop 字符串两条路会移除。于是客户端断开或 lmk 在回答段
+  匹配到 stop 之后，那一行继续解码到 EOS / max_tokens（lmk 不传 max_tokens 时引擎缺省一千万，实际到窗口为止），
+  与之后放行的请求同批、拖慢它们，也让 `othersPeak` 说"独占"而实际不是。这不止是一个 tick：review 的预想（多一步）比实际轻。
+  修：`_batched_generation` 捕获 `GeneratorExit` 调 `remove`；lmk 在 `finally` 里显式 `close()`。引擎的请求队列先来后到
+  （`request_lifecycle.drain_generation_events`），所以移除一定排在之后放行的请求之前。**没在真机上量过**被丢下的行实际跑了多久。
+  README "Closing the connection cancels the request" 的说法此前只对 prefill 阶段成立；现在对解码阶段也成立（单测，未真机验）。
+- **SEED-010** 贪心不抽 seed：temp 0（或没有温度）时 `seedFrom: "greedy"`、`seed` 为 null，请求里带的 seed 也不传。
+- **SEED-011** 投机开 / 关同 seed：itest 在短 prompt 上断言逐字相同（按位置取 key，logits 相同就相同）；长上下文不断言（SLC-006/010）。
+- 测试：引擎 `test_seeded_sampling.py` 33 个，引擎不需要模型的单测 340 个全过；lmk 241 passed、12 skipped。
+
+新增的集成测试命令（带草稿那条会多跑它）同上；只跑投机开关这一个：
+```bash
+LMK_ITEST=1 LMK_ITEST_DRAFT=$HOME/.cache/huggingface/hub/models--seabit-ai--Qwen3.8-27B-DFlash2-4bit/snapshots/local-quant-2026-09-24 \
+  .venv/bin/python -m pytest -q -s tests/test_itest_chat.py -m itest -k "same_seed or draft_on_and_off"
+```
+预期：同上，另加投机开 / 关逐字相同（把握中高：短 prompt 上此前观察到逐字相同，但那是贪心；采样下平票更少碰到）。

@@ -237,3 +237,33 @@ def test_the_same_seed_replays_the_same_answer_and_another_seed_does_not(server,
     assert replay["lmk"]["seed"] == seed and other["lmk"]["seed"] == seed + 1
     assert replay_text == again_text
     assert other_text != replay_text
+
+
+# design 2026-09-26-sampling-seed: draws are keyed by position, so with a draft on or off the same seed draws the
+# same tokens as long as the logits agree. They agree exactly on short prompts (the model page: "on short prompts
+# code and copy-editing matched exactly"); at long contexts the block verify rounds differently and a near-tie
+# can flip (SLC-006/010), so this is asserted on a short prompt only.
+def test_the_same_seed_draws_the_same_tokens_with_the_draft_on_and_off(server):
+    if server.engine.draft_stats() is None:
+        pytest.skip("no draft model loaded (LMK_ITEST_DRAFT)")
+    import uuid
+
+    engine = server.engine
+    prompt = engine.chat_format().render(
+        [{"role": "system", "content": f"Session {uuid.uuid4().hex}."},
+         {"role": "user", "content": "Write a four-line poem about a lighthouse."}], None)
+    sampling = {"temp": 1.0, "top_p": 0.95, "top_k": 20, "seed": 20260926}
+
+    def run(speculative: bool):
+        generation = engine.generate(prompt, max_tokens=120, request_id=f"itest-spec-{speculative}-{uuid.uuid4().hex[:6]}",
+                                     on_prefill=lambda *a: True,
+                                     sampling={**sampling, "speculative_decoding_toggle": speculative})
+        return "".join(generation), generation.stats
+
+    run(False)                    # reads the prompt once; both runs below restore the same prefix
+    plain, plain_stats = run(False)
+    spec, spec_stats = run(True)
+    print(f"itest spec on/off: drafted {spec_stats.draft_drafted} accepted {spec_stats.draft_accepted} "
+          f"identical={plain == spec}")
+    assert spec_stats.draft_drafted and spec_stats.draft_drafted > 0
+    assert spec == plain

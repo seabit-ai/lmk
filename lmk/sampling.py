@@ -25,8 +25,7 @@ _REQUEST_KEYS = {"temperature": "temp", "top_p": "top_p", "top_k": "top_k", "min
                  "repetition_penalty": "repetition_penalty"}
 IGNORED_KEYS: tuple[str, ...] = ()  # understood but not honoured; logged as LmkParamIgnored
 MAX_STOP_STRINGS = 4  # OpenAI's limit; the engine has none
-# The engine keys draws by the seed's low 64 bits; either signedness is accepted so no client is refused.
-SEED_MIN, SEED_MAX = -(1 << 63), (1 << 64) - 1
+SEED_MAX = (1 << 64) - 1  # a seed is a uint64 (owner, 2026-09-26): what the engine keys its draws with
 
 
 def model_defaults(model_path: Path) -> dict:
@@ -58,8 +57,8 @@ def parse_sampling(body: dict, defaults: dict) -> tuple[dict, list[str]]:
         sampling["stop_strings"] = _checked_stop(stop)
     seed = body.get("seed")
     if seed is not None:
-        if not isinstance(seed, int) or isinstance(seed, bool) or not SEED_MIN <= seed <= SEED_MAX:
-            raise SamplingError("seed", "an integer (64-bit)")
+        if not isinstance(seed, int) or isinstance(seed, bool) or not 0 <= seed <= SEED_MAX:
+            raise SamplingError("seed", f"an integer from 0 to {SEED_MAX}")
         sampling["seed"] = seed
     ignored = [k for k in IGNORED_KEYS if body.get(k) is not None]
     return sampling, ignored

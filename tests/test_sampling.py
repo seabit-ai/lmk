@@ -37,7 +37,7 @@ def test_absent_and_null_fields_leave_the_defaults_alone():
     assert sampling == {"temp": 1.0}          # stop_sequences is not an OpenAI field: ignored, not an error
 
 
-@pytest.mark.parametrize("seed", [0, 42, -7, 2**64 - 1, -(2**63)])
+@pytest.mark.parametrize("seed", [0, 42, 2**63, 2**64 - 1])
 def test_seed_reaches_the_engine_as_given(seed):
     sampling, ignored = parse_sampling({"seed": seed}, defaults={})
     assert sampling == {"seed": seed} and ignored == []
@@ -60,10 +60,11 @@ def test_a_drawn_seed_fits_in_31_bits():
     ({"stop": ["a", ""]}, "stop", "non-empty"),
     ({"stop": ["a", "b", "c", "d", "e"]}, "stop", "at most 4"),
     ({"stop": 7}, "stop", "a string or a list of strings"),
-    ({"seed": 1.5}, "seed", "an integer (64-bit)"),
-    ({"seed": "42"}, "seed", "an integer (64-bit)"),
-    ({"seed": True}, "seed", "an integer (64-bit)"),
-    ({"seed": 2**64}, "seed", "an integer (64-bit)"),
+    ({"seed": 1.5}, "seed", "an integer from 0 to 18446744073709551615"),
+    ({"seed": "42"}, "seed", "an integer from 0 to 18446744073709551615"),
+    ({"seed": True}, "seed", "an integer from 0 to 18446744073709551615"),
+    ({"seed": -1}, "seed", "an integer from 0 to 18446744073709551615"),
+    ({"seed": 2**64}, "seed", "an integer from 0 to 18446744073709551615"),
 ])
 def test_out_of_range_values_name_the_field_and_the_rule(body, param, words):
     with pytest.raises(SamplingError) as e:
