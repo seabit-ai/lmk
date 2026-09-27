@@ -1,0 +1,291 @@
+=== no draft
+[disk_budget][INFO]: VLM prompt cache disk budget: stage=provisional cap_gib=30.00
+[cache_store][INFO]: VLM prompt cache disk store: lifetime=model_load storage=temporary cleanup=model_unload_or_process_exit
+[context_fit][INFO]: Model context auto-fit: family=qwen3_5 max=262,144 fitted=262,144 working_set=77.76GiB reserve=3.00GiB baseline=14.95GiB full_kv=65536B/token prompt_inputs=10240B/token attention_coefficient=48B/context/step rotating_constant=0.00GiB rotating_per_step=0B steps=2048:262,144,1024:262,144,512:262,144
+[cache_store][INFO]: VLM prompt cache context target: configured=32,768 fitted=262,144 effective=262,144
+[coordinator][INFO]: Prompt cache restore: cached_tokens=0 uncached_tokens=106 lifetime_efficiency=0.00%
+[model_kit][INFO]: Request prefill plan: prompt=107 cached=0 segments=2048:107
+[disk_budget][INFO]: VLM prompt cache disk budget: stage=final target_tokens=262,144 desired_gib=162.81 cap_gib=125.27 limiter=free_disk_space
+{"time_ms": 1790480468267, "level": "INFO", "event": "LmkChatDone", "msg": "chat completion finished", "purpose": "itest", "refId": null, "traceparent": null, "promptTokens": 107, "cachedTokens": 0, "uncachedEstimate": 107, "uncachedActual": 107, "completionTokens": 149, "toolCalls": 0, "restoreMs": 1, "ttftMs": 809, "totalMs": 4610, "finishReason": "stop", "cancelled": false, "sampling": {"temp": 1.0, "top_p": 0.95, "top_k": 20}, "stop": null, "seed": 259132960, "seedFrom": "lmk", "othersAtStart": 0, "othersPeak": 0, "draftAccepted": null, "draftDrafted": null, "restoreSource": "none", "restoredTokens": 0, "hotTrimmedTokens": 0, "promptSurpriseMean": 4.66, "promptSurpriseP90": 11.7538, "promptSurpriseMax": 16.6249, "promptSurpriseTokens": 106, "promptSurpriseMs": 551.3, "promptSurpriseUnsupported": null}
+[cache_store][INFO]: VLM prompt cache disk usage: used_mib=162.8 cap_mib=30720.0 lifetime_evicted_mib=0.0 records=2 lifetime=model_load
+[coordinator][INFO]: Prompt cache restore: cached_tokens=0 uncached_tokens=106 lifetime_efficiency=0.00%
+[model_kit][INFO]: Request prefill plan: prompt=107 cached=0 segments=2048:107
+{"time_ms": 1790480472728, "level": "INFO", "event": "LmkChatDone", "msg": "chat completion finished", "purpose": "itest", "refId": null, "traceparent": null, "promptTokens": 107, "cachedTokens": 0, "uncachedEstimate": 107, "uncachedActual": 107, "completionTokens": 149, "toolCalls": 0, "restoreMs": 48, "ttftMs": 650, "totalMs": 4459, "finishReason": "stop", "cancelled": false, "sampling": {"temp": 1.0, "top_p": 0.95, "top_k": 20}, "stop": null, "seed": 259132960, "seedFrom": "request", "othersAtStart": 0, "othersPeak": 0, "draftAccepted": null, "draftDrafted": null, "restoreSource": "none", "restoredTokens": 0, "hotTrimmedTokens": 0, "promptSurpriseMean": 4.66, "promptSurpriseP90": 11.7538, "promptSurpriseMax": 16.6249, "promptSurpriseTokens": 106, "promptSurpriseMs": 548.1, "promptSurpriseUnsupported": null}
+[coordinator][INFO]: Prompt cache restore: cached_tokens=0 uncached_tokens=106 lifetime_efficiency=0.00%
+[model_kit][INFO]: Request prefill plan: prompt=107 cached=0 segments=2048:107
+{"time_ms": 1790480477153, "level": "INFO", "event": "LmkChatDone", "msg": "chat completion finished", "purpose": "itest", "refId": null, "traceparent": null, "promptTokens": 107, "cachedTokens": 0, "uncachedEstimate": 107, "uncachedActual": 107, "completionTokens": 149, "toolCalls": 0, "restoreMs": 0, "ttftMs": 604, "totalMs": 4422, "finishReason": "stop", "cancelled": false, "sampling": {"temp": 1.0, "top_p": 0.95, "top_k": 20}, "stop": null, "seed": 259132960, "seedFrom": "request", "othersAtStart": 0, "othersPeak": 0, "draftAccepted": null, "draftDrafted": null, "restoreSource": "none", "restoredTokens": 0, "hotTrimmedTokens": 0, "promptSurpriseMean": 4.66, "promptSurpriseP90": 11.7538, "promptSurpriseMax": 16.6249, "promptSurpriseTokens": 106, "promptSurpriseMs": 548.7, "promptSurpriseUnsupported": null}
+[coordinator][INFO]: Prompt cache restore: cached_tokens=0 uncached_tokens=106 lifetime_efficiency=0.00%
+[model_kit][INFO]: Request prefill plan: prompt=107 cached=0 segments=2048:107
+{"time_ms": 1790480481872, "level": "INFO", "event": "LmkChatDone", "msg": "chat completion finished", "purpose": "itest", "refId": null, "traceparent": null, "promptTokens": 107, "cachedTokens": 0, "uncachedEstimate": 107, "uncachedActual": 107, "completionTokens": 160, "toolCalls": 0, "restoreMs": 1, "ttftMs": 604, "totalMs": 4716, "finishReason": "length", "cancelled": false, "sampling": {"temp": 1.0, "top_p": 0.95, "top_k": 20}, "stop": null, "seed": 259132961, "seedFrom": "request", "othersAtStart": 0, "othersPeak": 0, "draftAccepted": null, "draftDrafted": null, "restoreSource": "none", "restoredTokens": 0, "hotTrimmedTokens": 0, "promptSurpriseMean": 4.66, "promptSurpriseP90": 11.7538, "promptSurpriseMax": 16.6249, "promptSurpriseTokens": 106, "promptSurpriseMs": 549.5, "promptSurpriseUnsupported": null}
+itest: dialect qwen thinking True kv cache bits 16 draft None
+itest seed: 259132960 tools=False draft=False cached first/replay/again=0/0/0 drafted replay/again=None/None cold-vs-restored identical=True
+.[coordinator][INFO]: Prompt cache restore: cached_tokens=0 uncached_tokens=370 lifetime_efficiency=0.00%
+[model_kit][INFO]: Request prefill plan: prompt=371 cached=0 segments=2048:371
+{"time_ms": 1790480487000, "level": "INFO", "event": "LmkChatDone", "msg": "chat completion finished", "purpose": "itest", "refId": null, "traceparent": null, "promptTokens": 371, "cachedTokens": 0, "uncachedEstimate": 371, "uncachedActual": 371, "completionTokens": 132, "toolCalls": 0, "restoreMs": 1, "ttftMs": 1728, "totalMs": 5124, "finishReason": "stop", "cancelled": false, "sampling": {"temp": 1.0, "top_p": 0.95, "top_k": 20}, "stop": null, "seed": 995424255, "seedFrom": "lmk", "othersAtStart": 0, "othersPeak": 0, "draftAccepted": null, "draftDrafted": null, "restoreSource": "none", "restoredTokens": 0, "hotTrimmedTokens": 0, "promptSurpriseMean": 2.3242, "promptSurpriseP90": 8.0307, "promptSurpriseMax": 18.6289, "promptSurpriseTokens": 370, "promptSurpriseMs": 1666.3, "promptSurpriseUnsupported": null}
+[coordinator][INFO]: Prompt cache restore: cached_tokens=256 uncached_tokens=114 lifetime_efficiency=21.99%
+[model_kit][INFO]: Request prefill plan: prompt=371 cached=256 segments=2048:371
+{"time_ms": 1790480491651, "level": "INFO", "event": "LmkChatDone", "msg": "chat completion finished", "purpose": "itest", "refId": null, "traceparent": null, "promptTokens": 371, "cachedTokens": 256, "uncachedEstimate": 115, "uncachedActual": 115, "completionTokens": 160, "toolCalls": 0, "restoreMs": 28, "ttftMs": 522, "totalMs": 4648, "finishReason": "length", "cancelled": false, "sampling": {"temp": 1.0, "top_p": 0.95, "top_k": 20}, "stop": null, "seed": 995424255, "seedFrom": "request", "othersAtStart": 0, "othersPeak": 0, "draftAccepted": null, "draftDrafted": null, "restoreSource": "disk", "restoredTokens": 256, "hotTrimmedTokens": 0, "promptSurpriseMean": null, "promptSurpriseP90": null, "promptSurpriseMax": null, "promptSurpriseTokens": 0, "promptSurpriseMs": 0.0, "promptSurpriseUnsupported": null}
+[coordinator][INFO]: Prompt cache restore: cached_tokens=256 uncached_tokens=114 lifetime_efficiency=33.38%
+[model_kit][INFO]: Request prefill plan: prompt=371 cached=256 segments=2048:371
+{"time_ms": 1790480496295, "level": "INFO", "event": "LmkChatDone", "msg": "chat completion finished", "purpose": "itest", "refId": null, "traceparent": null, "promptTokens": 371, "cachedTokens": 256, "uncachedEstimate": 115, "uncachedActual": 115, "completionTokens": 160, "toolCalls": 0, "restoreMs": 27, "ttftMs": 521, "totalMs": 4641, "finishReason": "length", "cancelled": false, "sampling": {"temp": 1.0, "top_p": 0.95, "top_k": 20}, "stop": null, "seed": 995424255, "seedFrom": "request", "othersAtStart": 0, "othersPeak": 0, "draftAccepted": null, "draftDrafted": null, "restoreSource": "disk", "restoredTokens": 256, "hotTrimmedTokens": 0, "promptSurpriseMean": null, "promptSurpriseP90": null, "promptSurpriseMax": null, "promptSurpriseTokens": 0, "promptSurpriseMs": 0.0, "promptSurpriseUnsupported": null}
+[coordinator][INFO]: Prompt cache restore: cached_tokens=256 uncached_tokens=114 lifetime_efficiency=40.34%
+[model_kit][INFO]: Request prefill plan: prompt=371 cached=256 segments=2048:371
+{"time_ms": 1790480500939, "level": "INFO", "event": "LmkChatDone", "msg": "chat completion finished", "purpose": "itest", "refId": null, "traceparent": null, "promptTokens": 371, "cachedTokens": 256, "uncachedEstimate": 115, "uncachedActual": 115, "completionTokens": 160, "toolCalls": 0, "restoreMs": 23, "ttftMs": 516, "totalMs": 4642, "finishReason": "length", "cancelled": false, "sampling": {"temp": 1.0, "top_p": 0.95, "top_k": 20}, "stop": null, "seed": 995424256, "seedFrom": "request", "othersAtStart": 0, "othersPeak": 0, "draftAccepted": null, "draftDrafted": null, "restoreSource": "disk", "restoredTokens": 256, "hotTrimmedTokens": 0, "promptSurpriseMean": null, "promptSurpriseP90": null, "promptSurpriseMax": null, "promptSurpriseTokens": 0, "promptSurpriseMs": 0.0, "promptSurpriseUnsupported": null}
+itest seed: 995424255 tools=True draft=False cached first/replay/again=0/256/256 drafted replay/again=None/None cold-vs-restored identical=False
+itest seed: cold and restored runs part at char 15: 'We need answer user: "Invent a name for a new colour an' / 'We need answer to user: "Invent a name for a new colour'
+.s[coordinator][INFO]: Prompt cache restore: cached_tokens=0 uncached_tokens=798 lifetime_efficiency=28.42%
+[model_kit][INFO]: Request prefill plan: prompt=799 cached=0 segments=2048:799
+[coordinator][INFO]: Prompt cache restore: cached_tokens=768 uncached_tokens=366 lifetime_efficiency=40.04%
+[model_kit][INFO]: Request prefill plan: prompt=1,135 cached=768 segments=2048:1,135
+[coordinator][INFO]: Prompt cache restore: cached_tokens=768 uncached_tokens=366 lifetime_efficiency=46.36%
+[model_kit][INFO]: Request prefill plan: prompt=1,135 cached=768 segments=2048:1,135
+itest context check cold: prompt=799 cached=0 {'restore_source': 'none', 'restored_tokens': 0, 'hot_trimmed_tokens': 0, 'segment_tokens': 799, 'scored_tokens': 512, 'ms': 3066.8, 'unsupported': None, 'surprise_mean': 7.3853, 'surprise_p90': 21.4567, 'surprise_max': 33.3445} (~5990 ms per 1k scored tokens)
+itest context check intact: prompt=1135 cached=768 {'restore_source': 'disk', 'restored_tokens': 768, 'hot_trimmed_tokens': 0, 'segment_tokens': 367, 'scored_tokens': 0, 'ms': 0.0, 'unsupported': None} (~0 ms per 1k scored tokens)
+itest context check corrupt: prompt=1135 cached=768 {'restore_source': 'disk', 'restored_tokens': 768, 'hot_trimmed_tokens': 0, 'segment_tokens': 367, 'scored_tokens': 0, 'ms': 0.0, 'unsupported': None} (~0 ms per 1k scored tokens)
+F
+=================================== FAILURES ===================================
+_______________ test_the_context_check_sees_a_corrupted_restore ________________
+
+server = <lmk.server.LmkServer object at 0x1391bb590>
+
+    def test_the_context_check_sees_a_corrupted_restore(server):
+        import uuid
+    
+        import mlx.core as mx
+        import mlx_engine.model_kit.batched_vision.model_kit as vision_kit
+    
+        engine = server.engine
+        fmt = engine.chat_format()
+        names = [f"{w}-{i * 7919 % 1000:03d}" for i, w in enumerate(
+            "amber basalt cobalt dune ember fjord garnet harbor indigo jasper kelp lumen marble nectar onyx pewter "
+            "quartz russet sable tundra umber velvet willow xenon yarrow zephyr".split())]
+        system = {"role": "system", "content": f"Session {uuid.uuid4().hex}. You are kitten, a coding agent."}
+        history = [system,
+                   {"role": "user", "content": "Here are the release codenames, in order: " + ", ".join(names) +
+                    ". Keep them in mind. " + " ".join(f"Note {i}: codename {n} ships in week {i + 3}."
+                                                       for i, n in enumerate(names))},
+                   {"role": "assistant", "content": "Understood — I have the codenames and their weeks."}]
+        def turn(tag):
+            # the tag leads the new message, so the second turn shares the first one's cache only up to the history
+            return history + [{"role": "user", "content": f"{tag} Repeat every codename with its week, in the same "
+                               "order, as 'codename: week' lines. Here they are once more for reference: " +
+                               "; ".join(f"{n}: week {i + 3}" for i, n in enumerate(names))}]
+    
+        def run(messages):
+            g = engine.generate(fmt.render(messages, None), max_tokens=4, request_id=f"itest-ctx-{uuid.uuid4().hex[:8]}",
+                                on_prefill=lambda *a: True, sampling={"temp": 0.0})
+            "".join(g)
+            return g.stats
+    
+        cold = run(history)
+        intact = run(turn("Request A."))           # restores the history, prefills the new turn
+        zeroed = []
+    
+        def zero_recurrent(restored):
+            for c in restored.prompt_cache:
+                if type(c).__name__ == "ArraysCache":
+                    c.cache = [None if a is None else mx.zeros_like(a) for a in c.cache]
+                    zeroed.append(1)
+    
+        vision_kit.RESTORED_CACHE_HOOK = zero_recurrent
+        try:
+            corrupt = run(turn("Request B."))      # restores (about) the same point, recurrent state wiped
+        finally:
+            vision_kit.RESTORED_CACHE_HOOK = None
+        for name, s in (("cold", cold), ("intact", intact), ("corrupt", corrupt)):
+            c = s.context_check or {}
+            per_1k = c.get("ms", 0) / max(1, c.get("scored_tokens") or 1) * 1000
+            print(f"itest context check {name}: prompt={s.prompt_tokens} cached={s.cached_tokens} {c} "
+                  f"(~{per_1k:.0f} ms per 1k scored tokens)")
+    
+        a, b = intact.context_check, corrupt.context_check
+>       assert a["restore_source"] in ("hot", "disk") and a["restored_tokens"] > 0 and a["scored_tokens"] >= 32
+E       AssertionError: assert ('disk' in ('hot', 'disk') and 768 > 0 and 0 >= 32)
+
+tests/test_itest_chat.py:327: AssertionError
+------------------------------ Captured log call -------------------------------
+INFO     mlx_engine.model_kit.batched_vision.prompt_cache.coordinator:coordinator.py:106 Prompt cache restore: cached_tokens=0 uncached_tokens=798 lifetime_efficiency=28.42%
+INFO     mlx_engine.model_kit.batched_vision.model_kit:model_kit.py:613 Request prefill plan: prompt=799 cached=0 segments=2048:799
+INFO     mlx_engine.model_kit.batched_vision.prompt_cache.coordinator:coordinator.py:106 Prompt cache restore: cached_tokens=768 uncached_tokens=366 lifetime_efficiency=40.04%
+INFO     mlx_engine.model_kit.batched_vision.model_kit:model_kit.py:613 Request prefill plan: prompt=1,135 cached=768 segments=2048:1,135
+INFO     mlx_engine.model_kit.batched_vision.prompt_cache.coordinator:coordinator.py:106 Prompt cache restore: cached_tokens=768 uncached_tokens=366 lifetime_efficiency=46.36%
+INFO     mlx_engine.model_kit.batched_vision.model_kit:model_kit.py:613 Request prefill plan: prompt=1,135 cached=768 segments=2048:1,135
+=========================== short test summary info ============================
+FAILED tests/test_itest_chat.py::test_the_context_check_sees_a_corrupted_restore
+1 failed, 2 passed, 1 skipped, 7 deselected in 49.53s
+=== dflash2
+[disk_budget][INFO]: VLM prompt cache disk budget: stage=provisional cap_gib=30.00
+[cache_store][INFO]: VLM prompt cache disk store: lifetime=model_load storage=temporary cleanup=model_unload_or_process_exit
+[context_fit][INFO]: Model context auto-fit: family=qwen3_5 max=262,144 fitted=262,144 working_set=77.76GiB reserve=3.00GiB baseline=14.95GiB full_kv=65536B/token prompt_inputs=10240B/token attention_coefficient=48B/context/step rotating_constant=0.00GiB rotating_per_step=0B steps=2048:262,144,1024:262,144,512:262,144
+[cache_store][INFO]: VLM prompt cache context target: configured=32,768 fitted=262,144 effective=262,144
+[model_kit][INFO]: Loading draft model from /Users/xinkai/.cache/huggingface/hub/models--seabit-ai--Qwen3.8-27B-DFlash2-4bit/snapshots/local-quant-2026-09-24...
+[model_kit][INFO]: Draft model loaded
+[coordinator][INFO]: Prompt cache restore: cached_tokens=0 uncached_tokens=101 lifetime_efficiency=0.00%
+[model_kit][INFO]: Request prefill plan: prompt=102 cached=0 segments=2048:102
+[cache_store][INFO]: VLM prompt cache disk usage: used_mib=16.0 cap_mib=30720.0 lifetime_evicted_mib=0.0 records=1 lifetime=model_load
+[disk_budget][INFO]: VLM prompt cache disk budget: stage=final target_tokens=262,144 desired_gib=162.81 cap_gib=125.27 limiter=free_disk_space
+{"time_ms": 1790480516553, "level": "INFO", "event": "LmkChatDone", "msg": "chat completion finished", "purpose": "itest", "refId": null, "traceparent": null, "promptTokens": 102, "cachedTokens": 0, "uncachedEstimate": 102, "uncachedActual": 102, "completionTokens": 160, "toolCalls": 0, "restoreMs": 0, "ttftMs": 716, "totalMs": 4095, "finishReason": "length", "cancelled": false, "sampling": {"temp": 1.0, "top_p": 0.95, "top_k": 20}, "stop": null, "seed": 1274081060, "seedFrom": "lmk", "othersAtStart": 0, "othersPeak": 0, "draftAccepted": 93, "draftDrafted": 164, "restoreSource": "none", "restoredTokens": 0, "hotTrimmedTokens": 0, "promptSurpriseMean": 4.7741, "promptSurpriseP90": 10.8127, "promptSurpriseMax": 16.6249, "promptSurpriseTokens": 101, "promptSurpriseMs": 570.1, "promptSurpriseUnsupported": null}
+[coordinator][INFO]: Prompt cache restore: cached_tokens=0 uncached_tokens=101 lifetime_efficiency=0.00%
+[model_kit][INFO]: Request prefill plan: prompt=102 cached=0 segments=2048:102
+{"time_ms": 1790480520522, "level": "INFO", "event": "LmkChatDone", "msg": "chat completion finished", "purpose": "itest", "refId": null, "traceparent": null, "promptTokens": 102, "cachedTokens": 0, "uncachedEstimate": 102, "uncachedActual": 102, "completionTokens": 160, "toolCalls": 0, "restoreMs": 2, "ttftMs": 624, "totalMs": 3967, "finishReason": "length", "cancelled": false, "sampling": {"temp": 1.0, "top_p": 0.95, "top_k": 20}, "stop": null, "seed": 1274081060, "seedFrom": "request", "othersAtStart": 0, "othersPeak": 0, "draftAccepted": 93, "draftDrafted": 164, "restoreSource": "none", "restoredTokens": 0, "hotTrimmedTokens": 0, "promptSurpriseMean": 4.7741, "promptSurpriseP90": 10.8127, "promptSurpriseMax": 16.6249, "promptSurpriseTokens": 101, "promptSurpriseMs": 543.4, "promptSurpriseUnsupported": null}
+[coordinator][INFO]: Prompt cache restore: cached_tokens=0 uncached_tokens=101 lifetime_efficiency=0.00%
+[model_kit][INFO]: Request prefill plan: prompt=102 cached=0 segments=2048:102
+{"time_ms": 1790480524476, "level": "INFO", "event": "LmkChatDone", "msg": "chat completion finished", "purpose": "itest", "refId": null, "traceparent": null, "promptTokens": 102, "cachedTokens": 0, "uncachedEstimate": 102, "uncachedActual": 102, "completionTokens": 160, "toolCalls": 0, "restoreMs": 2, "ttftMs": 621, "totalMs": 3951, "finishReason": "length", "cancelled": false, "sampling": {"temp": 1.0, "top_p": 0.95, "top_k": 20}, "stop": null, "seed": 1274081060, "seedFrom": "request", "othersAtStart": 0, "othersPeak": 0, "draftAccepted": 93, "draftDrafted": 164, "restoreSource": "none", "restoredTokens": 0, "hotTrimmedTokens": 0, "promptSurpriseMean": 4.7741, "promptSurpriseP90": 10.8127, "promptSurpriseMax": 16.6249, "promptSurpriseTokens": 101, "promptSurpriseMs": 541.3, "promptSurpriseUnsupported": null}
+[coordinator][INFO]: Prompt cache restore: cached_tokens=0 uncached_tokens=101 lifetime_efficiency=0.00%
+[model_kit][INFO]: Request prefill plan: prompt=102 cached=0 segments=2048:102
+{"time_ms": 1790480528713, "level": "INFO", "event": "LmkChatDone", "msg": "chat completion finished", "purpose": "itest", "refId": null, "traceparent": null, "promptTokens": 102, "cachedTokens": 0, "uncachedEstimate": 102, "uncachedActual": 102, "completionTokens": 160, "toolCalls": 0, "restoreMs": 0, "ttftMs": 623, "totalMs": 4235, "finishReason": "length", "cancelled": false, "sampling": {"temp": 1.0, "top_p": 0.95, "top_k": 20}, "stop": null, "seed": 1274081061, "seedFrom": "request", "othersAtStart": 0, "othersPeak": 0, "draftAccepted": 85, "draftDrafted": 170, "restoreSource": "none", "restoredTokens": 0, "hotTrimmedTokens": 0, "promptSurpriseMean": 4.7741, "promptSurpriseP90": 10.8127, "promptSurpriseMax": 16.6249, "promptSurpriseTokens": 101, "promptSurpriseMs": 542.2, "promptSurpriseUnsupported": null}
+itest: dialect qwen thinking True kv cache bits 16 draft /Users/xinkai/.cache/huggingface/hub/models--seabit-ai--Qwen3.8-27B-DFlash2-4bit/snapshots/local-quant-2026-09-24
+itest seed: 1274081060 tools=False draft=True cached first/replay/again=0/0/0 drafted replay/again=164/164 cold-vs-restored identical=True
+.[coordinator][INFO]: Prompt cache restore: cached_tokens=0 uncached_tokens=368 lifetime_efficiency=0.00%
+[model_kit][INFO]: Request prefill plan: prompt=369 cached=0 segments=2048:369
+{"time_ms": 1790480534182, "level": "INFO", "event": "LmkChatDone", "msg": "chat completion finished", "purpose": "itest", "refId": null, "traceparent": null, "promptTokens": 369, "cachedTokens": 0, "uncachedEstimate": 369, "uncachedActual": 369, "completionTokens": 160, "toolCalls": 0, "restoreMs": 3, "ttftMs": 1759, "totalMs": 5466, "finishReason": "length", "cancelled": false, "sampling": {"temp": 1.0, "top_p": 0.95, "top_k": 20}, "stop": null, "seed": 2126704923, "seedFrom": "lmk", "othersAtStart": 0, "othersPeak": 0, "draftAccepted": 81, "draftDrafted": 155, "restoreSource": "none", "restoredTokens": 0, "hotTrimmedTokens": 0, "promptSurpriseMean": 2.342, "promptSurpriseP90": 8.4432, "promptSurpriseMax": 21.7501, "promptSurpriseTokens": 368, "promptSurpriseMs": 1664.0, "promptSurpriseUnsupported": null}
+[coordinator][INFO]: Prompt cache restore: cached_tokens=256 uncached_tokens=112 lifetime_efficiency=22.46%
+[model_kit][INFO]: Request prefill plan: prompt=369 cached=256 segments=2048:369
+{"time_ms": 1790480538760, "level": "INFO", "event": "LmkChatDone", "msg": "chat completion finished", "purpose": "itest", "refId": null, "traceparent": null, "promptTokens": 369, "cachedTokens": 256, "uncachedEstimate": 113, "uncachedActual": 113, "completionTokens": 160, "toolCalls": 0, "restoreMs": 23, "ttftMs": 668, "totalMs": 4576, "finishReason": "length", "cancelled": false, "sampling": {"temp": 1.0, "top_p": 0.95, "top_k": 20}, "stop": null, "seed": 2126704923, "seedFrom": "request", "othersAtStart": 0, "othersPeak": 0, "draftAccepted": 76, "draftDrafted": 165, "restoreSource": "disk", "restoredTokens": 256, "hotTrimmedTokens": 0, "promptSurpriseMean": 3.9118, "promptSurpriseP90": 10.7695, "promptSurpriseMax": 21.7188, "promptSurpriseTokens": 112, "promptSurpriseMs": 557.6, "promptSurpriseUnsupported": null}
+[coordinator][INFO]: Prompt cache restore: cached_tokens=256 uncached_tokens=112 lifetime_efficiency=33.95%
+[model_kit][INFO]: Request prefill plan: prompt=369 cached=256 segments=2048:369
+{"time_ms": 1790480543347, "level": "INFO", "event": "LmkChatDone", "msg": "chat completion finished", "purpose": "itest", "refId": null, "traceparent": null, "promptTokens": 369, "cachedTokens": 256, "uncachedEstimate": 113, "uncachedActual": 113, "completionTokens": 160, "toolCalls": 0, "restoreMs": 23, "ttftMs": 668, "totalMs": 4585, "finishReason": "length", "cancelled": false, "sampling": {"temp": 1.0, "top_p": 0.95, "top_k": 20}, "stop": null, "seed": 2126704923, "seedFrom": "request", "othersAtStart": 0, "othersPeak": 0, "draftAccepted": 76, "draftDrafted": 165, "restoreSource": "disk", "restoredTokens": 256, "hotTrimmedTokens": 0, "promptSurpriseMean": 3.9118, "promptSurpriseP90": 10.7695, "promptSurpriseMax": 21.7188, "promptSurpriseTokens": 112, "promptSurpriseMs": 558.8, "promptSurpriseUnsupported": null}
+[coordinator][INFO]: Prompt cache restore: cached_tokens=256 uncached_tokens=112 lifetime_efficiency=40.94%
+[model_kit][INFO]: Request prefill plan: prompt=369 cached=256 segments=2048:369
+{"time_ms": 1790480547523, "level": "INFO", "event": "LmkChatDone", "msg": "chat completion finished", "purpose": "itest", "refId": null, "traceparent": null, "promptTokens": 369, "cachedTokens": 256, "uncachedEstimate": 113, "uncachedActual": 113, "completionTokens": 160, "toolCalls": 0, "restoreMs": 22, "ttftMs": 662, "totalMs": 4174, "finishReason": "length", "cancelled": false, "sampling": {"temp": 1.0, "top_p": 0.95, "top_k": 20}, "stop": null, "seed": 2126704924, "seedFrom": "request", "othersAtStart": 0, "othersPeak": 0, "draftAccepted": 84, "draftDrafted": 149, "restoreSource": "disk", "restoredTokens": 256, "hotTrimmedTokens": 0, "promptSurpriseMean": 3.9118, "promptSurpriseP90": 10.7695, "promptSurpriseMax": 21.7188, "promptSurpriseTokens": 112, "promptSurpriseMs": 558.0, "promptSurpriseUnsupported": null}
+itest seed: 2126704923 tools=True draft=True cached first/replay/again=0/256/256 drafted replay/again=165/165 cold-vs-restored identical=False
+itest seed: cold and restored runs part at char 173: ':\n- "Glimmerdawn" — a pale rose-gold hue at first light\n- "Mothgrey" — a soft gr' / ':\n- "Glimmerdawn" — a pale rose-gold hue\n- "Velvethrust"\n- "Amberveil"\n- "Sylphi'
+.[coordinator][INFO]: Prompt cache restore: cached_tokens=0 uncached_tokens=90 lifetime_efficiency=39.06%
+[model_kit][INFO]: Request prefill plan: prompt=91 cached=0 segments=2048:91
+[coordinator][INFO]: Prompt cache restore: cached_tokens=0 uncached_tokens=90 lifetime_efficiency=37.35%
+[model_kit][INFO]: Request prefill plan: prompt=91 cached=0 segments=2048:91
+[coordinator][INFO]: Prompt cache restore: cached_tokens=0 uncached_tokens=90 lifetime_efficiency=35.79%
+[model_kit][INFO]: Request prefill plan: prompt=91 cached=0 segments=2048:91
+itest spec on/off: drafted 106 accepted 58 identical=False
+F[coordinator][INFO]: Prompt cache restore: cached_tokens=0 uncached_tokens=800 lifetime_efficiency=26.07%
+[model_kit][INFO]: Request prefill plan: prompt=801 cached=0 segments=2048:801
+[coordinator][INFO]: Prompt cache restore: cached_tokens=768 uncached_tokens=368 lifetime_efficiency=37.63%
+[model_kit][INFO]: Request prefill plan: prompt=1,137 cached=768 segments=2048:1,137
+[coordinator][INFO]: Prompt cache restore: cached_tokens=768 uncached_tokens=368 lifetime_efficiency=44.15%
+[model_kit][INFO]: Request prefill plan: prompt=1,137 cached=768 segments=2048:1,137
+itest context check cold: prompt=801 cached=0 {'restore_source': 'none', 'restored_tokens': 0, 'hot_trimmed_tokens': 0, 'segment_tokens': 801, 'scored_tokens': 512, 'ms': 3159.8, 'unsupported': None, 'surprise_mean': 7.3691, 'surprise_p90': 20.9895, 'surprise_max': 34.329} (~6171 ms per 1k scored tokens)
+itest context check intact: prompt=1137 cached=768 {'restore_source': 'disk', 'restored_tokens': 768, 'hot_trimmed_tokens': 0, 'segment_tokens': 369, 'scored_tokens': 368, 'ms': 1678.2, 'unsupported': None, 'surprise_mean': 2.0521, 'surprise_p90': 7.1258, 'surprise_max': 31.875} (~4560 ms per 1k scored tokens)
+itest context check corrupt: prompt=1137 cached=768 {'restore_source': 'disk', 'restored_tokens': 768, 'hot_trimmed_tokens': 0, 'segment_tokens': 369, 'scored_tokens': 368, 'ms': 1677.1, 'unsupported': None, 'surprise_mean': 1.2854, 'surprise_p90': 3.4094, 'surprise_max': 23.1875} (~4557 ms per 1k scored tokens)
+F
+=================================== FAILURES ===================================
+______ test_the_same_seed_draws_the_same_tokens_with_the_draft_on_and_off ______
+
+server = <lmk.server.LmkServer object at 0x109879710>
+
+    def test_the_same_seed_draws_the_same_tokens_with_the_draft_on_and_off(server):
+        if server.engine.draft_stats() is None:
+            pytest.skip("no draft model loaded (LMK_ITEST_DRAFT)")
+        import uuid
+    
+        engine = server.engine
+        prompt = engine.chat_format().render(
+            [{"role": "system", "content": f"Session {uuid.uuid4().hex}."},
+             {"role": "user", "content": "Write a four-line poem about a lighthouse."}], None)
+        sampling = {"temp": 1.0, "top_p": 0.95, "top_k": 20, "seed": 20260926}
+    
+        def run(speculative: bool):
+            generation = engine.generate(prompt, max_tokens=120, request_id=f"itest-spec-{speculative}-{uuid.uuid4().hex[:6]}",
+                                         on_prefill=lambda *a: True,
+                                         sampling={**sampling, "speculative_decoding_toggle": speculative})
+            return "".join(generation), generation.stats
+    
+        run(False)                    # reads the prompt once; both runs below restore the same prefix
+        plain, plain_stats = run(False)
+        spec, spec_stats = run(True)
+        print(f"itest spec on/off: drafted {spec_stats.draft_drafted} accepted {spec_stats.draft_accepted} "
+              f"identical={plain == spec}")
+        assert spec_stats.draft_drafted and spec_stats.draft_drafted > 0
+>       assert spec == plain
+E       assert 'We need to r... weary ships.' == 'We need to r...st the light"'
+E         
+E         Skipping 160 identical leading characters in diff, use -v to show
+E         -  maybe no title? Just poem. Count lines exactly 4. Let's craft:
+E         - "Old keeper of the storm-torn shore,
+E         - Your steady beam cuts through the night;
+E         - You call the lost ships safe, once more,
+E         - A silver sentinel against the light."...
+E         
+E         ...Full output truncated (8 lines hidden), use '-vv' to show
+
+tests/test_itest_chat.py:269: AssertionError
+------------------------------ Captured log call -------------------------------
+INFO     mlx_engine.model_kit.batched_vision.prompt_cache.coordinator:coordinator.py:106 Prompt cache restore: cached_tokens=0 uncached_tokens=90 lifetime_efficiency=39.06%
+INFO     mlx_engine.model_kit.batched_vision.model_kit:model_kit.py:613 Request prefill plan: prompt=91 cached=0 segments=2048:91
+INFO     mlx_engine.model_kit.batched_vision.prompt_cache.coordinator:coordinator.py:106 Prompt cache restore: cached_tokens=0 uncached_tokens=90 lifetime_efficiency=37.35%
+INFO     mlx_engine.model_kit.batched_vision.model_kit:model_kit.py:613 Request prefill plan: prompt=91 cached=0 segments=2048:91
+INFO     mlx_engine.model_kit.batched_vision.prompt_cache.coordinator:coordinator.py:106 Prompt cache restore: cached_tokens=0 uncached_tokens=90 lifetime_efficiency=35.79%
+INFO     mlx_engine.model_kit.batched_vision.model_kit:model_kit.py:613 Request prefill plan: prompt=91 cached=0 segments=2048:91
+_______________ test_the_context_check_sees_a_corrupted_restore ________________
+
+server = <lmk.server.LmkServer object at 0x109879710>
+
+    def test_the_context_check_sees_a_corrupted_restore(server):
+        import uuid
+    
+        import mlx.core as mx
+        import mlx_engine.model_kit.batched_vision.model_kit as vision_kit
+    
+        engine = server.engine
+        fmt = engine.chat_format()
+        names = [f"{w}-{i * 7919 % 1000:03d}" for i, w in enumerate(
+            "amber basalt cobalt dune ember fjord garnet harbor indigo jasper kelp lumen marble nectar onyx pewter "
+            "quartz russet sable tundra umber velvet willow xenon yarrow zephyr".split())]
+        system = {"role": "system", "content": f"Session {uuid.uuid4().hex}. You are kitten, a coding agent."}
+        history = [system,
+                   {"role": "user", "content": "Here are the release codenames, in order: " + ", ".join(names) +
+                    ". Keep them in mind. " + " ".join(f"Note {i}: codename {n} ships in week {i + 3}."
+                                                       for i, n in enumerate(names))},
+                   {"role": "assistant", "content": "Understood — I have the codenames and their weeks."}]
+        def turn(tag):
+            # the tag leads the new message, so the second turn shares the first one's cache only up to the history
+            return history + [{"role": "user", "content": f"{tag} Repeat every codename with its week, in the same "
+                               "order, as 'codename: week' lines. Here they are once more for reference: " +
+                               "; ".join(f"{n}: week {i + 3}" for i, n in enumerate(names))}]
+    
+        def run(messages):
+            g = engine.generate(fmt.render(messages, None), max_tokens=4, request_id=f"itest-ctx-{uuid.uuid4().hex[:8]}",
+                                on_prefill=lambda *a: True, sampling={"temp": 0.0})
+            "".join(g)
+            return g.stats
+    
+        cold = run(history)
+        intact = run(turn("Request A."))           # restores the history, prefills the new turn
+        zeroed = []
+    
+        def zero_recurrent(restored):
+            for c in restored.prompt_cache:
+                if type(c).__name__ == "ArraysCache":
+                    c.cache = [None if a is None else mx.zeros_like(a) for a in c.cache]
+                    zeroed.append(1)
+    
+        vision_kit.RESTORED_CACHE_HOOK = zero_recurrent
+        try:
+            corrupt = run(turn("Request B."))      # restores (about) the same point, recurrent state wiped
+        finally:
+            vision_kit.RESTORED_CACHE_HOOK = None
+        for name, s in (("cold", cold), ("intact", intact), ("corrupt", corrupt)):
+            c = s.context_check or {}
+            per_1k = c.get("ms", 0) / max(1, c.get("scored_tokens") or 1) * 1000
+            print(f"itest context check {name}: prompt={s.prompt_tokens} cached={s.cached_tokens} {c} "
+                  f"(~{per_1k:.0f} ms per 1k scored tokens)")
+    
+        a, b = intact.context_check, corrupt.context_check
+        assert a["restore_source"] in ("hot", "disk") and a["restored_tokens"] > 0 and a["scored_tokens"] >= 32
+        assert b["restored_tokens"] > 0 and b["scored_tokens"] >= 32
+        assert zeroed, "the hook reached the recurrent layers"
+        # loose sanity bound, not the band (that is to be measured): a copy task an intact model predicts well
+>       assert a["surprise_mean"] < 2.0
+E       assert 2.0521 < 2.0
+
+tests/test_itest_chat.py:331: AssertionError
+------------------------------ Captured log call -------------------------------
+INFO     mlx_engine.model_kit.batched_vision.prompt_cache.coordinator:coordinator.py:106 Prompt cache restore: cached_tokens=0 uncached_tokens=800 lifetime_efficiency=26.07%
+INFO     mlx_engine.model_kit.batched_vision.model_kit:model_kit.py:613 Request prefill plan: prompt=801 cached=0 segments=2048:801
+INFO     mlx_engine.model_kit.batched_vision.prompt_cache.coordinator:coordinator.py:106 Prompt cache restore: cached_tokens=768 uncached_tokens=368 lifetime_efficiency=37.63%
+INFO     mlx_engine.model_kit.batched_vision.model_kit:model_kit.py:613 Request prefill plan: prompt=1,137 cached=768 segments=2048:1,137
+INFO     mlx_engine.model_kit.batched_vision.prompt_cache.coordinator:coordinator.py:106 Prompt cache restore: cached_tokens=768 uncached_tokens=368 lifetime_efficiency=44.15%
+INFO     mlx_engine.model_kit.batched_vision.model_kit:model_kit.py:613 Request prefill plan: prompt=1,137 cached=768 segments=2048:1,137
+=========================== short test summary info ============================
+FAILED tests/test_itest_chat.py::test_the_same_seed_draws_the_same_tokens_with_the_draft_on_and_off
+FAILED tests/test_itest_chat.py::test_the_context_check_sees_a_corrupted_restore
+2 failed, 2 passed, 7 deselected in 56.89s

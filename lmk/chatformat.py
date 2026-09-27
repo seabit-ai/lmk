@@ -38,6 +38,9 @@ class Dialect:
                                                  # decides per turn either way (exp05 F1, F3).
     starts_in_reasoning: Callable[[str], bool]   # does the rendered prompt end inside a think block?
     for_template: Callable[[list[dict]], list[dict]]   # OpenAI wire messages → what this template iterates over
+    turn_open: Optional[str] = None              # the marker every message starts with, followed by its role ...
+    assistant_role: Optional[str] = None         # ... this role for the model's own turns ...
+    turn_close: Optional[str] = None             # ... and the marker that ends a message (context check, design 2026-09-26)
 
 
 def _qwen_starts_in_reasoning(prompt_text: str) -> bool:
@@ -77,7 +80,8 @@ def _gemma_for_template(messages: list[dict]) -> list[dict]:
 
 QWEN = Dialect(name="qwen", think_open="<think>", think_close="</think>", thinking_default=True, prompt_decides_thinking=True,
                starts_in_reasoning=_qwen_starts_in_reasoning,
-               for_template=lambda messages: [_for_template(m) for m in messages])
+               for_template=lambda messages: [_for_template(m) for m in messages],
+               turn_open="<|im_start|>", assistant_role="assistant", turn_close="<|im_end|>")
 
 # Gemma 4: thinking is off unless enable_thinking is passed; when on, the model opens its own
 # thought channel (the generation prompt is just the model turn); when off, the template closes an
@@ -139,6 +143,30 @@ class TemplateChatFormat:
 
     def starts_in_reasoning(self, prompt_text):
         return self.dialect.starts_in_reasoning(prompt_text)
+
+    def assistant_token_indices(self, tokens: list[int]) -> Optional[list[int]]:
+        """Indices of the tokens inside the model's own turns (after `<|im_start|>assistant`, through `<|im_end|>`),
+        the open generation prompt included. None when the dialect does not say how turns are marked.
+        An instruction-tuned model is trained to predict only these (research 2026-09-26-context-check exp03)."""
+        d = self.dialect
+        if not (d.turn_open and d.assistant_role and d.turn_close):
+            return None
+        encode = lambda text: list(self._tokenizer.encode(text, add_special_tokens=False))  # noqa: E731
+        open_ids, role_ids, close_ids = encode(d.turn_open), encode(d.assistant_role), encode(d.turn_close)
+        if len(open_ids) != 1 or len(close_ids) != 1:
+            return None
+        out, inside, i = [], False, 0
+        while i < len(tokens):
+            if tokens[i] == open_ids[0]:
+                inside = tokens[i + 1 : i + 1 + len(role_ids)] == role_ids
+                i += 1 + (len(role_ids) if inside else 0)
+                continue
+            if inside:
+                out.append(i)
+                if tokens[i] == close_ids[0]:
+                    inside = False
+            i += 1
+        return out
 
     def markers(self) -> Markers:
         return Markers(self.tool_call_start, self.tool_call_end, self.think_open, self.think_close)

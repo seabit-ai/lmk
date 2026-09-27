@@ -1,0 +1,10 @@
+  meter.add start=0 hidden=(1, 768, 5120) lo/hi=273/785
+  meter.add start=768 hidden=(1, 18, 5120) lo/hi=273/785
+cold: prompt=786 cached=0 wall_ms=3231 check={'restore_source': 'none', 'restored_tokens': 0, 'hot_trimmed_tokens': 0, 'segment_tokens': 786, 'scored_tokens': 512, 'ms': 670.7, 'unsupported': None, 'surprise_mean': 7.3434, 'surprise_p90': 21.5099, 'surprise_max': 33.8174}
+  meter.add start=0 hidden=(1, 256, 5120) lo/hi=0/323
+  meter.add start=256 hidden=(1, 68, 5120) lo/hi=0/323
+restored: prompt=1092 cached=768 wall_ms=1654 check={'restore_source': 'disk', 'restored_tokens': 768, 'hot_trimmed_tokens': 0, 'segment_tokens': 324, 'scored_tokens': 323, 'ms': 381.8, 'unsupported': None, 'surprise_mean': 1.3388, 'surprise_p90': 4.0212, 'surprise_max': 25.7036}
+projection speculative_logits_from_hidden: 584.7 ms for 512 rows
+projection speculative_logits_from_hidden: 545.1 ms for 512 rows
+projection lm_head: 77.9 ms for 512 rows
+projection lm_head: 78.0 ms for 512 rows

@@ -131,3 +131,36 @@ def test_qwen_leaves_tool_results_in_openai_shape():
 
     wire = [{"role": "tool", "tool_call_id": "c", "content": "x"}]
     assert QWEN.for_template(wire) == [{"role": "tool", "tool_call_id": "c", "content": "x"}]
+
+
+class _WordTokenizer:
+    """One id per whitespace word; the markers are single ids as in Qwen's vocabulary."""
+    chat_template = "{% if x %}<think>{% endif %}"
+    VOCAB = {"<|im_start|>": 1, "<|im_end|>": 2, "assistant": 3, "user": 4, "system": 5}
+
+    def encode(self, text, add_special_tokens=False):
+        return [self.VOCAB.setdefault(w, len(self.VOCAB) + 10) for w in text.split()]
+
+
+def _ids(text):
+    return _WordTokenizer().encode(text)
+
+
+def test_the_models_own_turns_are_found_by_their_markers():
+    from lmk.chatformat import TemplateChatFormat
+
+    fmt = TemplateChatFormat(_WordTokenizer())
+    tokens = _ids("<|im_start|> system be kind <|im_end|> <|im_start|> user hi <|im_end|> "
+                  "<|im_start|> assistant hello there <|im_end|> <|im_start|> user more <|im_end|> "
+                  "<|im_start|> assistant <think>")
+    picked = fmt.assistant_token_indices(tokens)
+    assert [tokens[i] for i in picked] == _ids("hello there <|im_end|> <think>")
+
+
+def test_a_family_without_turn_markers_names_no_tokens():
+    from lmk.chatformat import TemplateChatFormat
+
+    class Plain(_WordTokenizer):
+        chat_template = "{{ messages }}"
+
+    assert TemplateChatFormat(Plain()).assistant_token_indices(_ids("a b c")) is None

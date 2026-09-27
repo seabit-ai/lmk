@@ -1,0 +1,4 @@
+itest context check intact: {'restore_source': 'disk', 'restored_tokens': 1024, 'hot_trimmed_tokens': 0, 'segment_tokens': 388, 'scored': 'targets', 'scored_tokens': 297, 'ms': 52.1, 'unsupported': None, 'surprise_mean': 0.0963, 'surprise_p90': 0.0003, 'surprise_max': 11.9526} (~175 ms per 1k scored)
+itest context check wiped: {'restore_source': 'disk', 'restored_tokens': 1024, 'hot_trimmed_tokens': 0, 'segment_tokens': 388, 'scored': 'targets', 'scored_tokens': 297, 'ms': 52.1, 'unsupported': None, 'surprise_mean': 1.3365, 'surprise_p90': 2.6489, 'surprise_max': 13.1202} (~175 ms per 1k scored)
+itest context check wrong: {'restore_source': 'disk', 'restored_tokens': 1024, 'hot_trimmed_tokens': 0, 'segment_tokens': 388, 'scored': 'targets', 'scored_tokens': 297, 'ms': 52.1, 'unsupported': None, 'surprise_mean': 1.1059, 'surprise_p90': 2.5074, 'surprise_max': 12.4385} (~175 ms per 1k scored)
+1 passed, 10 deselected in 25.08s

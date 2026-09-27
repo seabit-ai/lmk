@@ -269,64 +269,90 @@ def test_the_same_seed_draws_the_same_tokens_with_the_draft_on_and_off(server):
     assert spec == plain
 
 
-# design 2026-09-26-context-check: the prefill scores how well the model predicts its own new prompt segment.
-# (a) an intact restored conversation: the number, printed, and a loose sanity bound; (b) the same restore with
-# the linear-attention (recurrent) states zeroed — the failure mode suspected in incident 000193 — must score
-# clearly worse. That difference is the proof the check can see a lost context.
-def test_the_context_check_sees_a_corrupted_restore(server):
+# design 2026-09-26-context-check (research exp04): the prefill scores how well the model predicts its own earlier
+# turns in the new prompt segment. The history holds a release plan of made-up codenames; the new segment has an
+# assistant turn listing the plan — predictable from the history only. Intact: low surprise. The restored state
+# wiped, or swapped for another plan's (a restored wrong conversation): much higher. That gap is the proof.
+def test_the_context_check_sees_a_lost_or_wrong_context(server):
+    import random
     import uuid
 
     import mlx.core as mx
     import mlx_engine.model_kit.batched_vision.model_kit as vision_kit
 
+    from lmk.chat import PreparedChat, check_targets
+
     engine = server.engine
     fmt = engine.chat_format()
-    names = [f"{w}-{i * 7919 % 1000:03d}" for i, w in enumerate(
-        "amber basalt cobalt dune ember fjord garnet harbor indigo jasper kelp lumen marble nectar onyx pewter "
-        "quartz russet sable tundra umber velvet willow xenon yarrow zephyr".split())]
-    system = {"role": "system", "content": f"Session {uuid.uuid4().hex}. You are kitten, a coding agent."}
-    history = [system,
-               {"role": "user", "content": "Here are the release codenames, in order: " + ", ".join(names) +
-                ". Keep them in mind. " + " ".join(f"Note {i}: codename {n} ships in week {i + 3}."
-                                                   for i, n in enumerate(names))},
-               {"role": "assistant", "content": "Understood — I have the codenames and their weeks."}]
-    def turn(tag):
-        # the tag leads the new message, so the second turn shares the first one's cache only up to the history
-        return history + [{"role": "user", "content": f"{tag} Repeat every codename with its week, in the same "
-                           "order, as 'codename: week' lines. Here they are once more for reference: " +
-                           "; ".join(f"{n}: week {i + 3}" for i, n in enumerate(names))}]
+    words = ("amber basalt cobalt dune ember fjord garnet harbor indigo jasper kelp lumen marble nectar onyx pewter "
+             "quartz russet sable tundra umber velvet willow xenon yarrow zephyr").split()
 
-    def run(messages):
-        g = engine.generate(fmt.render(messages, None), max_tokens=4, request_id=f"itest-ctx-{uuid.uuid4().hex[:8]}",
-                            on_prefill=lambda *a: True, sampling={"temp": 0.0})
-        "".join(g)
-        return g.stats
+    def conversation(nonce, seed):
+        rng = random.Random(seed)
+        plan = [(f"{w}{rng.randint(100, 999)}", rng.randint(2, 52)) for w in words]
+        history = [{"role": "system", "content": f"Session {nonce}. You are kitten, a coding agent."},
+                   {"role": "user", "content": "Release plan. Each codename ships in the week given: " +
+                    " ".join(f"Codename {n} ships in week {w}." for n, w in plan) + " Remember this plan."},
+                   {"role": "assistant", "content": "Noted — I have the release plan."},
+                   {"role": "user", "content": " ".join(f"Aside {i}: the {words[i % 26]} team met on floor "
+                                                        f"{i * 13 % 29}." for i in range(40))},
+                   {"role": "assistant", "content": "OK."}]
+        return history, history + [{"role": "user", "content": "List the plan, one line per codename."},
+                                   {"role": "assistant", "content": "\n".join(f"{n}: week {w}" for n, w in plan)},
+                                   {"role": "user", "content": "Thanks."}]
 
-    cold = run(history)
-    intact = run(turn("Request A."))           # restores the history, prefills the new turn
-    zeroed = []
+    def run(messages, hook=None):
+        text = fmt.render(messages, None)
+        pre = engine.preflight(text)
+        prepared = PreparedChat(prompt=text, images=[], tools=None, max_tokens=1, preflight=pre, sampling={},
+                                stop_strings=[], ignored_params=[])
+        vision_kit.RESTORED_CACHE_HOOK = hook
+        try:
+            g = engine.generate(text, max_tokens=1, request_id=f"itest-ctx-{uuid.uuid4().hex[:8]}", tokens=pre.tokens,
+                                on_prefill=lambda *a: True, sampling={"temp": 0.0},
+                                check_targets=check_targets(fmt, prepared))
+            "".join(g)
+        finally:
+            vision_kit.RESTORED_CACHE_HOOK = None
+        return g.stats.context_check
 
-    def zero_recurrent(restored):
+    def wipe(restored):
         for c in restored.prompt_cache:
             if type(c).__name__ == "ArraysCache":
                 c.cache = [None if a is None else mx.zeros_like(a) for a in c.cache]
-                zeroed.append(1)
+            elif getattr(c, "keys", None) is not None:
+                k, v = c.state
+                c.state = (mx.zeros_like(k), mx.zeros_like(v))
 
-    vision_kit.RESTORED_CACHE_HOOK = zero_recurrent
-    try:
-        corrupt = run(turn("Request B."))      # restores (about) the same point, recurrent state wiped
-    finally:
-        vision_kit.RESTORED_CACHE_HOOK = None
-    for name, s in (("cold", cold), ("intact", intact), ("corrupt", corrupt)):
-        c = s.context_check or {}
-        per_1k = c.get("ms", 0) / max(1, c.get("scored_tokens") or 1) * 1000
-        print(f"itest context check {name}: prompt={s.prompt_tokens} cached={s.cached_tokens} {c} "
-              f"(~{per_1k:.0f} ms per 1k scored tokens)")
+    captured = {}
 
-    a, b = intact.context_check, corrupt.context_check
-    assert a["restore_source"] in ("hot", "disk") and a["restored_tokens"] > 0 and a["scored_tokens"] >= 32
-    assert b["restored_tokens"] > 0 and b["scored_tokens"] >= 32
-    assert zeroed, "the hook reached the recurrent layers"
-    # loose sanity bound, not the band (that is to be measured): a copy task an intact model predicts well
-    assert a["surprise_mean"] < 2.0
-    assert b["surprise_mean"] > a["surprise_mean"] + 1.0
+    def capture(restored):
+        captured["len"] = restored.cached_prefix_len
+        captured["states"] = [[None if x is None else mx.array(x) for x in c.state] for c in restored.prompt_cache]
+
+    def swap_in(restored):
+        assert captured["len"] == restored.cached_prefix_len, "the other plan restored at another point"
+        for c, state in zip(restored.prompt_cache, captured["states"]):
+            copy = [None if x is None else mx.array(x) for x in state]
+            c.state = copy if type(c).__name__ == "ArraysCache" else tuple(copy)
+
+    results = {}
+    for label, hook in (("intact", None), ("wiped", wipe), ("wrong", swap_in)):
+        nonce = uuid.uuid4().hex
+        history, turn = conversation(nonce, seed=1)
+        if label == "wrong":
+            other_history, other_turn = conversation(nonce[::-1], seed=2)   # same shape, another plan
+            run(other_history)
+            run(other_turn, capture)
+        run(history)
+        results[label] = run(turn, hook)
+        c = results[label]
+        print(f"itest context check {label}: {c} (~{c['ms'] / max(1, c['scored_tokens']) * 1000:.0f} ms per 1k scored)")
+
+    intact, wiped, wrong = results["intact"], results["wiped"], results["wrong"]
+    assert intact["restore_source"] in ("hot", "disk") and intact["restored_tokens"] > 0
+    assert intact["scored"] == "targets" and intact["scored_tokens"] >= 100
+    # exp04 (27B-4bit, kv16): intact 0.11, wiped 1.30-1.33, wrong plan 1.11-1.12 nats per assistant token
+    assert intact["surprise_mean"] < 0.4
+    assert wiped["surprise_mean"] > intact["surprise_mean"] + 0.5
+    assert wrong["surprise_mean"] > intact["surprise_mean"] + 0.5

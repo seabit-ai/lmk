@@ -96,6 +96,15 @@ CONTEXT_SURPRISE_WARN_MEAN: Optional[float] = None
 CONTEXT_SURPRISE_MIN_TOKENS = 32  # fewer scored tokens than this is too little to judge by
 
 
+def check_targets(fmt, prepared: "PreparedChat") -> Optional[list[int]]:
+    """The model's own earlier turns in the prompt: what the context check scores. None (the engine then scores the
+    segment's tail) when the family's turn markers are not known or the prompt has images."""
+    indices = getattr(fmt, "assistant_token_indices", None)
+    if indices is None or prepared.images or not prepared.preflight.tokens:
+        return None
+    return indices(prepared.preflight.tokens)
+
+
 def context_fields(check: Optional[dict]) -> dict:
     """The engine's context check as LmkChatDone / LmkWarmupDone fields; nothing when the engine made none."""
     if not check:
@@ -104,7 +113,8 @@ def context_fields(check: Optional[dict]) -> dict:
             "hotTrimmedTokens": check.get("hot_trimmed_tokens"),
             "promptSurpriseMean": check.get("surprise_mean"), "promptSurpriseP90": check.get("surprise_p90"),
             "promptSurpriseMax": check.get("surprise_max"), "promptSurpriseTokens": check.get("scored_tokens"),
-            "promptSurpriseMs": check.get("ms"), "promptSurpriseUnsupported": check.get("unsupported")}
+            "promptSurpriseMs": check.get("ms"), "promptSurpriseScored": check.get("scored"),
+            "promptSurpriseUnsupported": check.get("unsupported")}
 
 
 def warn_if_surprised(check: Optional[dict], identity: "CallerIdentity") -> None:
@@ -186,7 +196,8 @@ def run_chat(engine: Engine, body: dict, identity: CallerIdentity,
         log.warn("LmkParamIgnored", "request fields the engine cannot honour", purpose=identity.purpose,
                  refId=identity.ref_id, params=prepared.ignored_params)
     generation = engine.generate(prompt, max_tokens=max_tokens, request_id=request_id, on_prefill=on_prefill,
-                                 images_b64=images, tokens=prepared.preflight.tokens, sampling=prepared.sampling)
+                                 images_b64=images, tokens=prepared.preflight.tokens, sampling=prepared.sampling,
+                                 check_targets=check_targets(fmt, prepared))
     delta({"role": "assistant"})
     splitter = OutputSplitter(Markers(fmt.tool_call_start, fmt.tool_call_end, fmt.think_open, fmt.think_close),
                               fmt.starts_in_reasoning(prompt), on_reasoning, on_text, on_tool_block)
@@ -291,7 +302,8 @@ def run_warmup(engine: Engine, body: dict, identity: CallerIdentity,
         return True
 
     generation = engine.generate(prepared.prompt, max_tokens=1, request_id=request_id, on_prefill=on_prefill,
-                                 images_b64=prepared.images, tokens=prepared.preflight.tokens)
+                                 images_b64=prepared.images, tokens=prepared.preflight.tokens,
+                                 check_targets=check_targets(engine.chat_format(), prepared))
     for _ in generation:
         pass
     stats = generation.stats

@@ -16,7 +16,7 @@
 - **CTX-004 正常区间：没量。** `CONTEXT_SURPRISE_WARN_MEAN = None`，只记数。定阈值的做法：合并部署后收一周 `LmkChatDone`，
   按 purpose × restoreSource 看 `promptSurpriseMean` 分布，再加 000193 类事故（若再发生）的值，写成实验。
 
-## 集成测试（owner 跑；先写预期）
+## 集成测试（第一版，已被 exp04 的设计取代；下面的预期留作记录）
 `tests/test_itest_chat.py::test_the_context_check_sees_a_corrupted_restore`：约 600 token 的历史（26 个代号 + 周次），冷算一次；
 新一轮把同一张表再列一遍并要求复述（intact：恢复历史后 prefill 新一轮）；再来一轮，恢复后用 `RESTORED_CACHE_HOOK` 把所有
 `ArraysCache`（线性注意力的递归状态）清零（corrupt）。
@@ -36,3 +36,14 @@ LMK_ITEST=1 LMK_ITEST_DRAFT=$HOME/.cache/huggingface/hub/models--seabit-ai--Qwen
 - corrupt：均值比 intact 高 1 nat 以上。把握：中。全注意力层（约四分之一）的 KV 还在，模型仍可能靠它抄表，差距可能小于预期；
   若如此，改为同时打乱 KV 再测（新实验，不覆盖）。
 - 每 1k 打分 token 的毫秒数：几十到一百多毫秒（见 CTX-003），把握低。
+
+## 2026-09-26 下午：owner 跑过 itest 之后（exp01–exp04，模型已可加载）
+- **CTX-005**（exp01）恢复后不打分：fork 的 qwen3_5 纯文本快路径丢 `return_hidden`。已修。
+- **CTX-006**（exp01）开销：计时含 forward + exact verifier 投影慢 7 倍。修后 ≈ 175 ms / 1k 打分 token，段 prefill 的 3–4%。CTX-003 的估计（1/20）方向对，
+  itest 量到的 4.5–6 s / 1k 是测量错误。
+- **CTX-007**（exp03）恢复出的状态与冷算一致（surprise 均值 5.01 对 4.92；恢复 1024 时 2.41 对 2.48）；逐位差大是不同 nonce 的位置错位，两次冷算之间同样大。
+- **CTX-008**（exp03）指令微调模型对 user 文本的逐位预测：不套模板 0.02，套进 user 消息 6.28，argmax 几乎处处是 `<|im_end|>`。
+- **CTX-009**（exp04）assistant 段分得开：intact 0.09–0.11 / 全清零 1.30–1.34 / 错的对话 1.11；只清递归状态 0.10（看不见）。
+- **CTX-004 更新**：正常区间仍待真机日志；现在的量只对 assistant 段有意义，阈值也按它定。
+
+集成测试命令不变（`-k context_check`）；新的 itest 是 `test_the_context_check_sees_a_lost_or_wrong_context`，两种配置都过（`exp04-by-role/raw/itest-*.txt`）。

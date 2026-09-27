@@ -1,0 +1,2 @@
+cold: prompt=787 cached=0 wall_ms=2655 check={'restore_source': 'none', 'restored_tokens': 0, 'hot_trimmed_tokens': 0, 'segment_tokens': 787, 'scored_tokens': 512, 'ms': 87.0, 'unsupported': None, 'surprise_mean': 7.3333, 'surprise_p90': 20.9382, 'surprise_max': 33.0321}
+restored: prompt=1093 cached=768 wall_ms=1338 check={'restore_source': 'disk', 'restored_tokens': 768, 'hot_trimmed_tokens': 0, 'segment_tokens': 325, 'scored_tokens': 324, 'ms': 56.0, 'unsupported': None, 'surprise_mean': 1.4253, 'surprise_p90': 4.7621, 'surprise_max': 26.4847}

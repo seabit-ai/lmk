@@ -1,0 +1,20 @@
+[disk_budget][INFO]: VLM prompt cache disk budget: stage=provisional cap_gib=30.00
+[cache_store][INFO]: VLM prompt cache disk store: lifetime=model_load storage=temporary cleanup=model_unload_or_process_exit
+[context_fit][INFO]: Model context auto-fit: family=qwen3_5 max=262,144 fitted=262,144 working_set=77.76GiB reserve=3.00GiB baseline=14.95GiB full_kv=65536B/token prompt_inputs=10240B/token attention_coefficient=48B/context/step rotating_constant=0.00GiB rotating_per_step=0B steps=2048:262,144,1024:262,144,512:262,144
+[cache_store][INFO]: VLM prompt cache context target: configured=32,768 fitted=262,144 effective=262,144
+[coordinator][INFO]: Prompt cache restore: cached_tokens=0 uncached_tokens=787 lifetime_efficiency=0.00%
+[model_kit][INFO]: Request prefill plan: prompt=788 cached=0 segments=2048:788
+  meter.wants start=0 n=768 -> True
+  meter.add start=0 hidden=(1, 768, 5120) lo/hi=275/787
+  meter.wants start=768 n=20 -> True
+  meter.add start=768 hidden=(1, 20, 5120) lo/hi=275/787
+[cache_store][INFO]: VLM prompt cache disk usage: used_mib=16.0 cap_mib=30720.0 lifetime_evicted_mib=0.0 records=1 lifetime=model_load
+cold: prompt=788 cached=0 wall_ms=3137 check={'restore_source': 'none', 'restored_tokens': 0, 'hot_trimmed_tokens': 0, 'segment_tokens': 788, 'scored_tokens': 512, 'ms': 3075.5, 'unsupported': None, 'surprise_mean': 7.1736, 'surprise_p90': 21.125, 'surprise_max': 33.0781}
+[disk_budget][INFO]: VLM prompt cache disk budget: stage=final target_tokens=262,144 desired_gib=162.81 cap_gib=125.22 limiter=free_disk_space
+[coordinator][INFO]: Prompt cache restore: cached_tokens=768 uncached_tokens=325 lifetime_efficiency=40.85%
+[model_kit][INFO]: Request prefill plan: prompt=1,094 cached=768 segments=2048:1,094
+  meter.wants start=0 n=256 -> True
+  meter.add start=0 hidden=None lo/hi=0/325
+  meter.wants start=256 n=70 -> True
+  meter.add start=256 hidden=None lo/hi=0/325
+restored: prompt=1094 cached=768 wall_ms=1272 check={'restore_source': 'disk', 'restored_tokens': 768, 'hot_trimmed_tokens': 0, 'segment_tokens': 326, 'scored_tokens': 0, 'ms': 0.0, 'unsupported': None}

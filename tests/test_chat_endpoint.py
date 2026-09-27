@@ -495,3 +495,24 @@ def test_no_context_check_adds_no_fields(capsys):
     finally:
         srv.shutdown()
     assert "promptSurpriseMean" not in _logged(capsys, "LmkChatDone")[0]
+
+
+def test_the_models_own_turns_are_what_the_context_check_scores():
+    from lmk.engine import Preflight
+
+    class TurnFormat(FakeChatFormat):
+        def assistant_token_indices(self, tokens):
+            return [i for i, t in enumerate(tokens) if t == 7]
+
+    class TokenEngine(FakeEngine):
+        def preflight(self, prompt_text, images_b64=None):
+            return Preflight(prompt_tokens=5, uncached_tokens=5, tokens=[1, 7, 7, 2, 7])
+
+    engine = TokenEngine(MODEL, chat_format=TurnFormat(), script=TEXT_TURN)
+    srv = LmkServer(engine, "127.0.0.1", 0)
+    threading.Thread(target=srv.serve_forever, daemon=True).start()
+    try:
+        post(srv, {"model": "kitten-27b", "messages": []}).read()
+    finally:
+        srv.shutdown()
+    assert engine.requests[0]["check_targets"] == [1, 2, 4]

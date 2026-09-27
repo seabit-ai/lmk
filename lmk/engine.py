@@ -74,7 +74,10 @@ class Engine(Protocol):
     def gpu_memory_peak_bytes(self) -> int: ...
     def generate(self, prompt_text: str, *, max_tokens: Optional[int], request_id: str,
                  on_prefill: PrefillCallback, images_b64: Optional[list[str]] = None,
-                 sampling: Optional[dict] = None, tokens: Optional[list] = None) -> Generation: ...
+                 sampling: Optional[dict] = None, tokens: Optional[list] = None,
+                 check_targets: Optional[list[int]] = None) -> Generation:
+        """check_targets: prompt token indices the context check scores (design 2026-09-26-context-check)."""
+        ...
 
 
 def runtime_import_error() -> Optional[str]:
@@ -222,7 +225,7 @@ class MlxEngine:
         unload(self._kit)
 
     def generate(self, prompt_text, *, max_tokens, request_id, on_prefill, images_b64=None, sampling=None,
-                 tokens=None) -> Generation:
+                 tokens=None, check_targets=None) -> Generation:
         from mlx_engine.generate import create_generator, tokenize
         from mlx_engine.utils.prompt_progress_reporter import PromptProgressReporter
 
@@ -252,6 +255,8 @@ class MlxEngine:
         kwargs.update(sampling or {})  # the engine's own names: temp, top_p, top_k, seed
         if self._draft_tokens and self._drafter_counters() is not None:
             kwargs["num_draft_tokens"] = self._draft_tokens
+        if check_targets is not None and hasattr(self._kit, "pop_context_check"):
+            kwargs["context_check_targets"] = check_targets
 
         def pieces():
             before = self._drafter_counters()
@@ -358,9 +363,9 @@ class FakeEngine:
         return self._modalities
 
     def generate(self, prompt_text, *, max_tokens, request_id, on_prefill, images_b64=None, sampling=None,
-                 tokens=None) -> Generation:
+                 tokens=None, check_targets=None) -> Generation:
         self.requests.append({"prompt": prompt_text, "max_tokens": max_tokens, "request_id": request_id,
-                              "images_b64": images_b64, "sampling": sampling})
+                              "images_b64": images_b64, "sampling": sampling, "check_targets": check_targets})
         stats = GenerationStats(**vars(self._stats))
 
         def pieces():
