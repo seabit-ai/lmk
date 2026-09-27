@@ -198,6 +198,62 @@ def test_the_model_reads_an_image(server):
     assert "4217" in out["content"]
 
 
+# research 2026-09-26-sampling-seed exp01: two paths that should agree (cold vs restored prefix, draft off vs on) give
+# the same distribution up to bf16 noise, not the same tokens. The logits are bf16 (a step of 0.125 at the magnitudes
+# seen), so a sampled draw near a boundary flips. Measured on the 27B-4bit: per-position total variation <= 0.075,
+# max |dlogprob| over tokens with p > 0.05 <= 0.5 (reading the same prompt in one call vs two, no cache: 0.22-0.60 on
+# the top 20). Tolerance ~2x that; SPD-034's 2.75 would fail it.
+DRAW_TV_MAX = 0.15
+DRAW_DLOGPROB_MAX = 0.75
+
+
+class DrawRecorder:
+    """Records what a seeded sampler was given at each generated position (top 20 logprobs) and what it drew; a
+    position drawn twice (a speculative round rejected after it) keeps the last draw — the one emitted."""
+
+    def __enter__(self):
+        import mlx.core as mx
+        from mlx_engine.utils import sampling
+
+        self.draws, self._cls = {}, sampling.SeededSampler
+        self._orig = original = self._cls.sample_target
+        draws = self.draws
+
+        def traced(sampler, logprobs, *, row_ids, positions):
+            drawn = original(sampler, logprobs, row_ids=row_ids, positions=positions)
+            lp = logprobs if logprobs.ndim == 2 else logprobs[None]
+            top = mx.argsort(-lp, axis=-1)[:, :20]
+            vals = mx.take_along_axis(lp, top, axis=-1)
+            for i, p in enumerate(positions):
+                draws[int(p)] = (dict(zip(top[i].tolist(), vals[i].tolist())), int(drawn.reshape(-1)[i].item()))
+            return drawn
+
+        self._cls.sample_target = traced
+        return self
+
+    def __exit__(self, *exc):
+        self._cls.sample_target = self._orig
+
+
+def assert_same_distribution(a: dict, b: dict) -> str:
+    """Up to the first position the two runs drew differently: the distributions agree within the tolerance."""
+    import math
+
+    worst_tv, worst_d, diverged = 0.0, 0.0, None
+    for p in sorted(set(a) & set(b)):
+        (pa, xa), (pb, xb) = a[p], b[p]
+        tv = 0.5 * sum(abs(math.exp(pa.get(t, -30)) - math.exp(pb.get(t, -30))) for t in set(pa) | set(pb))
+        big = [abs(pa[t] - pb[t]) for t in set(pa) & set(pb) if max(pa[t], pb[t]) > math.log(0.05)]
+        worst_tv, worst_d = max(worst_tv, tv), max([worst_d] + big)
+        if xa != xb:
+            diverged = p
+            break
+    summary = f"positions compared {len(set(a) & set(b))}, first divergence {diverged}, max TV {worst_tv:.3f}, " \
+              f"max|dlogprob| (p>0.05) {worst_d:.3f}"
+    assert worst_tv <= DRAW_TV_MAX and worst_d <= DRAW_DLOGPROB_MAX, summary
+    return summary
+
+
 # design 2026-09-26-sampling-seed: an answer is replayable. Same request + same seed + the same cache
 # restore point, run alone, gives the same tokens; another seed gives another answer. The first request
 # names no seed (lmk draws one and returns it) and sets up the cache the replays restore from. Parametrized
@@ -217,10 +273,12 @@ def test_the_same_seed_replays_the_same_answer_and_another_seed_does_not(server,
         out = chat(server, messages, **sampling, **extra)
         return out, (out["reasoning"], out["content"], out["usage"]["completion_tokens"])
 
-    first, first_text = run()
+    with DrawRecorder() as cold_draws:
+        first, first_text = run()
     seed = first["lmk"]["seed"]
     assert isinstance(seed, int)
-    replay, replay_text = run(seed=seed)
+    with DrawRecorder() as restored_draws:
+        replay, replay_text = run(seed=seed)
     again, again_text = run(seed=seed)
     other, other_text = run(seed=seed + 1)
     print(f"itest seed: {seed} tools={with_tools} draft={server.engine.draft_stats() is not None} "
@@ -228,9 +286,10 @@ def test_the_same_seed_replays_the_same_answer_and_another_seed_does_not(server,
           f"{replay['usage']['prompt_tokens_details']['cached_tokens']}/{again['usage']['prompt_tokens_details']['cached_tokens']} "
           f"drafted replay/again={replay['lmk'].get('draft_drafted')}/{again['lmk'].get('draft_drafted')} "
           f"cold-vs-restored identical={first_text == replay_text}")
+    # the first run read the prompt cold, the replays restored it: same distribution within bf16 noise, not
+    # necessarily the same tokens (exp01); a larger gap is a cache bug
+    print("itest seed: cold vs restored:", assert_same_distribution(cold_draws.draws, restored_draws.draws))
     if first_text != replay_text:
-        # not asserted: the first run read the prompt cold, the replays restored it; beyond rounding noise
-        # at a near-tie this is a cache bug worth a look (backlog SPD-034)
         a, b = "".join(first_text[:2]), "".join(replay_text[:2])
         at = next((i for i, (x, y) in enumerate(zip(a, b)) if x != y), min(len(a), len(b)))
         print(f"itest seed: cold and restored runs part at char {at}: {a[max(0, at - 40):at + 40]!r} / {b[max(0, at - 40):at + 40]!r}")
@@ -240,10 +299,10 @@ def test_the_same_seed_replays_the_same_answer_and_another_seed_does_not(server,
 
 
 # design 2026-09-26-sampling-seed: draws are keyed by position, so with a draft on or off the same seed draws the
-# same tokens as long as the logits agree. They agree exactly on short prompts (the model page: "on short prompts
-# code and copy-editing matched exactly"); at long contexts the block verify rounds differently and a near-tie
-# can flip (SLC-006/010), so this is asserted on a short prompt only.
-def test_the_same_seed_draws_the_same_tokens_with_the_draft_on_and_off(server):
+# same tokens where the logits agree. They agree within bf16 noise, not bit for bit (the verify pass reads a block,
+# the plain step one token: exp01 measured TV <= 0.075 per position, and one run in three diverged within 50 tokens),
+# so the assertion is on the distributions, position by position, up to the first divergence.
+def test_the_same_seed_draws_from_the_same_distribution_with_the_draft_on_and_off(server):
     if server.engine.draft_stats() is None:
         pytest.skip("no draft model loaded (LMK_ITEST_DRAFT)")
     import uuid
@@ -261,12 +320,13 @@ def test_the_same_seed_draws_the_same_tokens_with_the_draft_on_and_off(server):
         return "".join(generation), generation.stats
 
     run(False)                    # reads the prompt once; both runs below restore the same prefix
-    plain, plain_stats = run(False)
-    spec, spec_stats = run(True)
+    with DrawRecorder() as plain_draws:
+        plain, plain_stats = run(False)
+    with DrawRecorder() as spec_draws:
+        spec, spec_stats = run(True)
     print(f"itest spec on/off: drafted {spec_stats.draft_drafted} accepted {spec_stats.draft_accepted} "
-          f"identical={plain == spec}")
+          f"identical={plain == spec}; " + assert_same_distribution(plain_draws.draws, spec_draws.draws))
     assert spec_stats.draft_drafted and spec_stats.draft_drafted > 0
-    assert spec == plain
 
 
 # design 2026-09-26-context-check (research exp04): the prefill scores how well the model predicts its own earlier

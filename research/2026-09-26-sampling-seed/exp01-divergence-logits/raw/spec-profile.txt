@@ -1,0 +1,24 @@
+   seed=21 [block offset 0] n=48 max TV=0.0557 max|dlogprob| (p>0.05)=0.2500
+   seed=21 [block offset 1] n=32 max TV=0.0561 max|dlogprob| (p>0.05)=0.1250
+   seed=21 [block offset 2] n=24 max TV=0.0507 max|dlogprob| (p>0.05)=0.2500
+   seed=21 [block offset 3+] n=16 max TV=0.0588 max|dlogprob| (p>0.05)=0.1250
+   seed=21 [single] n=1 max TV=0.0000 max|dlogprob| (p>0.05)=0.0000
+seed=21 plain vs spec (drafted 124 accepted 72; cached 0/0): identical over 121 positions, max|dlogprob| (top-20, shared) 1.2500
+seed=21 plain vs plain again: identical over 122 positions, max|dlogprob| (top-20, shared) 0.0000
+   seed=22 [block offset 0] n=10 max TV=0.0384 max|dlogprob| (p>0.05)=0.1250
+   seed=22 [block offset 1] n=10 max TV=0.0218 max|dlogprob| (p>0.05)=0.1250
+   seed=22 [block offset 2] n=9 max TV=0.0317 max|dlogprob| (p>0.05)=0.1250
+   seed=22 [block offset 3+] n=14 max TV=0.0355 max|dlogprob| (p>0.05)=0.2500
+   seed=22 [single] n=1 max TV=0.0000 max|dlogprob| (p>0.05)=0.0000
+seed=22 plain vs spec (drafted 94 accepted 47; cached 0/0): first divergence at generated position 44; max|dlogprob| before it 0.8750, at it 0.2500
+   A drew ' text' p=0.197 (B gives it 0.197); B drew '.' p=0.687 (A gives it 0.607)
+   A top5: [("'.'", -0.5), ("' text'", -1.625), ("' explanation'", -2.0), ("' commentary'", -4.0), ("' prose'", -5.375)]
+   B top5: [("'.'", -0.375), ("' text'", -1.625), ("' explanation'", -2.0), ("' commentary'", -4.0), ("' prose'", -5.5)]
+seed=22 plain vs plain again: identical over 142 positions, max|dlogprob| (top-20, shared) 0.0000
+   seed=23 [block offset 0] n=34 max TV=0.0651 max|dlogprob| (p>0.05)=0.2500
+   seed=23 [block offset 1] n=24 max TV=0.0602 max|dlogprob| (p>0.05)=0.1250
+   seed=23 [block offset 2] n=15 max TV=0.0748 max|dlogprob| (p>0.05)=0.2500
+   seed=23 [block offset 3+] n=9 max TV=0.0419 max|dlogprob| (p>0.05)=0.1250
+   seed=23 [single] n=1 max TV=0.0000 max|dlogprob| (p>0.05)=0.0000
+seed=23 plain vs spec (drafted 90 accepted 48; cached 0/0): identical over 83 positions, max|dlogprob| (top-20, shared) 0.8750
+seed=23 plain vs plain again: identical over 84 positions, max|dlogprob| (top-20, shared) 0.0000

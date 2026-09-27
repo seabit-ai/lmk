@@ -46,6 +46,11 @@
 - 重放把 SPD-034 变成可测的：同 seed 下冷算与恢复续跑分叉即是线索（owner 2026-09-26：prefix cache 只允许浮点舍入级的差别，更大就是 bug）。
 - 顺手发现（未做）：kitten 如果要自己重放，它得存下 `lmk.seed`；kitten 侧没改。
 
+## 2026-09-26 带 DFlash 时恢复后的 RoPE 位置错（fork `39c17a2` 已修，在 `context-check` 分支上）
+- 恢复前缀后那段 prefill 的位置从 0 数起，首 token 分布偏 TV 0.3（`research/2026-09-26-sampling-seed/exp01-divergence-logits`）。
+  可能是事故 000193 的原因（推测）：用修前引擎 + 000193 的请求 + dflash2 磁盘恢复复现一次即可证实。
+- **合并时要定**：磁盘 cache 里修前写下的块是坏的，要不要 `CACHE_FORMAT_VERSION` +1（清 cache，用户要重新冷算一次）。
+
 ## 2026-09-26 上下文自检（分支 `context-check`，基于 `sampling-seed`；fork `context-check`）
 - 起因：事故 000193（恢复 83712 token 后模型像丢了整段对话，重放正常）。设计 `docs/design/2026-09-26-context-check.md`。
 - 已做：prefill 段尾 512 个位置的 teacher-forced surprise + 恢复来源，进 `LmkChatDone` / `LmkWarmupDone`；单测。

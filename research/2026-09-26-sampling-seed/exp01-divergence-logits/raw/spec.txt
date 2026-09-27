@@ -1,0 +1,9 @@
+seed=21 plain vs spec (drafted 124 accepted 72; cached 0/0): identical over 121 positions, max|dlogprob| (top-20, shared) 0.8750
+seed=21 plain vs plain again: identical over 122 positions, max|dlogprob| (top-20, shared) 0.0000
+seed=22 plain vs spec (drafted 104 accepted 50; cached 0/0): first divergence at generated position 34; max|dlogprob| before it 1.2500, at it 0.1250
+   A drew ' Yes' p=0.174 (B gives it 0.174); B drew ' likely' p=0.153 (A gives it 0.135)
+   A top5: [("' Probably'", -1.0), ("' Yes'", -1.75), ("' likely'", -2.0), ("' Could'", -2.125), ("' Likely'", -2.625)]
+   B top5: [("' Probably'", -0.875), ("' Yes'", -1.75), ("' likely'", -1.875), ("' Could'", -2.0), ("' Likely'", -2.5)]
+seed=22 plain vs plain again: identical over 142 positions, max|dlogprob| (top-20, shared) 0.0000
+seed=23 plain vs spec (drafted 92 accepted 52; cached 0/0): identical over 88 positions, max|dlogprob| (top-20, shared) 2.5625
+seed=23 plain vs plain again: identical over 88 positions, max|dlogprob| (top-20, shared) 0.0000

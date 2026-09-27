@@ -1,0 +1,12 @@
+   tools=True seed=11 [single] n=62 max TV=0.0627 max|dlogprob| (p>0.05)=0.5000
+tools=True seed=11 cold(cached 0) vs restored(cached 256): first divergence at generated position 62; max|dlogprob| before it 1.1250, at it 0.2500
+   A drew 'um' p=0.093 (B gives it 0.072); B drew 'vet' p=0.687 (A gives it 0.535)
+   A top5: [("'vet'", -0.625), ("'lich'", -2.125), ("'v'", -2.25), ("'um'", -2.375), ("'un'", -3.5)]
+   B top5: [("'vet'", -0.375), ("'v'", -2.25), ("'lich'", -2.375), ("'um'", -2.625), ("'un'", -3.625)]
+tools=True seed=11 restored vs restored again: identical over 161 positions, max|dlogprob| (top-20, shared) 0.0000
+   tools=True seed=12 [single] n=161 max TV=0.0000 max|dlogprob| (p>0.05)=0.0000
+tools=True seed=12 cold(cached 256) vs restored(cached 256): identical over 161 positions, max|dlogprob| (top-20, shared) 0.0000
+tools=True seed=12 restored vs restored again: identical over 161 positions, max|dlogprob| (top-20, shared) 0.0000
+   tools=True seed=13 [single] n=161 max TV=0.0000 max|dlogprob| (p>0.05)=0.0000
+tools=True seed=13 cold(cached 256) vs restored(cached 256): identical over 161 positions, max|dlogprob| (top-20, shared) 0.0000
+tools=True seed=13 restored vs restored again: identical over 161 positions, max|dlogprob| (top-20, shared) 0.0000

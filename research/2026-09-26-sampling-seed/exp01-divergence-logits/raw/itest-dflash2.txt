@@ -1,0 +1,8 @@
+itest: dialect qwen thinking True kv cache bits 16 draft /Users/xinkai/.cache/huggingface/hub/models--seabit-ai--Qwen3.8-27B-DFlash2-4bit/snapshots/local-quant-2026-09-24
+itest seed: 1077521681 tools=False draft=True cached first/replay/again=0/0/0 drafted replay/again=110/110 cold-vs-restored identical=True
+itest seed: cold vs restored: positions compared 113, first divergence None, max TV 0.000, max|dlogprob| (p>0.05) 0.000
+itest seed: 1418686458 tools=True draft=True cached first/replay/again=0/256/256 drafted replay/again=173/173 cold-vs-restored identical=False
+itest spec on/off: drafted 106 accepted 58 identical=False; positions compared 97, first divergence 51, max TV 0.052, max|dlogprob| (p>0.05) 0.250
+E       AssertionError: positions compared 160, first divergence 2, max TV 0.290, max|dlogprob| (p>0.05) 0.750
+tests/test_itest_chat.py:253: AssertionError
+1 failed, 2 passed, 8 deselected in 44.79s

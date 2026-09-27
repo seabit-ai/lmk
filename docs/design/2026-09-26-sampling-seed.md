@@ -42,9 +42,13 @@ kitten 从 lmk 拿到一个坏答案（qwen3.8-27b-4bit，temp 1.0 / top_p 0.95 
 - **prefix cache 不该影响结果（owner，2026-09-26）。** 冷算、热 cache 续跑、磁盘恢复续跑，预期给出相同的 logits，差别只在浮点舍入
   （不同的分块形状让归约顺序不同）。比这大的差别——例如 SPD-034 的首位置 logprob 差 2.75——**是 bug，要修**，另行跟踪，不是可接受的限制。
   seed 重放正是抓这类 bug 的工具：同 seed 下冷算与恢复续跑分叉，就是一条线索。
-- **投机开 / 关，同 seed：** 抽样按位置取 key，所以只要 logits 相同，开关投机抽出同样的 token。短 prompt 上 logits 逐位相同
-  （模型页："on short prompts code and copy-editing matched exactly"），itest 在短 prompt 上断言逐字相同；长上下文里块校验的舍入与
-  逐 token 不同，平票处可能翻转（SLC-006/010），那里不断言。
+- **实测（exp01，2026-09-26 下午）**：不同路径（冷算 vs 恢复、投机开 vs 关）的分布只差浮点噪声，但这个模型的 logits 是 bf16，
+  噪声在"一格 0.125"的量级：每个位置 TV ≤ 0.10，p>0.05 的 token 上 |Δlogprob| ≤ 0.5；采样在分布边界上会翻，所以这两种对比**不逐字相同**，
+  itest 断言分布（TV ≤ 0.15，|Δ| ≤ 0.75），不断言文本。同一条路径的重放仍逐字相同。
+  同一实验找到一个真 bug：带 DFlash 草稿器时，恢复前缀之后的那段 prefill 的 RoPE 位置从 0 数起（fork `39c17a2` 修），
+  与事故 000193 的形状相符（推测）。详见 `research/2026-09-26-sampling-seed/exp01-divergence-logits/`。
+- **投机开 / 关，同 seed：** 抽样按位置取 key，logits 相同就抽出同样的 token；但块校验与单 token 的 logits 差 bf16 一格左右（上一条），
+  采样下几十个 token 内就可能在某个边界翻一次（exp01：3 个 seed 里 2 个在约 70 个 token 处分叉）。原来"短 prompt 逐字相同"的预期来自贪心，搬到采样上错了。
 - 投机解码下 DFlash 的自适应块长取决于最近几轮的接受情况；这段历史在一个新请求加入时清零（fork 的 `_round` 在行数变化时 reset 草稿器），
   所以单独跑的重放块长序列相同。
 
@@ -71,4 +75,4 @@ kitten 从 lmk 拿到一个坏答案（qwen3.8-27b-4bit，temp 1.0 / top_p 0.95 
 - itest（`LMK_ITEST=1`，`test_the_same_seed_replays_the_same_answer_and_another_seed_does_not`，普通与带 tools 两种）：
   不带 seed 的第一次（冷，设 cache）→ 拿回的 seed 重放两次，逐字相同 → seed+1 不同。冷算与恢复续跑是否相同只打印不断言
   （预期相同；不同就是 cache 的线索，见上）。要在不带草稿、带 dflash2 两种配置各跑一次。
-- itest `test_the_same_seed_draws_the_same_tokens_with_the_draft_on_and_off`（只在带草稿时跑）：短 prompt，同 seed，逐请求关投机 / 开投机，断言逐字相同。
+- itest `test_the_same_seed_draws_from_the_same_distribution_with_the_draft_on_and_off`（只在带草稿时跑）：短 prompt，同 seed，关投机 / 开投机，逐位置断言分布在容差内（exp01）；冷算 vs 恢复同样断言分布。

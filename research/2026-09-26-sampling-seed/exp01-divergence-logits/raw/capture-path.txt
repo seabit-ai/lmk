@@ -1,0 +1,12 @@
+trial 0 n=373
+   one call vs 256+rest (fast path): TV 0.017 max|dlogprob| (p>0.05) 0.019
+   one call vs 256+rest (rest with capture_layer_ids): TV 0.017 max|dlogprob| (p>0.05) 0.019
+   one call vs one call with capture_layer_ids: TV 0.000 max|dlogprob| (p>0.05) 0.000
+trial 1 n=369
+   one call vs 256+rest (fast path): TV 0.034 max|dlogprob| (p>0.05) 0.107
+   one call vs 256+rest (rest with capture_layer_ids): TV 0.034 max|dlogprob| (p>0.05) 0.107
+   one call vs one call with capture_layer_ids: TV 0.000 max|dlogprob| (p>0.05) 0.000
+trial 2 n=372
+   one call vs 256+rest (fast path): TV 0.006 max|dlogprob| (p>0.05) 0.003
+   one call vs 256+rest (rest with capture_layer_ids): TV 0.006 max|dlogprob| (p>0.05) 0.003
+   one call vs one call with capture_layer_ids: TV 0.000 max|dlogprob| (p>0.05) 0.000

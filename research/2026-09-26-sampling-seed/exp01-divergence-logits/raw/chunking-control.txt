@@ -1,0 +1,12 @@
+trial 0 n=372 logits dtype mlx.core.bfloat16: one call vs splits [256]: max|dlogprob| top-20 0.4935, top-1 -0.479 / -0.473
+trial 0 n=372 logits dtype mlx.core.bfloat16: one call vs splits [128, 256]: max|dlogprob| top-20 0.4568, top-1 -0.479 / -0.460
+trial 0 n=372 logits dtype mlx.core.bfloat16: one call vs splits [371]: max|dlogprob| top-20 0.6049, top-1 -0.479 / -0.459
+trial 0: one call vs one call again: 0.0000
+trial 1 n=372 logits dtype mlx.core.bfloat16: one call vs splits [256]: max|dlogprob| top-20 0.2249, top-1 -0.316 / -0.341
+trial 1 n=372 logits dtype mlx.core.bfloat16: one call vs splits [128, 256]: max|dlogprob| top-20 0.3622, top-1 -0.316 / -0.329
+trial 1 n=372 logits dtype mlx.core.bfloat16: one call vs splits [371]: max|dlogprob| top-20 0.2726, top-1 -0.316 / -0.418
+trial 1: one call vs one call again: 0.0000
+trial 2 n=372 logits dtype mlx.core.bfloat16: one call vs splits [256]: max|dlogprob| top-20 0.4157, top-1 -0.399 / -0.440
+trial 2 n=372 logits dtype mlx.core.bfloat16: one call vs splits [128, 256]: max|dlogprob| top-20 0.3223, top-1 -0.399 / -0.409
+trial 2 n=372 logits dtype mlx.core.bfloat16: one call vs splits [371]: max|dlogprob| top-20 0.4340, top-1 -0.399 / -0.402
+trial 2: one call vs one call again: 0.0000

@@ -94,3 +94,11 @@ LMK_ITEST=1 LMK_ITEST_DRAFT=$HOME/.cache/huggingface/hub/models--seabit-ai--Qwen
   .venv/bin/python -m pytest -q -s tests/test_itest_chat.py -m itest -k "same_seed or draft_on_and_off"
 ```
 预期：同上，另加投机开 / 关逐字相同（把握中高：短 prompt 上此前观察到逐字相同，但那是贪心；采样下平票更少碰到）。
+
+## 第三轮：owner 跑 itest 后（2026-09-26 下午，exp01）
+- **SEED-012** 不同路径（冷算 vs 恢复、投机开 vs 关）的分布差是 bf16 一格的量级：TV ≤ 0.10、p>0.05 的 token 上 |Δlogprob| ≤ 0.5；
+  纯分块读 prompt 的对照 0.22–0.60（top-20）。采样在边界处会翻，所以这两种对比不逐字相同；itest 改为比分布。
+- **SEED-013（bug，已修）** 带 DFlash 草稿器时，恢复前缀之后那段 prefill（以及紧接着的 decode 步，直到 RoPE 状态被别的调用设上）的
+  RoPE 位置从 0 数起：首 token 分布 TV 0.24–0.30。fork `39c17a2`。修后冷算与恢复逐位相同。可能就是事故 000193（推测，验证办法见 exp01）。
+  磁盘上修前写下的 cache 块已被污染，建议合并时 `CACHE_FORMAT_VERSION` +1（owner 定）。
+- 修后 itest 全套两种配置都过：不带草稿 10 passed / 3 skipped，dflash2 12 passed / 1 skipped（`exp01-divergence-logits/raw/itest-full-after-fix.txt`）。

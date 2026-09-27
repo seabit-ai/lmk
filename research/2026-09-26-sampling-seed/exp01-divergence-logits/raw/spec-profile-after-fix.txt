@@ -1,0 +1,27 @@
+   seed=21 [block offset 0] n=32 max TV=0.0483 max|dlogprob| (p>0.05)=0.2500
+   seed=21 [block offset 1] n=17 max TV=0.0498 max|dlogprob| (p>0.05)=0.1250
+   seed=21 [block offset 2] n=10 max TV=0.0160 max|dlogprob| (p>0.05)=0.1250
+   seed=21 [block offset 3+] n=10 max TV=0.0201 max|dlogprob| (p>0.05)=0.1250
+   seed=21 [single] n=1 max TV=0.0000 max|dlogprob| (p>0.05)=0.0000
+seed=21 plain vs spec (drafted 118 accepted 66; cached 0/0): first divergence at generated position 70; max|dlogprob| before it 1.1250, at it 0.2500
+   A drew ' lines' p=0.779 (B gives it 0.779); B drew ' four' p=0.197 (A gives it 0.174)
+   A top5: [("' lines'", -0.25), ("' four'", -1.75), ("':'", -3.375), ("' '", -3.5), ("'?'", -8.0)]
+   B top5: [("' lines'", -0.25), ("' four'", -1.625), ("':'", -3.375), ("' '", -3.625), ("' exactly'", -7.75)]
+seed=21 plain vs plain again: identical over 122 positions, max|dlogprob| (top-20, shared) 0.0000
+   seed=22 [block offset 0] n=39 max TV=0.0563 max|dlogprob| (p>0.05)=0.1250
+   seed=22 [block offset 1] n=26 max TV=0.0524 max|dlogprob| (p>0.05)=0.2500
+   seed=22 [block offset 2] n=17 max TV=0.0884 max|dlogprob| (p>0.05)=0.3750
+   seed=22 [block offset 3+] n=13 max TV=0.0533 max|dlogprob| (p>0.05)=0.2500
+   seed=22 [single] n=1 max TV=0.0000 max|dlogprob| (p>0.05)=0.0000
+seed=22 plain vs spec (drafted 102 accepted 56; cached 0/0): identical over 96 positions, max|dlogprob| (top-20, shared) 1.2500
+seed=22 plain vs plain again: identical over 96 positions, max|dlogprob| (top-20, shared) 0.0000
+   seed=23 [block offset 0] n=30 max TV=0.0613 max|dlogprob| (p>0.05)=0.2500
+   seed=23 [block offset 1] n=18 max TV=0.1033 max|dlogprob| (p>0.05)=0.3750
+   seed=23 [block offset 2] n=11 max TV=0.0082 max|dlogprob| (p>0.05)=0.1250
+   seed=23 [block offset 3+] n=9 max TV=0.0557 max|dlogprob| (p>0.05)=0.1250
+   seed=23 [single] n=1 max TV=0.0000 max|dlogprob| (p>0.05)=0.0000
+seed=23 plain vs spec (drafted 102 accepted 43; cached 0/0): first divergence at generated position 69; max|dlogprob| before it 2.0000, at it 0.1250
+   A drew ' from' p=0.287 (B gives it 0.253); B drew ' past' p=0.174 (A gives it 0.174)
+   A top5: [("' from'", -1.25), ("' home'", -1.75), ("' away'", -1.75), ("' past'", -1.75), ("' safe'", -3.0)]
+   B top5: [("' from'", -1.375), ("' home'", -1.625), ("' away'", -1.75), ("' past'", -1.75), ("' safe'", -3.0)]
+seed=23 plain vs plain again: identical over 85 positions, max|dlogprob| (top-20, shared) 0.0000
