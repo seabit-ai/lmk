@@ -1,0 +1,6 @@
+  LM call n=373 kw={} rope_deltas=None pos_ids=None fa_offset=0 self._rope_deltas=(1, 1)
+  LM call n=256 kw={'inputs_embeds': (1, 256, 5120), 'position_ids': (1, 256), 'rope_deltas': (1, 1), 'capture_layer_ids': [5, 19, 33, 47, 61], 'return_hidden': True} rope_deltas=(1, 1) pos_ids=(1, 256) fa_offset=0 self._rope_deltas=None
+  LM call n=117 kw={'inputs_embeds': (1, 117, 5120), 'position_ids': (1, 117), 'rope_deltas': (1, 1), 'capture_layer_ids': [5, 19, 33, 47, 61], 'return_hidden': True} rope_deltas=(1, 1) pos_ids=(1, 117) fa_offset=256 self._rope_deltas=(1, 1)
+  LM call n=117 kw={'inputs_embeds': (1, 117, 5120), 'capture_layer_ids': [5, 19, 33, 47, 61], 'return_hidden': True} rope_deltas=None pos_ids=None fa_offset=256 self._rope_deltas=None
+  LM call n=117 kw={'inputs_embeds': (1, 117, 5120), 'capture_layer_ids': [5, 19, 33, 47, 61], 'return_hidden': True} rope_deltas=None pos_ids=None fa_offset=256 self._rope_deltas=None
+draft tools=True trial 0: cached 0/256/256; cold vs restored TV 0.000 max|dlogprob| (p>0.05) 0.000; restored vs again TV 0.000 max|dlogprob| (p>0.05) 0.000; reference (one plain call) vs cold TV 0.025 max|dlogprob| (p>0.05) 0.044, vs restored TV 0.025 max|dlogprob| (p>0.05) 0.044

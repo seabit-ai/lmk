@@ -39,7 +39,7 @@ TV **0.24–0.30**，p>0.05 的 token 上 Δ 最大 0.80（`We` 在冷算里 −
 - 原因：DFlash 草稿器让每次 forward 都带 `capture_layer_ids`，文本请求因此走不了 fork 的快路径，进 mlx-vlm 自己的 call；
   那里没有存着的 RoPE 状态时位置从 0 数起，而引擎在每次 prefill 前后都会清掉这个状态（`_clear_qwen3_5_text_rope_state`）。
   冷算带显式 position_ids 所以没事；**恢复之后的那一段按位置 0..n 编码**，写进 cache 的 key 也是（并随 256 块存进磁盘）。
-  （探针：`raw/` 里 kwargs 那段——恢复后的 116 token 调用没有 position_ids、没有 rope_deltas、fa cache offset 256。）
+  （探针：`probe_kwargs.py` → `raw/kwargs-probe.txt`（修后重跑：调用方传的 kwargs 不变，位置在补丁里补上）——恢复后的 116 token 调用没有 position_ids、没有 rope_deltas、fa cache offset 256。）
 - 修（fork `39c17a2`）：这类调用给出 fast path 会用的位置（cache offset + arange；批里逐行）。修后：冷算与恢复**逐位完全相同**（TV 0.000），
   与普通 forward 差 0.01–0.07（`raw/pos0-reference-after-fix.txt`）；itest 全过（`raw/itest-full-after-fix.txt`）。
 - **与事故 000193 的关系（推测，未验证）**：owner 机器的配置正是 dflash2；那次从磁盘恢复 83712 个 token、prefill 1186 个——
