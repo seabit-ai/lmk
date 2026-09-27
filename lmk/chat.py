@@ -14,7 +14,7 @@ from lmk import log
 from lmk.clock import get_current_clock
 from lmk.chatformat import ImageInputError, split_images
 from lmk.engine import Engine, Preflight
-from lmk.sampling import parse_sampling
+from lmk.sampling import get_current_seed_source, parse_sampling
 from lmk.splitter import Markers, OutputSplitter
 from lmk.stopmatch import StopMatcher
 
@@ -52,6 +52,7 @@ class PreparedChat:
     sampling: dict            # engine kwargs (lmk.sampling); never stop_strings — see stop_strings below
     stop_strings: list[str]   # OpenAI `stop`, matched by lmk on the answer part only (lmk.stopmatch)
     ignored_params: list[str]  # request fields lmk understood but cannot honour (logged, not refused)
+    seed_from: Optional[str] = None  # "request" / "lmk" (drawn: the request named none) / "greedy"; None for a warmup
 
     def tokens_needed(self, context_length: int) -> int:
         """Its share of the KV memory: the prompt plus what it may write, capped by the window."""
@@ -71,14 +72,67 @@ def prepare_chat(engine: Engine, body: dict, warmup: bool = False) -> PreparedCh
     max_tokens = 1 if warmup else (body.get("max_tokens") or body.get("max_completion_tokens"))
     sampling, ignored = parse_sampling(body, engine.sampling_defaults())
     stop_strings = sampling.pop("stop_strings", [])
+    seed_from = None
+    if not warmup:
+        # every sampled answer has a known seed, so any answer can be replayed (design 2026-09-26-sampling-seed);
+        # a greedy one (temp 0, or no temperature at all: the engine's default) has no randomness to seed
+        if sampling.get("temp", 0) == 0:
+            seed_from = "greedy"
+            sampling.pop("seed", None)
+        elif "seed" in sampling:
+            seed_from = "request"
+        else:
+            seed_from = "lmk"
+            sampling["seed"] = get_current_seed_source().draw()
     return PreparedChat(prompt=prompt, images=images, tools=tools, max_tokens=max_tokens,
                         preflight=engine.preflight(prompt, images), sampling=sampling, stop_strings=stop_strings,
-                        ignored_params=ignored)
+                        ignored_params=ignored, seed_from=seed_from)
+
+
+# design 2026-09-26-context-check: a mean surprise (nats per prompt token, teacher-forced) above this says the
+# model did not recognise its own conversation. None until the normal band is measured (research
+# 2026-09-26-context-check): until then the numbers are logged and nothing is flagged.
+CONTEXT_SURPRISE_WARN_MEAN: Optional[float] = None
+CONTEXT_SURPRISE_MIN_TOKENS = 32  # fewer scored tokens than this is too little to judge by
+
+
+def check_targets(fmt, prepared: "PreparedChat") -> Optional[list[int]]:
+    """The model's own earlier turns in the prompt: what the context check scores. None (the engine then scores the
+    segment's tail) when the family's turn markers are not known or the prompt has images."""
+    indices = getattr(fmt, "assistant_token_indices", None)
+    if indices is None or prepared.images or not prepared.preflight.tokens:
+        return None
+    return indices(prepared.preflight.tokens)
+
+
+def context_fields(check: Optional[dict]) -> dict:
+    """The engine's context check as LmkChatDone / LmkWarmupDone fields; nothing when the engine made none."""
+    if not check:
+        return {}
+    return {"restoreSource": check.get("restore_source"), "restoredTokens": check.get("restored_tokens"),
+            "hotTrimmedTokens": check.get("hot_trimmed_tokens"),
+            "promptSurpriseMean": check.get("surprise_mean"), "promptSurpriseP90": check.get("surprise_p90"),
+            "promptSurpriseMax": check.get("surprise_max"), "promptSurpriseTokens": check.get("scored_tokens"),
+            "promptSurpriseMs": check.get("ms"), "promptSurpriseScored": check.get("scored"),
+            "promptSurpriseUnsupported": check.get("unsupported")}
+
+
+def warn_if_surprised(check: Optional[dict], identity: "CallerIdentity") -> None:
+    if CONTEXT_SURPRISE_WARN_MEAN is None or not check or check.get("surprise_mean") is None:
+        return
+    if (check.get("scored_tokens") or 0) < CONTEXT_SURPRISE_MIN_TOKENS:
+        return
+    if check["surprise_mean"] > CONTEXT_SURPRISE_WARN_MEAN:
+        log.warn("LmkContextSurprising", "the model predicted its own prompt far worse than usual",
+                 purpose=identity.purpose, refId=identity.ref_id, promptSurpriseMean=check["surprise_mean"],
+                 warnAbove=CONTEXT_SURPRISE_WARN_MEAN, restoreSource=check.get("restore_source"),
+                 restoredTokens=check.get("restored_tokens"), promptSurpriseTokens=check.get("scored_tokens"))
 
 
 def run_chat(engine: Engine, body: dict, identity: CallerIdentity,
              emit: Callable[[dict], None], on_progress: Callable[[dict], None] = lambda _: None,
-             prepared: Optional[PreparedChat] = None) -> dict:
+             prepared: Optional[PreparedChat] = None, overlap: Callable[[], dict] = lambda: {}) -> dict:
+    """`overlap()`: fields for LmkChatDone saying which other requests shared the engine with this one."""
     clock = get_current_clock()
     started = clock.mono_ms()
     fmt = engine.chat_format()
@@ -142,7 +196,8 @@ def run_chat(engine: Engine, body: dict, identity: CallerIdentity,
         log.warn("LmkParamIgnored", "request fields the engine cannot honour", purpose=identity.purpose,
                  refId=identity.ref_id, params=prepared.ignored_params)
     generation = engine.generate(prompt, max_tokens=max_tokens, request_id=request_id, on_prefill=on_prefill,
-                                 images_b64=images, tokens=prepared.preflight.tokens, sampling=prepared.sampling)
+                                 images_b64=images, tokens=prepared.preflight.tokens, sampling=prepared.sampling,
+                                 check_targets=check_targets(fmt, prepared))
     delta({"role": "assistant"})
     splitter = OutputSplitter(Markers(fmt.tool_call_start, fmt.tool_call_end, fmt.think_open, fmt.think_close),
                               fmt.starts_in_reasoning(prompt), on_reasoning, on_text, on_tool_block)
@@ -176,7 +231,8 @@ def run_chat(engine: Engine, body: dict, identity: CallerIdentity,
              "prompt_tokens_details": {"cached_tokens": stats.cached_tokens}}
     # lmk's own timing next to the standard usage: how long the cached part took to come back
     # from disk (what a client cannot see from outside; `lmk bench` reads it)
-    lmk_fields = {"restore_ms": state["restore_ms"], "first_token_ms": state["first_ms"]}
+    lmk_fields = {"restore_ms": state["restore_ms"], "first_token_ms": state["first_ms"],
+                  "seed": prepared.sampling.get("seed")}
     if stats.draft_drafted is not None:
         lmk_fields.update(draft_accepted=stats.draft_accepted, draft_drafted=stats.draft_drafted)
     send({"object": "chat.completion.chunk", "choices": [], "usage": usage, "lmk": lmk_fields})
@@ -191,11 +247,13 @@ def run_chat(engine: Engine, body: dict, identity: CallerIdentity,
              uncachedActual=stats.prompt_tokens - stats.cached_tokens,
              completionTokens=stats.completion_tokens, toolCalls=len(tool_calls),
              restoreMs=state["restore_ms"], ttftMs=state["first_ms"], totalMs=total_ms, finishReason=finish, cancelled=state["cancelled"],
-             sampling=prepared.sampling, stop=prepared.stop_strings or None,
-             draftAccepted=stats.draft_accepted, draftDrafted=stats.draft_drafted)
+             sampling={k: v for k, v in prepared.sampling.items() if k != "seed"}, stop=prepared.stop_strings or None,
+             seed=prepared.sampling.get("seed"), seedFrom=prepared.seed_from, **overlap(),
+             draftAccepted=stats.draft_accepted, draftDrafted=stats.draft_drafted, **context_fields(stats.context_check))
+    warn_if_surprised(stats.context_check, identity)
     return {"id": completion_id, "finish_reason": finish, "usage": usage, "tool_calls": tool_calls,
             "content": "".join(state["text"]), "reasoning_content": "".join(state["reasoning"]),
-            "base": base, "cancelled": state["cancelled"]}
+            "base": base, "cancelled": state["cancelled"], "lmk": lmk_fields}
 
 
 # How often a stream carries decode progress (kitten design 2026-09-24-llm-progress §1.8:
@@ -244,7 +302,8 @@ def run_warmup(engine: Engine, body: dict, identity: CallerIdentity,
         return True
 
     generation = engine.generate(prepared.prompt, max_tokens=1, request_id=request_id, on_prefill=on_prefill,
-                                 images_b64=prepared.images, tokens=prepared.preflight.tokens)
+                                 images_b64=prepared.images, tokens=prepared.preflight.tokens,
+                                 check_targets=check_targets(engine.chat_format(), prepared))
     for _ in generation:
         pass
     stats = generation.stats
@@ -253,6 +312,7 @@ def run_warmup(engine: Engine, body: dict, identity: CallerIdentity,
     log.info("LmkWarmupDone", "prefix warmed" if outcome == "done" else "warmup yielded to a request",
              purpose=identity.purpose or "warmup", refId=identity.ref_id, traceparent=identity.traceparent,
              outcome=outcome, promptTokens=stats.prompt_tokens, cachedTokens=stats.cached_tokens,
-             yieldedAtTokens=yielded["at"], totalMs=total_ms)
+             yieldedAtTokens=yielded["at"], totalMs=total_ms, **context_fields(stats.context_check))
+    warn_if_surprised(stats.context_check, identity)
     return {"outcome": outcome, "prompt_tokens": stats.prompt_tokens, "cached_tokens": stats.cached_tokens,
             "total_ms": total_ms}

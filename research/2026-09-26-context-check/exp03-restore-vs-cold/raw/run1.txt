@@ -1,0 +1,14 @@
+filler=0 cold: prompt=773 restored=0 scored=512 mean=5.0132
+filler=0 restored: prompt=774 restored=256 scored=512 mean=4.9244
+filler=0 restored-C1: prompt=777 restored=256 scored=512 mean=0.876
+filler=0 cold2: prompt=773 restored=0 scored=512 mean=4.9982
+  cold vs cold2: common=512 max|dlogprob|=24.916 at -413 mean|d|=0.6091 surprise 5.013 vs 4.998
+  cold vs restored: common=512 max|dlogprob|=18.884 at -426 mean|d|=0.8174 surprise 5.013 vs 4.924
+  cold vs restored-C1: common=512 max|dlogprob|=38.723 at -448 mean|d|=4.3293 surprise 5.013 vs 0.876
+filler=40 cold: prompt=1382 restored=0 scored=512 mean=5.1981
+filler=40 restored: prompt=1381 restored=1024 scored=356 mean=2.4794
+filler=40 restored-C1: prompt=1381 restored=1024 scored=356 mean=1.0903
+filler=40 cold2: prompt=1383 restored=0 scored=512 mean=5.076
+  cold vs cold2: common=512 max|dlogprob|=21.936 at -479 mean|d|=0.9426 surprise 5.198 vs 5.076
+  cold vs restored: common=356 max|dlogprob|=12.242 at -249 mean|d|=0.3406 surprise 2.414 vs 2.479
+  cold vs restored-C1: common=356 max|dlogprob|=29.761 at -341 mean|d|=1.8473 surprise 2.414 vs 1.090

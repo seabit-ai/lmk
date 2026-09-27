@@ -1,0 +1,23 @@
+   pos 0: cold drawn by a call of 1 (offset 0), restored by a call of 1 (offset 0); tokens 6065 / 1596
+   pos 1: cold drawn by a call of 1 (offset 0), restored by a call of 1 (offset 0); tokens 25 / 1144
+   pos 2: cold drawn by a call of 1 (offset 0), restored by a call of 1 (offset 0); tokens 88980 / 4087
+   pos 3: cold drawn by a call of 1 (offset 0), restored by a call of 1 (offset 0); tokens 264 / 1156
+tools=True seed=11 cold(cached 0) vs restored(cached 256): first divergence at generated position 0; max|dlogprob| before it 0.0000, at it 1.9375
+   A drew 'Task' p=0.030 (B gives it 0.007); B drew 'We' p=0.472 (A gives it 0.253)
+   A top5: [("'The'", -0.375), ("'We'", -1.375), ("'User'", -3.5), ("'Task'", -3.5), ("'Thinking'", -5.0)]
+   B top5: [("'The'", -0.75), ("'We'", -0.75), ("'User'", -4.5), ("'Need'", -4.75), ("'Task'", -5.0)]
+tools=True seed=11 restored vs restored again: identical over 160 positions, max|dlogprob| (top-20, shared) 0.0000
+   tools=True seed=12 [single] n=160 max TV=0.0000 max|dlogprob| (p>0.05)=0.0000
+   pos 0: cold drawn by a call of 1 (offset 0), restored by a call of 1 (offset 0); tokens 760 / 760
+   pos 1: cold drawn by a call of 1 (offset 0), restored by a call of 1 (offset 0); tokens 1156 / 1156
+   pos 2: cold drawn by a call of 1 (offset 0), restored by a call of 1 (offset 0); tokens 369 / 369
+   pos 3: cold drawn by a call of 1 (offset 0), restored by a call of 1 (offset 0); tokens 9859 / 9859
+tools=True seed=12 cold(cached 256) vs restored(cached 256): identical over 160 positions, max|dlogprob| (top-20, shared) 0.0000
+tools=True seed=12 restored vs restored again: identical over 160 positions, max|dlogprob| (top-20, shared) 0.0000
+   tools=True seed=13 [single] n=84 max TV=0.0000 max|dlogprob| (p>0.05)=0.0000
+   pos 0: cold drawn by a call of 1 (offset 0), restored by a call of 1 (offset 0); tokens 1596 / 1596
+   pos 1: cold drawn by a call of 1 (offset 0), restored by a call of 1 (offset 0); tokens 1144 / 1144
+   pos 2: cold drawn by a call of 1 (offset 0), restored by a call of 1 (offset 0); tokens 4087 / 4087
+   pos 3: cold drawn by a call of 1 (offset 0), restored by a call of 1 (offset 0); tokens 1156 / 1156
+tools=True seed=13 cold(cached 256) vs restored(cached 256): identical over 84 positions, max|dlogprob| (top-20, shared) 0.0000
+tools=True seed=13 restored vs restored again: identical over 84 positions, max|dlogprob| (top-20, shared) 0.0000

@@ -196,3 +196,223 @@ def test_the_model_reads_an_image(server):
         {"type": "image_url", "image_url": {"url": url}}]}])
     print("image answer:", repr(out["content"]), "prompt_tokens:", out["usage"]["prompt_tokens"])
     assert "4217" in out["content"]
+
+
+# research 2026-09-26-sampling-seed exp01: two paths that should agree (cold vs restored prefix, draft off vs on) give
+# the same distribution up to bf16 noise, not the same tokens. The logits are bf16 (a step of 0.125 at the magnitudes
+# seen), so a sampled draw near a boundary flips. Measured on the 27B-4bit: per-position total variation <= 0.075,
+# max |dlogprob| over tokens with p > 0.05 <= 0.5 (reading the same prompt in one call vs two, no cache: 0.22-0.60 on
+# the top 20). Tolerance ~2x that; SPD-034's 2.75 would fail it.
+DRAW_TV_MAX = 0.15
+DRAW_DLOGPROB_MAX = 0.75
+
+
+class DrawRecorder:
+    """Records what a seeded sampler was given at each generated position (top 20 logprobs) and what it drew; a
+    position drawn twice (a speculative round rejected after it) keeps the last draw — the one emitted."""
+
+    def __enter__(self):
+        import mlx.core as mx
+        from mlx_engine.utils import sampling
+
+        self.draws, self._cls = {}, sampling.SeededSampler
+        self._orig = original = self._cls.sample_target
+        draws = self.draws
+
+        def traced(sampler, logprobs, *, row_ids, positions):
+            drawn = original(sampler, logprobs, row_ids=row_ids, positions=positions)
+            lp = logprobs if logprobs.ndim == 2 else logprobs[None]
+            top = mx.argsort(-lp, axis=-1)[:, :20]
+            vals = mx.take_along_axis(lp, top, axis=-1)
+            for i, p in enumerate(positions):
+                draws[int(p)] = (dict(zip(top[i].tolist(), vals[i].tolist())), int(drawn.reshape(-1)[i].item()))
+            return drawn
+
+        self._cls.sample_target = traced
+        return self
+
+    def __exit__(self, *exc):
+        self._cls.sample_target = self._orig
+
+
+def assert_same_distribution(a: dict, b: dict) -> str:
+    """Up to the first position the two runs drew differently: the distributions agree within the tolerance."""
+    import math
+
+    worst_tv, worst_d, diverged = 0.0, 0.0, None
+    for p in sorted(set(a) & set(b)):
+        (pa, xa), (pb, xb) = a[p], b[p]
+        tv = 0.5 * sum(abs(math.exp(pa.get(t, -30)) - math.exp(pb.get(t, -30))) for t in set(pa) | set(pb))
+        big = [abs(pa[t] - pb[t]) for t in set(pa) & set(pb) if max(pa[t], pb[t]) > math.log(0.05)]
+        worst_tv, worst_d = max(worst_tv, tv), max([worst_d] + big)
+        if xa != xb:
+            diverged = p
+            break
+    summary = f"positions compared {len(set(a) & set(b))}, first divergence {diverged}, max TV {worst_tv:.3f}, " \
+              f"max|dlogprob| (p>0.05) {worst_d:.3f}"
+    assert worst_tv <= DRAW_TV_MAX and worst_d <= DRAW_DLOGPROB_MAX, summary
+    return summary
+
+
+# design 2026-09-26-sampling-seed: an answer is replayable. Same request + same seed + the same cache
+# restore point, run alone, gives the same tokens; another seed gives another answer. The first request
+# names no seed (lmk draws one and returns it) and sets up the cache the replays restore from. Parametrized
+# with tools too: an agent request carries the engine's tool guard, whose rounds take a different walk.
+@pytest.mark.parametrize("with_tools", [False, True], ids=["plain", "tools"])
+def test_the_same_seed_replays_the_same_answer_and_another_seed_does_not(server, with_tools):
+    import uuid
+
+    messages = [{"role": "system", "content": f"Session {uuid.uuid4().hex}. You are a creative assistant."},
+                {"role": "user", "content": "Invent a name for a new colour and describe it in two sentences."}]
+    # the incident's settings (Qwen3.8's generation_config): temp 1.0, top_p 0.95, top_k 20
+    sampling = {"temperature": 1.0, "top_p": 0.95, "top_k": 20, "max_tokens": 160}
+    if with_tools:
+        sampling["tools"] = TOOLS
+
+    def run(**extra):
+        out = chat(server, messages, **sampling, **extra)
+        return out, (out["reasoning"], out["content"], out["usage"]["completion_tokens"])
+
+    with DrawRecorder() as cold_draws:
+        first, first_text = run()
+    seed = first["lmk"]["seed"]
+    assert isinstance(seed, int)
+    with DrawRecorder() as restored_draws:
+        replay, replay_text = run(seed=seed)
+    again, again_text = run(seed=seed)
+    other, other_text = run(seed=seed + 1)
+    print(f"itest seed: {seed} tools={with_tools} draft={server.engine.draft_stats() is not None} "
+          f"cached first/replay/again={first['usage']['prompt_tokens_details']['cached_tokens']}/"
+          f"{replay['usage']['prompt_tokens_details']['cached_tokens']}/{again['usage']['prompt_tokens_details']['cached_tokens']} "
+          f"drafted replay/again={replay['lmk'].get('draft_drafted')}/{again['lmk'].get('draft_drafted')} "
+          f"cold-vs-restored identical={first_text == replay_text}")
+    # the first run read the prompt cold, the replays restored it: same distribution within bf16 noise, not
+    # necessarily the same tokens (exp01); a larger gap is a cache bug
+    print("itest seed: cold vs restored:", assert_same_distribution(cold_draws.draws, restored_draws.draws))
+    if first_text != replay_text:
+        a, b = "".join(first_text[:2]), "".join(replay_text[:2])
+        at = next((i for i, (x, y) in enumerate(zip(a, b)) if x != y), min(len(a), len(b)))
+        print(f"itest seed: cold and restored runs part at char {at}: {a[max(0, at - 40):at + 40]!r} / {b[max(0, at - 40):at + 40]!r}")
+    assert replay["lmk"]["seed"] == seed and other["lmk"]["seed"] == seed + 1
+    assert replay_text == again_text
+    assert other_text != replay_text
+
+
+# design 2026-09-26-sampling-seed: draws are keyed by position, so with a draft on or off the same seed draws the
+# same tokens where the logits agree. They agree within bf16 noise, not bit for bit (the verify pass reads a block,
+# the plain step one token: exp01 measured TV <= 0.075 per position, and one run in three diverged within 50 tokens),
+# so the assertion is on the distributions, position by position, up to the first divergence.
+def test_the_same_seed_draws_from_the_same_distribution_with_the_draft_on_and_off(server):
+    if server.engine.draft_stats() is None:
+        pytest.skip("no draft model loaded (LMK_ITEST_DRAFT)")
+    import uuid
+
+    engine = server.engine
+    prompt = engine.chat_format().render(
+        [{"role": "system", "content": f"Session {uuid.uuid4().hex}."},
+         {"role": "user", "content": "Write a four-line poem about a lighthouse."}], None)
+    sampling = {"temp": 1.0, "top_p": 0.95, "top_k": 20, "seed": 20260926}
+
+    def run(speculative: bool):
+        generation = engine.generate(prompt, max_tokens=120, request_id=f"itest-spec-{speculative}-{uuid.uuid4().hex[:6]}",
+                                     on_prefill=lambda *a: True,
+                                     sampling={**sampling, "speculative_decoding_toggle": speculative})
+        return "".join(generation), generation.stats
+
+    run(False)                    # reads the prompt once; both runs below restore the same prefix
+    with DrawRecorder() as plain_draws:
+        plain, plain_stats = run(False)
+    with DrawRecorder() as spec_draws:
+        spec, spec_stats = run(True)
+    print(f"itest spec on/off: drafted {spec_stats.draft_drafted} accepted {spec_stats.draft_accepted} "
+          f"identical={plain == spec}; " + assert_same_distribution(plain_draws.draws, spec_draws.draws))
+    assert spec_stats.draft_drafted and spec_stats.draft_drafted > 0
+
+
+# design 2026-09-26-context-check (research exp04): the prefill scores how well the model predicts its own earlier
+# turns in the new prompt segment. The history holds a release plan of made-up codenames; the new segment has an
+# assistant turn listing the plan — predictable from the history only. Intact: low surprise. The restored state
+# wiped, or swapped for another plan's (a restored wrong conversation): much higher. That gap is the proof.
+def test_the_context_check_sees_a_lost_or_wrong_context(server):
+    import random
+    import uuid
+
+    import mlx.core as mx
+    import mlx_engine.model_kit.batched_vision.model_kit as vision_kit
+
+    from lmk.chat import PreparedChat, check_targets
+
+    engine = server.engine
+    fmt = engine.chat_format()
+    words = ("amber basalt cobalt dune ember fjord garnet harbor indigo jasper kelp lumen marble nectar onyx pewter "
+             "quartz russet sable tundra umber velvet willow xenon yarrow zephyr").split()
+
+    def conversation(nonce, seed):
+        rng = random.Random(seed)
+        plan = [(f"{w}{rng.randint(100, 999)}", rng.randint(2, 52)) for w in words]
+        history = [{"role": "system", "content": f"Session {nonce}. You are kitten, a coding agent."},
+                   {"role": "user", "content": "Release plan. Each codename ships in the week given: " +
+                    " ".join(f"Codename {n} ships in week {w}." for n, w in plan) + " Remember this plan."},
+                   {"role": "assistant", "content": "Noted — I have the release plan."},
+                   {"role": "user", "content": " ".join(f"Aside {i}: the {words[i % 26]} team met on floor "
+                                                        f"{i * 13 % 29}." for i in range(40))},
+                   {"role": "assistant", "content": "OK."}]
+        return history, history + [{"role": "user", "content": "List the plan, one line per codename."},
+                                   {"role": "assistant", "content": "\n".join(f"{n}: week {w}" for n, w in plan)},
+                                   {"role": "user", "content": "Thanks."}]
+
+    def run(messages, hook=None):
+        text = fmt.render(messages, None)
+        pre = engine.preflight(text)
+        prepared = PreparedChat(prompt=text, images=[], tools=None, max_tokens=1, preflight=pre, sampling={},
+                                stop_strings=[], ignored_params=[])
+        vision_kit.RESTORED_CACHE_HOOK = hook
+        try:
+            g = engine.generate(text, max_tokens=1, request_id=f"itest-ctx-{uuid.uuid4().hex[:8]}", tokens=pre.tokens,
+                                on_prefill=lambda *a: True, sampling={"temp": 0.0},
+                                check_targets=check_targets(fmt, prepared))
+            "".join(g)
+        finally:
+            vision_kit.RESTORED_CACHE_HOOK = None
+        return g.stats.context_check
+
+    def wipe(restored):
+        for c in restored.prompt_cache:
+            if type(c).__name__ == "ArraysCache":
+                c.cache = [None if a is None else mx.zeros_like(a) for a in c.cache]
+            elif getattr(c, "keys", None) is not None:
+                k, v = c.state
+                c.state = (mx.zeros_like(k), mx.zeros_like(v))
+
+    captured = {}
+
+    def capture(restored):
+        captured["len"] = restored.cached_prefix_len
+        captured["states"] = [[None if x is None else mx.array(x) for x in c.state] for c in restored.prompt_cache]
+
+    def swap_in(restored):
+        assert captured["len"] == restored.cached_prefix_len, "the other plan restored at another point"
+        for c, state in zip(restored.prompt_cache, captured["states"]):
+            copy = [None if x is None else mx.array(x) for x in state]
+            c.state = copy if type(c).__name__ == "ArraysCache" else tuple(copy)
+
+    results = {}
+    for label, hook in (("intact", None), ("wiped", wipe), ("wrong", swap_in)):
+        nonce = uuid.uuid4().hex
+        history, turn = conversation(nonce, seed=1)
+        if label == "wrong":
+            other_history, other_turn = conversation(nonce[::-1], seed=2)   # same shape, another plan
+            run(other_history)
+            run(other_turn, capture)
+        run(history)
+        results[label] = run(turn, hook)
+        c = results[label]
+        print(f"itest context check {label}: {c} (~{c['ms'] / max(1, c['scored_tokens']) * 1000:.0f} ms per 1k scored)")
+
+    intact, wiped, wrong = results["intact"], results["wiped"], results["wrong"]
+    assert intact["restore_source"] in ("hot", "disk") and intact["restored_tokens"] > 0
+    assert intact["scored"] == "targets" and intact["scored_tokens"] >= 100
+    # exp04 (27B-4bit, kv16): intact 0.11, wiped 1.30-1.33, wrong plan 1.11-1.12 nats per assistant token
+    assert intact["surprise_mean"] < 0.4
+    assert wiped["surprise_mean"] > intact["surprise_mean"] + 0.5
+    assert wrong["surprise_mean"] > intact["surprise_mean"] + 0.5

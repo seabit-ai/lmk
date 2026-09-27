@@ -219,3 +219,19 @@ def test_a_waiting_request_says_how_many_are_ahead_of_it(memory):
     Entering(a, ticket("r2")).settle(0.05)
     Entering(a, warm("w")).settle(0.05)
     assert [(x["ref_id"], x["ahead"]) for x in a.waiting()] == [("r1", 1), ("r2", 2), ("w", 3)]
+
+
+def test_each_ticket_knows_how_many_others_were_in_with_it(memory):
+    a = Admission(max_parallel=3, max_queue=4, max_wait_seconds=5)
+    first, second, third = ticket("first"), ticket("second"), ticket("third")
+    a.enter(first)
+    a.enter(second)
+    a.leave(second)
+    a.enter(third)
+    assert (first.others_at_start, first.others_peak) == (0, 1)
+    assert (second.others_at_start, second.others_peak) == (1, 1)
+    assert (third.others_at_start, third.others_peak) == (1, 1)
+    a.leave(first), a.leave(third)
+    alone = ticket("alone")
+    a.enter(alone)
+    assert (alone.others_at_start, alone.others_peak) == (0, 0)

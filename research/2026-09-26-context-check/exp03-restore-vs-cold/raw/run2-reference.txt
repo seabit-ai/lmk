@@ -1,0 +1,4 @@
+prompt=972 scored=512 check mean surprise=6.674 reference=6.569 max|d|=18.372 mean|d|=1.1878
+shifted by one: mean|d|=6.1817
+check first 8: [-5.56, -3.29, -1.8, -11.38, -0.11, -5.63, -2.24, -2.46]
+ref   same 8:  [-4.26, -3.17, -1.6, -4.76, -0.11, -5.5, -2.24, -2.7]

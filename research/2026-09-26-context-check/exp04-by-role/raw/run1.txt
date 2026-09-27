@@ -1,0 +1,8 @@
+intact#0: prompt=1407 restored=1024 scored=382 | assistant: n=304 mean=0.109 other: n=78 mean=4.943
+C1-zero-recurrent#0: prompt=1411 restored=1024 scored=386 | assistant: n=304 mean=0.103 other: n=82 mean=2.019
+C3-zero-all#0: prompt=1412 restored=1024 scored=387 | assistant: n=304 mean=1.331 other: n=83 mean=2.469
+C4-wrong-conversation#0: prompt=1409 restored=1024 scored=384 | assistant: n=304 mean=1.122 other: n=80 mean=5.690
+intact#1: prompt=1409 restored=1024 scored=384 | assistant: n=304 mean=0.111 other: n=80 mean=5.584
+C1-zero-recurrent#1: prompt=1411 restored=1024 scored=386 | assistant: n=304 mean=0.102 other: n=82 mean=2.024
+C3-zero-all#1: prompt=1411 restored=1024 scored=386 | assistant: n=304 mean=1.302 other: n=82 mean=2.765
+C4-wrong-conversation#1: prompt=1407 restored=1024 scored=382 | assistant: n=304 mean=1.114 other: n=78 mean=4.842

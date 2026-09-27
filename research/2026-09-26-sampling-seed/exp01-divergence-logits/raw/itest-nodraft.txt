@@ -1,0 +1,7 @@
+itest: dialect qwen thinking True kv cache bits 16 draft None
+itest seed: 979513842 tools=False draft=False cached first/replay/again=0/0/0 drafted replay/again=None/None cold-vs-restored identical=True
+itest seed: cold vs restored: positions compared 161, first divergence None, max TV 0.000, max|dlogprob| (p>0.05) 0.000
+itest seed: 50387790 tools=True draft=False cached first/replay/again=0/256/256 drafted replay/again=None/None cold-vs-restored identical=False
+itest seed: cold vs restored: positions compared 161, first divergence 34, max TV 0.062, max|dlogprob| (p>0.05) 0.125
+itest seed: cold and restored runs part at char 149: "ve task. I don't need any tools for this - I can just answer directly with a cre" / "ve task. I don't need any tools for this. Let me think of something evocative.\n\n"
+2 passed, 1 skipped, 8 deselected in 46.15s

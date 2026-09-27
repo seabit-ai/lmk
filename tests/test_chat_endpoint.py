@@ -246,7 +246,25 @@ def serve_with_defaults(script, defaults):
     return srv, engine
 
 
-def test_sampling_parameters_reach_the_engine_under_its_own_names_over_the_models_defaults():
+class CountingSeeds:
+    def __init__(self, first=1000):
+        self.next = first
+
+    def draw(self):
+        self.next += 1
+        return self.next - 1
+
+
+@pytest.fixture
+def seeds():
+    from lmk.sampling import get_current_seed_source, set_current_seed_source
+    before, fake = get_current_seed_source(), CountingSeeds()
+    set_current_seed_source(fake)
+    yield fake
+    set_current_seed_source(before)
+
+
+def test_sampling_parameters_reach_the_engine_under_its_own_names_over_the_models_defaults(seeds):
     srv, engine = serve_with_defaults(TEXT_TURN, {"temp": 1.0, "top_p": 0.95, "top_k": 20})
     try:
         post(srv, {"model": "kitten-27b", "messages": [], "temperature": 0.3, "stop": ["\n\n", "END"]}).read()
@@ -254,8 +272,8 @@ def test_sampling_parameters_reach_the_engine_under_its_own_names_over_the_model
     finally:
         srv.shutdown()
     # stop is lmk's to enforce (answer part only); the engine never sees it
-    assert engine.requests[0]["sampling"] == {"temp": 0.3, "top_p": 0.95, "top_k": 20}
-    assert engine.requests[1]["sampling"] == {"temp": 1.0, "top_p": 0.95, "top_k": 20}
+    assert engine.requests[0]["sampling"] == {"temp": 0.3, "top_p": 0.95, "top_k": 20, "seed": 1000}
+    assert engine.requests[1]["sampling"] == {"temp": 1.0, "top_p": 0.95, "top_k": 20, "seed": 1001}
 
 
 def test_an_out_of_range_sampling_value_is_a_400_that_names_the_field():
@@ -270,18 +288,72 @@ def test_an_out_of_range_sampling_value_is_a_400_that_names_the_field():
     assert engine.requests == []
 
 
-def test_seed_is_accepted_but_logged_as_ignored(capsys):
-    srv, engine = serve_with_defaults(TEXT_TURN, {})
+def _logged(capsys, event):
+    return [l for l in (json.loads(l) for l in capsys.readouterr().err.splitlines() if l.startswith("{"))
+            if l["event"] == event]
+
+
+@pytest.mark.parametrize("seed", [7, 2**64 - 1])
+def test_a_requests_seed_reaches_the_engine_comes_back_and_is_logged(capsys, seeds, seed):
+    srv, engine = serve_with_defaults(TEXT_TURN, {"temp": 1.0})
     try:
-        post(srv, {"model": "kitten-27b", "messages": [], "seed": 7}).read()
+        chunks = stream_chunks(post(srv, {"model": "kitten-27b", "messages": [], "seed": seed, "stream": True}))
     finally:
         srv.shutdown()
-    assert "sampling" in engine.requests[0] and "seed" not in engine.requests[0]["sampling"]
-    logged = [json.loads(l) for l in capsys.readouterr().err.splitlines() if l.startswith("{")]
-    ignored = [l for l in logged if l["event"] == "LmkParamIgnored"]
-    assert ignored and ignored[0]["params"] == ["seed"]
-    done = [l for l in logged if l["event"] == "LmkChatDone"]
-    assert done[0]["sampling"] == {}
+    assert engine.requests[0]["sampling"] == {"temp": 1.0, "seed": seed}
+    assert [c["lmk"]["seed"] for c in chunks if "usage" in c] == [seed]
+    done = _logged(capsys, "LmkChatDone")[0]
+    assert (done["seed"], done["seedFrom"], done["sampling"]) == (seed, "request", {"temp": 1.0})
+    assert seeds.next == 1000   # nothing drawn
+
+
+@pytest.mark.parametrize("defaults, body", [({}, {}), ({"temp": 1.0}, {"temperature": 0}),
+                                            ({"temp": 1.0}, {"temperature": 0, "seed": 5})])
+def test_a_greedy_answer_has_no_seed(capsys, seeds, defaults, body):
+    srv, engine = serve_with_defaults(TEXT_TURN, defaults)
+    try:
+        answer = json.loads(post(srv, {"model": "kitten-27b", "messages": [], **body}).read())
+    finally:
+        srv.shutdown()
+    assert "seed" not in engine.requests[0]["sampling"] and answer["lmk"]["seed"] is None
+    done = _logged(capsys, "LmkChatDone")[0]
+    assert (done["seed"], done["seedFrom"]) == (None, "greedy") and seeds.next == 1000
+
+
+def test_without_a_seed_lmk_draws_one_and_says_so(capsys, seeds):
+    srv, engine = serve_with_defaults(TEXT_TURN, {"temp": 1.0})
+    try:
+        body = json.loads(post(srv, {"model": "kitten-27b", "messages": []}).read())
+    finally:
+        srv.shutdown()
+    assert engine.requests[0]["sampling"] == {"temp": 1.0, "seed": 1000}
+    assert body["lmk"]["seed"] == 1000          # the non-streamed answer carries lmk's fields too
+    logged = capsys.readouterr().err
+    done = [json.loads(l) for l in logged.splitlines() if '"LmkChatDone"' in l][0]
+    assert (done["seed"], done["seedFrom"], done["sampling"]) == (1000, "lmk", {"temp": 1.0})
+    assert '"LmkParamIgnored"' not in logged
+
+
+def test_a_warmup_draws_no_seed(seeds):
+    srv, engine, _ = serve(["x"])
+    try:
+        post_path(srv, "/lmk/v1/warmup", {"model": "kitten-27b", "messages": [{"role": "user", "content": "hi"}]})
+    finally:
+        srv.shutdown()
+    assert engine.requests[0]["sampling"] is None and seeds.next == 1000
+
+
+@pytest.mark.parametrize("seed", ["abc", -1, 2**64, 1.5])
+def test_a_seed_outside_uint64_is_a_400_that_says_the_range(seeds, seed):
+    srv, engine = serve_with_defaults(TEXT_TURN, {"temp": 1.0})
+    try:
+        with pytest.raises(urllib.error.HTTPError) as e:
+            post(srv, {"model": "kitten-27b", "messages": [], "seed": seed})
+    finally:
+        srv.shutdown()
+    err = json.loads(e.value.read())["error"]
+    assert e.value.code == 400 and err["param"] == "seed" and "0 to 18446744073709551615" in err["message"]
+    assert engine.requests == []
 
 
 def test_stop_applies_to_the_answer_not_the_thinking_and_ends_generation():
@@ -338,3 +410,109 @@ def test_decode_progress_rides_the_stream_once_a_second():
     assert 1 < len(moving) <= len(TEXT_TURN)
     assert moving[-1]["lmk"]["decode"]["part"] == "answering"
     assert moving[-1]["lmk"]["decode"]["tokens_per_s"] > 0
+
+
+def test_stopping_early_closes_the_engines_generator(monkeypatch):
+    # the fork's generator takes the row out of the batch when closed; MlxEngine must close it, not drop it
+    import sys
+    import types
+
+    from lmk.engine import MlxEngine
+
+    closed = []
+
+    held = []   # a reference elsewhere (as the engine's own bookkeeping may keep): garbage collection won't close it
+
+    def create_generator(kit, tokens, **kwargs):
+        def gen():
+            try:
+                for piece in ["a", "b", "c"]:
+                    yield types.SimpleNamespace(text=piece, tokens=[1])
+            finally:
+                closed.append(kwargs["request_id"])
+        held.append(gen())
+        return held[-1]
+
+    monkeypatch.setitem(sys.modules, "mlx_engine.generate",
+                        types.SimpleNamespace(create_generator=create_generator, tokenize=lambda kit, text: [1]))
+    monkeypatch.setitem(sys.modules, "mlx_engine.utils.prompt_progress_reporter",
+                        types.SimpleNamespace(PromptProgressReporter=object))
+    engine = object.__new__(MlxEngine)
+    popped = []
+    engine._kit = types.SimpleNamespace(pop_context_check=lambda rid: popped.append(rid) or {"scored_tokens": 3})
+    engine._draft_tokens = None
+    generation = engine.generate("p", max_tokens=None, request_id="r-1", on_prefill=lambda *a: True, tokens=[1])
+    assert next(iter(generation)) == "a"
+    generation.pieces.close()
+    assert closed == ["r-1"]
+    # the engine's context check for this request is collected on the way out (design 2026-09-26-context-check)
+    assert popped == ["r-1"] and generation.stats.context_check == {"scored_tokens": 3}
+
+
+CHECK = {"restore_source": "disk", "restored_tokens": 83712, "hot_trimmed_tokens": 0, "segment_tokens": 1186,
+         "scored_tokens": 512, "ms": 41.5, "unsupported": None, "surprise_mean": 1.2, "surprise_p90": 3.4,
+         "surprise_max": 11.0}
+
+
+def test_the_context_check_lands_in_the_done_line_of_a_chat_and_a_warmup(capsys):
+    srv, engine, _ = serve(TEXT_TURN, stats=GenerationStats(prompt_tokens=84898, cached_tokens=83712,
+                                                            completion_tokens=5, context_check=CHECK))
+    try:
+        post(srv, {"model": "kitten-27b", "messages": []}).read()
+        post_path(srv, "/lmk/v1/warmup", {"model": "kitten-27b", "messages": [{"role": "user", "content": "hi"}]})
+    finally:
+        srv.shutdown()
+    logged = [json.loads(l) for l in capsys.readouterr().err.splitlines() if l.startswith("{")]
+    for event in ("LmkChatDone", "LmkWarmupDone"):
+        done = [l for l in logged if l["event"] == event][0]
+        assert (done["restoreSource"], done["restoredTokens"], done["promptSurpriseMean"], done["promptSurpriseP90"],
+                done["promptSurpriseMax"], done["promptSurpriseTokens"], done["promptSurpriseMs"]) == \
+            ("disk", 83712, 1.2, 3.4, 11.0, 512, 41.5)
+    assert not [l for l in logged if l["event"] == "LmkContextSurprising"]   # no band measured yet: log only
+
+
+@pytest.mark.parametrize("mean, scored, warned", [(6.0, 512, True), (1.2, 512, False), (6.0, 10, False)])
+def test_a_surprise_above_the_band_is_a_warning(capsys, monkeypatch, mean, scored, warned):
+    import lmk.chat
+
+    monkeypatch.setattr(lmk.chat, "CONTEXT_SURPRISE_WARN_MEAN", 4.0)
+    check = {**CHECK, "surprise_mean": mean, "scored_tokens": scored}
+    srv, _, _ = serve(TEXT_TURN, stats=GenerationStats(prompt_tokens=100, context_check=check))
+    try:
+        post(srv, {"model": "kitten-27b", "messages": []}, {"X-Lmk-Ref-Id": "s/1"}).read()
+    finally:
+        srv.shutdown()
+    warnings = _logged(capsys, "LmkContextSurprising")
+    assert bool(warnings) == warned
+    if warned:
+        assert (warnings[0]["refId"], warnings[0]["restoreSource"], warnings[0]["warnAbove"]) == ("s/1", "disk", 4.0)
+
+
+def test_no_context_check_adds_no_fields(capsys):
+    srv, _, _ = serve(TEXT_TURN)
+    try:
+        post(srv, {"model": "kitten-27b", "messages": []}).read()
+    finally:
+        srv.shutdown()
+    assert "promptSurpriseMean" not in _logged(capsys, "LmkChatDone")[0]
+
+
+def test_the_models_own_turns_are_what_the_context_check_scores():
+    from lmk.engine import Preflight
+
+    class TurnFormat(FakeChatFormat):
+        def assistant_token_indices(self, tokens):
+            return [i for i, t in enumerate(tokens) if t == 7]
+
+    class TokenEngine(FakeEngine):
+        def preflight(self, prompt_text, images_b64=None):
+            return Preflight(prompt_tokens=5, uncached_tokens=5, tokens=[1, 7, 7, 2, 7])
+
+    engine = TokenEngine(MODEL, chat_format=TurnFormat(), script=TEXT_TURN)
+    srv = LmkServer(engine, "127.0.0.1", 0)
+    threading.Thread(target=srv.serve_forever, daemon=True).start()
+    try:
+        post(srv, {"model": "kitten-27b", "messages": []}).read()
+    finally:
+        srv.shutdown()
+    assert engine.requests[0]["check_targets"] == [1, 2, 4]

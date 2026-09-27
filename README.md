@@ -200,8 +200,7 @@ picked a model and want your agent to be fast on it every day, that is what lmk 
 
 ## What does not work yet
 
-- **`seed` is ignored** — the engine drops it on the batched code path lmk runs on. For a repeatable answer
-  send `temperature: 0`. `response_format` / JSON schema output is not wired up yet.
+- `response_format` / JSON schema output is not wired up yet.
 - Five tested models (see Models). Others load through `model.repo`, untested by us.
 - The memory rules below are tested on one machine (96 GB), where most of them never trigger; on a smaller Mac
   they are covered by unit tests only.
@@ -293,7 +292,8 @@ lmk follows the OpenAI shape and puts its additions where that shape has room, s
 keep working and yours can do better:
 
 - **Cache hits** are reported per request in `usage.prompt_tokens_details.cached_tokens`.
-  The usage chunk also carries `lmk.restore_ms` (how long the cached part took to come back from disk) and `lmk.first_token_ms`.
+  The usage chunk also carries `lmk.restore_ms` (how long the cached part took to come back from disk), `lmk.first_token_ms`
+  and `lmk.seed` (below). A non-streamed answer carries the same `lmk` object next to `usage`.
 - **Thinking** arrives separately, in `delta.reasoning_content`.
 - **Tool calls** come back as structured `tool_calls` with JSON arguments, whatever format the model writes natively.
 - **Prompt-reading progress**: while a long prompt is being read, the stream carries chunks with
@@ -308,7 +308,12 @@ keep working and yours can do better:
   a value out of range is a 400 naming the field. A request that sets none of them runs with the
   model's own `generation_config.json` (`lmk status` shows those values). `stop` strings match the
   **answer only** — a stop string that shows up inside the model's thinking does not end the request.
-  `seed` is accepted and ignored (logged as `LmkParamIgnored`); see "What does not work yet".
+- **Every sampled answer has a seed, so a bad one can be replayed.** Send `seed` (an integer from 0 to 2^64−1) or let
+  lmk pick one; either way it comes back as `lmk.seed` and is in the request's log line (`LmkChatDone`, with
+  `othersPeak`: how many other requests shared the engine with it). A greedy answer (`temperature: 0`) has no
+  seed: `lmk.seed` is null. Sending the same request again with that seed gives the same answer, token for token,
+  when both runs had the engine alone (`othersPeak` 0); if such a replay differs, please report it. A request that
+  shared the engine can differ at a near-tie word: the batch changes the rounding, not the randomness.
 - Closing the connection cancels the request (at the next progress step — within a few seconds). `GET /lmk/v1/status` is what `lmk status` prints.
 
 

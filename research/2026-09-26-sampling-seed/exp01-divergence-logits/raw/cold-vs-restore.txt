@@ -1,0 +1,15 @@
+tools=False seed=11 cold(cached 0) vs restored(cached 0): identical over 134 positions, max|dlogprob| (top-20, shared) 0.0000
+tools=False seed=11 restored vs restored again: identical over 134 positions, max|dlogprob| (top-20, shared) 0.0000
+tools=False seed=12 cold(cached 0) vs restored(cached 0): identical over 161 positions, max|dlogprob| (top-20, shared) 0.0000
+tools=False seed=12 restored vs restored again: identical over 161 positions, max|dlogprob| (top-20, shared) 0.0000
+tools=False seed=13 cold(cached 0) vs restored(cached 0): identical over 157 positions, max|dlogprob| (top-20, shared) 0.0000
+tools=False seed=13 restored vs restored again: identical over 157 positions, max|dlogprob| (top-20, shared) 0.0000
+tools=True seed=11 cold(cached 0) vs restored(cached 256): first divergence at generated position 0; max|dlogprob| before it 0.0000, at it 0.5000
+   A drew 'We' p=0.253 (B gives it 0.197); B drew 'The' p=0.687 (A gives it 0.687)
+   A top5: [("'The'", -0.375), ("'We'", -1.375), ("'User'", -3.5), ("'Task'", -4.125), ("'I'", -4.625)]
+   B top5: [("'The'", -0.375), ("'We'", -1.625), ("'User'", -3.625), ("'Task'", -4.375), ("'I'", -4.625)]
+tools=True seed=11 restored vs restored again: identical over 161 positions, max|dlogprob| (top-20, shared) 0.0000
+tools=True seed=12 cold(cached 256) vs restored(cached 256): identical over 161 positions, max|dlogprob| (top-20, shared) 0.0000
+tools=True seed=12 restored vs restored again: identical over 161 positions, max|dlogprob| (top-20, shared) 0.0000
+tools=True seed=13 cold(cached 256) vs restored(cached 256): identical over 85 positions, max|dlogprob| (top-20, shared) 0.0000
+tools=True seed=13 restored vs restored again: identical over 85 positions, max|dlogprob| (top-20, shared) 0.0000

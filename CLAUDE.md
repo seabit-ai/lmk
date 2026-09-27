@@ -105,8 +105,10 @@ Known issues）、启动时校验会炸的配置值。加模型的工作量大�
   **只重建 `.venv`**（`rm -rf .venv && ~/.local/bin/python3.11 -m venv .venv && .venv/bin/pip install -r requirements.txt`）→ `make cache-compat` + `make itest`；
   不过就 `CACHE_FORMAT_VERSION` +1。**别 `make clean`：它 `rm -rf .engine`，fork 上没 push 的提交一起没**（2026-09-24 差点）。`make venv`/`make test` 还会把
   `.engine/mlx-engine` checkout 到 `ENGINE_COMMIT`（见下一条），改引擎期间在 fork 分支上提交后先更新 `ENGINE_COMMIT` 再跑它们。
-- 引擎缺省是贪心（temp 0）且不读模型的 generation_config；引擎的 `stop_strings` 对思考段也生效；`seed` 在批处理路径被引擎忽略。
-  三条都由 lmk 侧兜住（`sampling.py` / `stopmatch.py`），别把 stop 或 seed "顺手"直接传给引擎。
+- 引擎缺省是贪心（temp 0）且不读模型的 generation_config；引擎的 `stop_strings` 对思考段也生效。两条都由 lmk 侧兜住
+  （`sampling.py` / `stopmatch.py`），别把 stop "顺手"直接传给引擎。`seed` 上游在批处理路径上忽略，**我们的 fork 按请求、按生成位置
+  取随机数**（`SeededSampler`，设计 `2026-09-26-sampling-seed`）；lmk 每次生成都给一个 seed（请求没带就自己抽）。改引擎的抽样路径时
+  要把生成位置一起传（`sample_target(..., positions=...)`），否则同 seed 重放会悄悄失效——`tests/test_seeded_sampling.py` 锁着。
 - **进表的门槛**：集成测试开关各 5/5 **且** exp03 那三个 agent 任务在模型缺省采样下多轮全对；**模型页的 Recommended configuration 是一个组合，
   验收也按这个组合跑一遍**（2026-09-24：kv8 与投机各自 5/5，同开第一个请求 500——上游 mlx-vlm 的校验注意力不吃量化 cache，fork 7a1e17f 修）；过不了的（Gemma 4 12B）也写一页 `docs/models/<name>.md`（标 tried, not listed，记全过程），**不进 README**——别污染客户的阅读上下文。
 - zsh 里 `set -- $var` 不拆词（未加引号的变量不做 word splitting）——跑多模型循环用 bash 脚本，别在 zsh 单行里 `for pair in "a b"`（2026-09-22 起错了一个默认配置的服务占了 1235 端口）。

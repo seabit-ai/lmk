@@ -1,0 +1,12 @@
+  meter.wants start=0 n=768 -> True
+  LM call n=768 keys=['cache', 'inputs_embeds', 'position_ids', 'return_hidden', 'rope_deltas'] hidden=1
+  meter.add start=0 hidden=(1, 768, 5120) lo/hi=276/788
+  meter.wants start=768 n=21 -> True
+  LM call n=21 keys=['cache', 'inputs_embeds', 'position_ids', 'return_hidden', 'rope_deltas'] hidden=1
+  meter.add start=768 hidden=(1, 21, 5120) lo/hi=276/788
+cold: prompt=789 cached=0 wall_ms=3141 check={'restore_source': 'none', 'restored_tokens': 0, 'hot_trimmed_tokens': 0, 'segment_tokens': 789, 'scored_tokens': 512, 'ms': 3079.0, 'unsupported': None, 'surprise_mean': 7.1374, 'surprise_p90': 20.6251, 'surprise_max': 31.8946}
+  meter.wants start=0 n=256 -> True
+  meter.add start=0 hidden=None lo/hi=0/326
+  meter.wants start=256 n=71 -> True
+  meter.add start=256 hidden=None lo/hi=0/326
+restored: prompt=1095 cached=768 wall_ms=1275 check={'restore_source': 'disk', 'restored_tokens': 768, 'hot_trimmed_tokens': 0, 'segment_tokens': 327, 'scored_tokens': 0, 'ms': 0.0, 'unsupported': None}

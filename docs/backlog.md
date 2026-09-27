@@ -1,7 +1,7 @@
 # lmk backlog —— 现在到哪了、还欠什么
 
 会变的东西放这里（`CLAUDE.md` 放不变的）。改了状态就回来改这份；条目做完就删，结论归到设计文档或 research。
-最后核对：2026-09-25。
+最后核对：2026-09-26。
 
 ## 现在到哪了
 | 块 | 状态 | 出处 |
@@ -10,7 +10,8 @@
 | 开箱体验（`lmk pull/up/status/logs/down`、`~/.lmk/`、零必填配置的 example、HF 共享目录、`install.sh`） | 完成，已合 main | `docs/design/2026-09-20-lmk-oobe.md` |
 | 内存护栏（加载前检查、准入队列四条规则、`requests.*` 三个配置、内存读数） | 完成，已合 main | `docs/design/2026-09-20-memory-guard.md` |
 | 状态看板（`lmk status [-w]`：starting/prefill/decode、排队原因、刚结束的、cache 命中率） | 完成，已合 main | 同上 + `lmk/board.py` |
-| 采样参数（temperature/top_p/top_k/min_p/repetition_penalty/stop；缺省读模型 `generation_config.json`；seed 收下不传、记 `LmkParamIgnored`） | 完成，已合 main | `docs/design/2026-09-21-sampling.md` |
+| 采样参数（temperature/top_p/top_k/min_p/repetition_penalty/stop；缺省读模型 `generation_config.json`） | 完成，已合 main | `docs/design/2026-09-21-sampling.md` |
+| seed 可重放（fork 按请求、按生成位置取随机数；lmk 每次生成都有 seed，没带就抽，回给调用方；`LmkChatDone` 记 `seed`/`seedFrom`/`othersAtStart`/`othersPeak`） | 分支 `sampling-seed` + fork `lmk-seed`，单测过，**itest 未跑**（等 owner），未合 | `docs/design/2026-09-26-sampling-seed.md`、`research/2026-09-26-sampling-seed/` |
 | 预热降级为最低优先级 + decode/prefill 进度随流推送 + 预热耗时行 + floor256 修复（"warmed N new tokens in Xs" / "already warm · Xs" / "yielded after Xs"，只算真正落进检查点的量） | 完成，已合 main | `research/2026-09-24-prewarm/`；机制设计在 kitten `docs/design/2026-09-24-llm-progress.md` |
 | 自己的引擎路线：KV cache 量化（16/8/4 位）、投机解码（MTP 头 + DFlash2 两种草稿器，`model.draft`）、mlx-vlm 升级到 0.6.16、校验改普通前向；27B-4bit 缺省草稿器 dflash2（其余位宽仍 mtp）。已知限制：投机只单请求一次一条（多行探过 exp15，最多 1.16×，不做，SPD-021） | 完成，已合 main | `docs/design/2026-09-23-own-engine.md`、`research/2026-09-23-kv-cache-quant/`、`research/2026-09-23-speculative-decoding/`、`research/2026-09-24-engine-upgrade-vlm616/` |
 | 智能评测 27B vs 122B（122B 不更聪明、只更快更省；27B + `reasoning_effort: low` 最佳，xhigh 每类都更差且常超限） | 完成 | `research/2026-09-23-intelligence-27b-vs-122b/`，模型页已据此更新 |
@@ -37,6 +38,23 @@
     有鉴别力的实验：关草稿造热 cache 再与磁盘恢复比，kv16 各跑一次。
   - MTP 行逐位 lm_head 投影串行（可整块算）；DFlash `RoundResult.accepted` 现为 kept，与统计口径不同（无人读）。
 - 结构化输出（分支 `structured-output`，设计已全关、计划 0d0c971）排在它之后，复用这套逐位 walk：计划里"约束期间关投机"一条要改成"照常起草"。
+
+## 2026-09-26 seed 可重放（分支 `sampling-seed`，fork `lmk-seed`）
+- 已做：见设计文档；单测（引擎 test_seeded_sampling 33 个、lmk 241 过）+ lint。review 修正：seed 定为 uint64、顺序路径、贪心不抽、提前结束的请求离开引擎批（SEED-008..011）。
+- 欠：itest（命令在 `research/2026-09-26-sampling-seed/notes.md`）→ 真机照用户的样子跑（kitten 一轮，看 `LmkChatDone` 的 seed 与 othersPeak）→
+  owner push fork `lmk-seed` → 合。合并前 `ENGINE_COMMIT` 指向的 fork commit 必须已在 GitHub 上（install.sh 按 hash 下 tarball）。
+- 重放把 SPD-034 变成可测的：同 seed 下冷算与恢复续跑分叉即是线索（owner 2026-09-26：prefix cache 只允许浮点舍入级的差别，更大就是 bug）。
+- 顺手发现（未做）：kitten 如果要自己重放，它得存下 `lmk.seed`；kitten 侧没改。
+
+## 2026-09-26 带 DFlash 时恢复后的 RoPE 位置错（fork `39c17a2` 已修，在 `context-check` 分支上）
+- 恢复前缀后那段 prefill 的位置从 0 数起，首 token 分布偏 TV 0.3（`research/2026-09-26-sampling-seed/exp01-divergence-logits`）。
+  可能是事故 000193 的原因（推测）：用修前引擎 + 000193 的请求 + dflash2 磁盘恢复复现一次即可证实。
+- **合并时要定**：磁盘 cache 里修前写下的块是坏的，要不要 `CACHE_FORMAT_VERSION` +1（清 cache，用户要重新冷算一次）。
+
+## 2026-09-26 上下文自检（分支 `context-check`，基于 `sampling-seed`；fork `context-check`）
+- 起因：事故 000193（恢复 83712 token 后模型像丢了整段对话，重放正常）。设计 `docs/design/2026-09-26-context-check.md`。
+- 已做：prefill 段尾 512 个位置的 teacher-forced surprise + 恢复来源，进 `LmkChatDone` / `LmkWarmupDone`；单测。
+- 欠：itest（命令在 `research/2026-09-26-context-check/notes.md`）；开销实测（CTX-003）；正常区间 → 报警阈值（CTX-004，现为只记不报）。
 
 ## 下一个：structured output（`response_format` / `json_schema`）
 owner 已同意方向（2026-09-25），SAD 还没开题。引擎侧已有 `json_schema` 参数；与思考段、工具调用的关系没想清楚（口子留在 `docs/design/2026-09-21-sampling.md`）。

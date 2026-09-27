@@ -1,0 +1,8 @@
+intact#0: prompt=773 restored=256 (disk) scored=512 mean=4.9408 p90=16.625 ms=83.4
+C1-zero-recurrent#0: prompt=775 restored=256 (disk) scored=512 mean=1.1299 p90=2.9339 ms=84.2
+C2-shuffle-kv+zero-recurrent#0: prompt=775 restored=256 (disk) scored=512 mean=1.1207 p90=2.94 ms=84.0
+C3-zero-all#0: prompt=776 restored=256 (disk) scored=512 mean=1.0916 p90=2.7164 ms=84.7
+    assert captured["len"] == restored.cached_prefix_len, (captured["len"], restored.cached_prefix_len)
+AssertionError: (1280, 256)
+    assert captured["len"] == restored.cached_prefix_len, (captured["len"], restored.cached_prefix_len)
+AssertionError: (1280, 256)

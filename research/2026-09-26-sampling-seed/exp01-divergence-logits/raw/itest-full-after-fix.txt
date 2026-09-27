@@ -1,0 +1,22 @@
+== draft=
+itest: dialect qwen thinking True kv cache bits 16 draft None
+itest seed: 470731346 tools=False draft=False cached first/replay/again=0/0/0 drafted replay/again=None/None cold-vs-restored identical=True
+itest seed: cold vs restored: positions compared 161, first divergence None, max TV 0.000, max|dlogprob| (p>0.05) 0.000
+itest seed: 1897476640 tools=True draft=False cached first/replay/again=256/256/256 drafted replay/again=None/None cold-vs-restored identical=True
+itest seed: cold vs restored: positions compared 161, first divergence None, max TV 0.000, max|dlogprob| (p>0.05) 0.000
+itest context check intact: {'restore_source': 'disk', 'restored_tokens': 1024, 'hot_trimmed_tokens': 0, 'segment_tokens': 386, 'scored': 'targets', 'scored_tokens': 297, 'ms': 52.3, 'unsupported': None, 'surprise_mean': 0.0936, 'surprise_p90': 0.0002, 'surprise_max': 12.062} (~176 ms per 1k scored)
+itest context check wiped: {'restore_source': 'disk', 'restored_tokens': 1024, 'hot_trimmed_tokens': 0, 'segment_tokens': 386, 'scored': 'targets', 'scored_tokens': 297, 'ms': 52.3, 'unsupported': None, 'surprise_mean': 1.336, 'surprise_p90': 2.697, 'surprise_max': 11.954} (~176 ms per 1k scored)
+itest context check wrong: {'restore_source': 'disk', 'restored_tokens': 1024, 'hot_trimmed_tokens': 0, 'segment_tokens': 385, 'scored': 'targets', 'scored_tokens': 297, 'ms': 56.4, 'unsupported': None, 'surprise_mean': 1.1053, 'surprise_p90': 2.5091, 'surprise_max': 11.953} (~190 ms per 1k scored)
+10 passed, 3 skipped, 249 deselected in 226.08s (0:03:46)
+== draft=dflash2
+itest: dialect qwen thinking True kv cache bits 16 draft /Users/xinkai/.cache/huggingface/hub/models--seabit-ai--Qwen3.8-27B-DFlash2-4bit/snapshots/local-quant-2026-09-24
+itest: tools request drafted 138 accepted 124 completion 169 calls ['file_write']
+itest seed: 371138888 tools=False draft=True cached first/replay/again=0/0/0 drafted replay/again=146/146 cold-vs-restored identical=True
+itest seed: cold vs restored: positions compared 160, first divergence None, max TV 0.000, max|dlogprob| (p>0.05) 0.000
+itest seed: 1913152755 tools=True draft=True cached first/replay/again=256/256/256 drafted replay/again=126/126 cold-vs-restored identical=True
+itest seed: cold vs restored: positions compared 143, first divergence None, max TV 0.000, max|dlogprob| (p>0.05) 0.000
+itest spec on/off: drafted 126 accepted 73 identical=False; positions compared 96, first divergence 39, max TV 0.077, max|dlogprob| (p>0.05) 0.375
+itest context check intact: {'restore_source': 'disk', 'restored_tokens': 1024, 'hot_trimmed_tokens': 0, 'segment_tokens': 392, 'scored': 'targets', 'scored_tokens': 297, 'ms': 52.2, 'unsupported': None, 'surprise_mean': 0.0886, 'surprise_p90': 0.0003, 'surprise_max': 11.2712} (~176 ms per 1k scored)
+itest context check wiped: {'restore_source': 'disk', 'restored_tokens': 1024, 'hot_trimmed_tokens': 0, 'segment_tokens': 389, 'scored': 'targets', 'scored_tokens': 297, 'ms': 52.2, 'unsupported': None, 'surprise_mean': 1.3506, 'surprise_p90': 2.7306, 'surprise_max': 12.3779} (~176 ms per 1k scored)
+itest context check wrong: {'restore_source': 'disk', 'restored_tokens': 1024, 'hot_trimmed_tokens': 0, 'segment_tokens': 390, 'scored': 'targets', 'scored_tokens': 297, 'ms': 56.3, 'unsupported': None, 'surprise_mean': 1.1051, 'surprise_p90': 2.5334, 'surprise_max': 12.2566} (~190 ms per 1k scored)
+12 passed, 1 skipped, 249 deselected in 186.98s (0:03:06)

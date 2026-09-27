@@ -1,0 +1,12 @@
+nodraft tools=True trial 0: cached 0/256/256; cold vs restored TV 0.003 max|dlogprob| (p>0.05) 0.000; restored vs again TV 0.000 max|dlogprob| (p>0.05) 0.000
+nodraft tools=True trial 1: cached 256/256/256; cold vs restored TV 0.000 max|dlogprob| (p>0.05) 0.000; restored vs again TV 0.000 max|dlogprob| (p>0.05) 0.000
+nodraft tools=True trial 2: cached 256/256/256; cold vs restored TV 0.000 max|dlogprob| (p>0.05) 0.000; restored vs again TV 0.000 max|dlogprob| (p>0.05) 0.000
+nodraft tools=False trial 0: cached 0/512/512; cold vs restored TV 0.002 max|dlogprob| (p>0.05) 0.000; restored vs again TV 0.000 max|dlogprob| (p>0.05) 0.000
+nodraft tools=False trial 1: cached 0/512/512; cold vs restored TV 0.005 max|dlogprob| (p>0.05) 0.000; restored vs again TV 0.000 max|dlogprob| (p>0.05) 0.000
+nodraft tools=False trial 2: cached 0/512/512; cold vs restored TV 0.002 max|dlogprob| (p>0.05) 0.000; restored vs again TV 0.000 max|dlogprob| (p>0.05) 0.000
+draft tools=True trial 0: cached 0/256/256; cold vs restored TV 0.285 max|dlogprob| (p>0.05) 0.750; restored vs again TV 0.000 max|dlogprob| (p>0.05) 0.000
+draft tools=True trial 1: cached 256/256/256; cold vs restored TV 0.000 max|dlogprob| (p>0.05) 0.000; restored vs again TV 0.000 max|dlogprob| (p>0.05) 0.000
+draft tools=True trial 2: cached 256/256/256; cold vs restored TV 0.000 max|dlogprob| (p>0.05) 0.000; restored vs again TV 0.000 max|dlogprob| (p>0.05) 0.000
+draft tools=False trial 0: cached 0/512/512; cold vs restored TV 0.087 max|dlogprob| (p>0.05) 0.125; restored vs again TV 0.000 max|dlogprob| (p>0.05) 0.000
+draft tools=False trial 1: cached 0/512/512; cold vs restored TV 0.070 max|dlogprob| (p>0.05) 0.125; restored vs again TV 0.000 max|dlogprob| (p>0.05) 0.000
+draft tools=False trial 2: cached 0/512/512; cold vs restored TV 0.080 max|dlogprob| (p>0.05) 0.125; restored vs again TV 0.000 max|dlogprob| (p>0.05) 0.000
