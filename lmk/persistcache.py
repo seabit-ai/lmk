@@ -26,7 +26,7 @@ from typing import Any, Callable, Optional
 
 from lmk import log
 
-CACHE_FORMAT_VERSION = 1
+CACHE_FORMAT_VERSION = 2  # 2: records written with dflash before engine 39c17a2 carry wrong RoPE positions after a restore
 _LAYOUT_FILE = "layout.json"
 _SUFFIX = ".safetensors"
 
