@@ -46,6 +46,11 @@
 - 重放把 SPD-034 变成可测的：同 seed 下冷算与恢复续跑分叉即是线索（owner 2026-09-26：prefix cache 只允许浮点舍入级的差别，更大就是 bug）。
 - 顺手发现（未做）：kitten 如果要自己重放，它得存下 `lmk.seed`；kitten 侧没改。
 
+## 2026-09-26 上下文自检（分支 `context-check`，基于 `sampling-seed`；fork `context-check`）
+- 起因：事故 000193（恢复 83712 token 后模型像丢了整段对话，重放正常）。设计 `docs/design/2026-09-26-context-check.md`。
+- 已做：prefill 段尾 512 个位置的 teacher-forced surprise + 恢复来源，进 `LmkChatDone` / `LmkWarmupDone`；单测。
+- 欠：itest（命令在 `research/2026-09-26-context-check/notes.md`）；开销实测（CTX-003）；正常区间 → 报警阈值（CTX-004，现为只记不报）。
+
 ## 下一个：structured output（`response_format` / `json_schema`）
 owner 已同意方向（2026-09-25），SAD 还没开题。引擎侧已有 `json_schema` 参数；与思考段、工具调用的关系没想清楚（口子留在 `docs/design/2026-09-21-sampling.md`）。
 

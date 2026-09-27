@@ -267,3 +267,66 @@ def test_the_same_seed_draws_the_same_tokens_with_the_draft_on_and_off(server):
           f"identical={plain == spec}")
     assert spec_stats.draft_drafted and spec_stats.draft_drafted > 0
     assert spec == plain
+
+
+# design 2026-09-26-context-check: the prefill scores how well the model predicts its own new prompt segment.
+# (a) an intact restored conversation: the number, printed, and a loose sanity bound; (b) the same restore with
+# the linear-attention (recurrent) states zeroed — the failure mode suspected in incident 000193 — must score
+# clearly worse. That difference is the proof the check can see a lost context.
+def test_the_context_check_sees_a_corrupted_restore(server):
+    import uuid
+
+    import mlx.core as mx
+    import mlx_engine.model_kit.batched_vision.model_kit as vision_kit
+
+    engine = server.engine
+    fmt = engine.chat_format()
+    names = [f"{w}-{i * 7919 % 1000:03d}" for i, w in enumerate(
+        "amber basalt cobalt dune ember fjord garnet harbor indigo jasper kelp lumen marble nectar onyx pewter "
+        "quartz russet sable tundra umber velvet willow xenon yarrow zephyr".split())]
+    system = {"role": "system", "content": f"Session {uuid.uuid4().hex}. You are kitten, a coding agent."}
+    history = [system,
+               {"role": "user", "content": "Here are the release codenames, in order: " + ", ".join(names) +
+                ". Keep them in mind. " + " ".join(f"Note {i}: codename {n} ships in week {i + 3}."
+                                                   for i, n in enumerate(names))},
+               {"role": "assistant", "content": "Understood — I have the codenames and their weeks."}]
+    def turn(tag):
+        # the tag leads the new message, so the second turn shares the first one's cache only up to the history
+        return history + [{"role": "user", "content": f"{tag} Repeat every codename with its week, in the same "
+                           "order, as 'codename: week' lines. Here they are once more for reference: " +
+                           "; ".join(f"{n}: week {i + 3}" for i, n in enumerate(names))}]
+
+    def run(messages):
+        g = engine.generate(fmt.render(messages, None), max_tokens=4, request_id=f"itest-ctx-{uuid.uuid4().hex[:8]}",
+                            on_prefill=lambda *a: True, sampling={"temp": 0.0})
+        "".join(g)
+        return g.stats
+
+    cold = run(history)
+    intact = run(turn("Request A."))           # restores the history, prefills the new turn
+    zeroed = []
+
+    def zero_recurrent(restored):
+        for c in restored.prompt_cache:
+            if type(c).__name__ == "ArraysCache":
+                c.cache = [None if a is None else mx.zeros_like(a) for a in c.cache]
+                zeroed.append(1)
+
+    vision_kit.RESTORED_CACHE_HOOK = zero_recurrent
+    try:
+        corrupt = run(turn("Request B."))      # restores (about) the same point, recurrent state wiped
+    finally:
+        vision_kit.RESTORED_CACHE_HOOK = None
+    for name, s in (("cold", cold), ("intact", intact), ("corrupt", corrupt)):
+        c = s.context_check or {}
+        per_1k = c.get("ms", 0) / max(1, c.get("scored_tokens") or 1) * 1000
+        print(f"itest context check {name}: prompt={s.prompt_tokens} cached={s.cached_tokens} {c} "
+              f"(~{per_1k:.0f} ms per 1k scored tokens)")
+
+    a, b = intact.context_check, corrupt.context_check
+    assert a["restore_source"] in ("hot", "disk") and a["restored_tokens"] > 0 and a["scored_tokens"] >= 32
+    assert b["restored_tokens"] > 0 and b["scored_tokens"] >= 32
+    assert zeroed, "the hook reached the recurrent layers"
+    # loose sanity bound, not the band (that is to be measured): a copy task an intact model predicts well
+    assert a["surprise_mean"] < 2.0
+    assert b["surprise_mean"] > a["surprise_mean"] + 1.0

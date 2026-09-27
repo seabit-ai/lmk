@@ -89,6 +89,36 @@ def prepare_chat(engine: Engine, body: dict, warmup: bool = False) -> PreparedCh
                         ignored_params=ignored, seed_from=seed_from)
 
 
+# design 2026-09-26-context-check: a mean surprise (nats per prompt token, teacher-forced) above this says the
+# model did not recognise its own conversation. None until the normal band is measured (research
+# 2026-09-26-context-check): until then the numbers are logged and nothing is flagged.
+CONTEXT_SURPRISE_WARN_MEAN: Optional[float] = None
+CONTEXT_SURPRISE_MIN_TOKENS = 32  # fewer scored tokens than this is too little to judge by
+
+
+def context_fields(check: Optional[dict]) -> dict:
+    """The engine's context check as LmkChatDone / LmkWarmupDone fields; nothing when the engine made none."""
+    if not check:
+        return {}
+    return {"restoreSource": check.get("restore_source"), "restoredTokens": check.get("restored_tokens"),
+            "hotTrimmedTokens": check.get("hot_trimmed_tokens"),
+            "promptSurpriseMean": check.get("surprise_mean"), "promptSurpriseP90": check.get("surprise_p90"),
+            "promptSurpriseMax": check.get("surprise_max"), "promptSurpriseTokens": check.get("scored_tokens"),
+            "promptSurpriseMs": check.get("ms"), "promptSurpriseUnsupported": check.get("unsupported")}
+
+
+def warn_if_surprised(check: Optional[dict], identity: "CallerIdentity") -> None:
+    if CONTEXT_SURPRISE_WARN_MEAN is None or not check or check.get("surprise_mean") is None:
+        return
+    if (check.get("scored_tokens") or 0) < CONTEXT_SURPRISE_MIN_TOKENS:
+        return
+    if check["surprise_mean"] > CONTEXT_SURPRISE_WARN_MEAN:
+        log.warn("LmkContextSurprising", "the model predicted its own prompt far worse than usual",
+                 purpose=identity.purpose, refId=identity.ref_id, promptSurpriseMean=check["surprise_mean"],
+                 warnAbove=CONTEXT_SURPRISE_WARN_MEAN, restoreSource=check.get("restore_source"),
+                 restoredTokens=check.get("restored_tokens"), promptSurpriseTokens=check.get("scored_tokens"))
+
+
 def run_chat(engine: Engine, body: dict, identity: CallerIdentity,
              emit: Callable[[dict], None], on_progress: Callable[[dict], None] = lambda _: None,
              prepared: Optional[PreparedChat] = None, overlap: Callable[[], dict] = lambda: {}) -> dict:
@@ -208,7 +238,8 @@ def run_chat(engine: Engine, body: dict, identity: CallerIdentity,
              restoreMs=state["restore_ms"], ttftMs=state["first_ms"], totalMs=total_ms, finishReason=finish, cancelled=state["cancelled"],
              sampling={k: v for k, v in prepared.sampling.items() if k != "seed"}, stop=prepared.stop_strings or None,
              seed=prepared.sampling.get("seed"), seedFrom=prepared.seed_from, **overlap(),
-             draftAccepted=stats.draft_accepted, draftDrafted=stats.draft_drafted)
+             draftAccepted=stats.draft_accepted, draftDrafted=stats.draft_drafted, **context_fields(stats.context_check))
+    warn_if_surprised(stats.context_check, identity)
     return {"id": completion_id, "finish_reason": finish, "usage": usage, "tool_calls": tool_calls,
             "content": "".join(state["text"]), "reasoning_content": "".join(state["reasoning"]),
             "base": base, "cancelled": state["cancelled"], "lmk": lmk_fields}
@@ -269,6 +300,7 @@ def run_warmup(engine: Engine, body: dict, identity: CallerIdentity,
     log.info("LmkWarmupDone", "prefix warmed" if outcome == "done" else "warmup yielded to a request",
              purpose=identity.purpose or "warmup", refId=identity.ref_id, traceparent=identity.traceparent,
              outcome=outcome, promptTokens=stats.prompt_tokens, cachedTokens=stats.cached_tokens,
-             yieldedAtTokens=yielded["at"], totalMs=total_ms)
+             yieldedAtTokens=yielded["at"], totalMs=total_ms, **context_fields(stats.context_check))
+    warn_if_surprised(stats.context_check, identity)
     return {"outcome": outcome, "prompt_tokens": stats.prompt_tokens, "cached_tokens": stats.cached_tokens,
             "total_ms": total_ms}

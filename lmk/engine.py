@@ -26,6 +26,7 @@ class GenerationStats:
     completion_tokens: int = 0
     draft_accepted: Optional[int] = None  # speculative decoding: drafted tokens the model agreed with ...
     draft_drafted: Optional[int] = None   # ... out of how many it drafted (shared when requests overlap)
+    context_check: Optional[dict] = None  # the engine's context check (design 2026-09-26-context-check); None: none
 
 
 @dataclass
@@ -264,6 +265,9 @@ class MlxEngine:
                 # stopping early (client gone, a stop string) takes the row out of the engine's batch now, queued
                 # ahead of any request admitted after this one (the fork's _batched_generation removes on close)
                 results.close()
+                pop_check = getattr(self._kit, "pop_context_check", None)
+                if pop_check is not None:
+                    stats.context_check = pop_check(request_id)
             after = self._drafter_counters()
             if before is not None and after is not None:
                 stats.draft_accepted = after[1] - before[1]

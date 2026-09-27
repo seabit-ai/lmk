@@ -438,8 +438,60 @@ def test_stopping_early_closes_the_engines_generator(monkeypatch):
     monkeypatch.setitem(sys.modules, "mlx_engine.utils.prompt_progress_reporter",
                         types.SimpleNamespace(PromptProgressReporter=object))
     engine = object.__new__(MlxEngine)
-    engine._kit, engine._draft_tokens = types.SimpleNamespace(), None
+    popped = []
+    engine._kit = types.SimpleNamespace(pop_context_check=lambda rid: popped.append(rid) or {"scored_tokens": 3})
+    engine._draft_tokens = None
     generation = engine.generate("p", max_tokens=None, request_id="r-1", on_prefill=lambda *a: True, tokens=[1])
     assert next(iter(generation)) == "a"
     generation.pieces.close()
     assert closed == ["r-1"]
+    # the engine's context check for this request is collected on the way out (design 2026-09-26-context-check)
+    assert popped == ["r-1"] and generation.stats.context_check == {"scored_tokens": 3}
+
+
+CHECK = {"restore_source": "disk", "restored_tokens": 83712, "hot_trimmed_tokens": 0, "segment_tokens": 1186,
+         "scored_tokens": 512, "ms": 41.5, "unsupported": None, "surprise_mean": 1.2, "surprise_p90": 3.4,
+         "surprise_max": 11.0}
+
+
+def test_the_context_check_lands_in_the_done_line_of_a_chat_and_a_warmup(capsys):
+    srv, engine, _ = serve(TEXT_TURN, stats=GenerationStats(prompt_tokens=84898, cached_tokens=83712,
+                                                            completion_tokens=5, context_check=CHECK))
+    try:
+        post(srv, {"model": "kitten-27b", "messages": []}).read()
+        post_path(srv, "/lmk/v1/warmup", {"model": "kitten-27b", "messages": [{"role": "user", "content": "hi"}]})
+    finally:
+        srv.shutdown()
+    logged = [json.loads(l) for l in capsys.readouterr().err.splitlines() if l.startswith("{")]
+    for event in ("LmkChatDone", "LmkWarmupDone"):
+        done = [l for l in logged if l["event"] == event][0]
+        assert (done["restoreSource"], done["restoredTokens"], done["promptSurpriseMean"], done["promptSurpriseP90"],
+                done["promptSurpriseMax"], done["promptSurpriseTokens"], done["promptSurpriseMs"]) == \
+            ("disk", 83712, 1.2, 3.4, 11.0, 512, 41.5)
+    assert not [l for l in logged if l["event"] == "LmkContextSurprising"]   # no band measured yet: log only
+
+
+@pytest.mark.parametrize("mean, scored, warned", [(6.0, 512, True), (1.2, 512, False), (6.0, 10, False)])
+def test_a_surprise_above_the_band_is_a_warning(capsys, monkeypatch, mean, scored, warned):
+    import lmk.chat
+
+    monkeypatch.setattr(lmk.chat, "CONTEXT_SURPRISE_WARN_MEAN", 4.0)
+    check = {**CHECK, "surprise_mean": mean, "scored_tokens": scored}
+    srv, _, _ = serve(TEXT_TURN, stats=GenerationStats(prompt_tokens=100, context_check=check))
+    try:
+        post(srv, {"model": "kitten-27b", "messages": []}, {"X-Lmk-Ref-Id": "s/1"}).read()
+    finally:
+        srv.shutdown()
+    warnings = _logged(capsys, "LmkContextSurprising")
+    assert bool(warnings) == warned
+    if warned:
+        assert (warnings[0]["refId"], warnings[0]["restoreSource"], warnings[0]["warnAbove"]) == ("s/1", "disk", 4.0)
+
+
+def test_no_context_check_adds_no_fields(capsys):
+    srv, _, _ = serve(TEXT_TURN)
+    try:
+        post(srv, {"model": "kitten-27b", "messages": []}).read()
+    finally:
+        srv.shutdown()
+    assert "promptSurpriseMean" not in _logged(capsys, "LmkChatDone")[0]
