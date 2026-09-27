@@ -196,3 +196,44 @@ def test_the_model_reads_an_image(server):
         {"type": "image_url", "image_url": {"url": url}}]}])
     print("image answer:", repr(out["content"]), "prompt_tokens:", out["usage"]["prompt_tokens"])
     assert "4217" in out["content"]
+
+
+# design 2026-09-26-sampling-seed: an answer is replayable. Same request + same seed + the same cache
+# restore point, run alone, gives the same tokens; another seed gives another answer. The first request
+# names no seed (lmk draws one and returns it) and sets up the cache the replays restore from. Parametrized
+# with tools too: an agent request carries the engine's tool guard, whose rounds take a different walk.
+@pytest.mark.parametrize("with_tools", [False, True], ids=["plain", "tools"])
+def test_the_same_seed_replays_the_same_answer_and_another_seed_does_not(server, with_tools):
+    import uuid
+
+    messages = [{"role": "system", "content": f"Session {uuid.uuid4().hex}. You are a creative assistant."},
+                {"role": "user", "content": "Invent a name for a new colour and describe it in two sentences."}]
+    # the incident's settings (Qwen3.8's generation_config): temp 1.0, top_p 0.95, top_k 20
+    sampling = {"temperature": 1.0, "top_p": 0.95, "top_k": 20, "max_tokens": 160}
+    if with_tools:
+        sampling["tools"] = TOOLS
+
+    def run(**extra):
+        out = chat(server, messages, **sampling, **extra)
+        return out, (out["reasoning"], out["content"], out["usage"]["completion_tokens"])
+
+    first, first_text = run()
+    seed = first["lmk"]["seed"]
+    assert isinstance(seed, int)
+    replay, replay_text = run(seed=seed)
+    again, again_text = run(seed=seed)
+    other, other_text = run(seed=seed + 1)
+    print(f"itest seed: {seed} tools={with_tools} draft={server.engine.draft_stats() is not None} "
+          f"cached first/replay/again={first['usage']['prompt_tokens_details']['cached_tokens']}/"
+          f"{replay['usage']['prompt_tokens_details']['cached_tokens']}/{again['usage']['prompt_tokens_details']['cached_tokens']} "
+          f"drafted replay/again={replay['lmk'].get('draft_drafted')}/{again['lmk'].get('draft_drafted')} "
+          f"cold-vs-restored identical={first_text == replay_text}")
+    if first_text != replay_text:
+        # not asserted: the first run read the prompt cold, the replays restored it; beyond rounding noise
+        # at a near-tie this is a cache bug worth a look (backlog SPD-034)
+        a, b = "".join(first_text[:2]), "".join(replay_text[:2])
+        at = next((i for i, (x, y) in enumerate(zip(a, b)) if x != y), min(len(a), len(b)))
+        print(f"itest seed: cold and restored runs part at char {at}: {a[max(0, at - 40):at + 40]!r} / {b[max(0, at - 40):at + 40]!r}")
+    assert replay["lmk"]["seed"] == seed and other["lmk"]["seed"] == seed + 1
+    assert replay_text == again_text
+    assert other_text != replay_text

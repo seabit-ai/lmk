@@ -14,7 +14,7 @@ from lmk import log
 from lmk.clock import get_current_clock
 from lmk.chatformat import ImageInputError, split_images
 from lmk.engine import Engine, Preflight
-from lmk.sampling import parse_sampling
+from lmk.sampling import get_current_seed_source, parse_sampling
 from lmk.splitter import Markers, OutputSplitter
 from lmk.stopmatch import StopMatcher
 
@@ -52,6 +52,7 @@ class PreparedChat:
     sampling: dict            # engine kwargs (lmk.sampling); never stop_strings — see stop_strings below
     stop_strings: list[str]   # OpenAI `stop`, matched by lmk on the answer part only (lmk.stopmatch)
     ignored_params: list[str]  # request fields lmk understood but cannot honour (logged, not refused)
+    seed_from: Optional[str] = None  # "request" / "lmk" (drawn because the request named none); None for a warmup
 
     def tokens_needed(self, context_length: int) -> int:
         """Its share of the KV memory: the prompt plus what it may write, capped by the window."""
@@ -71,14 +72,21 @@ def prepare_chat(engine: Engine, body: dict, warmup: bool = False) -> PreparedCh
     max_tokens = 1 if warmup else (body.get("max_tokens") or body.get("max_completion_tokens"))
     sampling, ignored = parse_sampling(body, engine.sampling_defaults())
     stop_strings = sampling.pop("stop_strings", [])
+    seed_from = None
+    if not warmup:
+        # every answer has a known seed, so any answer can be replayed (design 2026-09-26-sampling-seed)
+        seed_from = "request" if "seed" in sampling else "lmk"
+        if seed_from == "lmk":
+            sampling["seed"] = get_current_seed_source().draw()
     return PreparedChat(prompt=prompt, images=images, tools=tools, max_tokens=max_tokens,
                         preflight=engine.preflight(prompt, images), sampling=sampling, stop_strings=stop_strings,
-                        ignored_params=ignored)
+                        ignored_params=ignored, seed_from=seed_from)
 
 
 def run_chat(engine: Engine, body: dict, identity: CallerIdentity,
              emit: Callable[[dict], None], on_progress: Callable[[dict], None] = lambda _: None,
-             prepared: Optional[PreparedChat] = None) -> dict:
+             prepared: Optional[PreparedChat] = None, overlap: Callable[[], dict] = lambda: {}) -> dict:
+    """`overlap()`: fields for LmkChatDone saying which other requests shared the engine with this one."""
     clock = get_current_clock()
     started = clock.mono_ms()
     fmt = engine.chat_format()
@@ -176,7 +184,8 @@ def run_chat(engine: Engine, body: dict, identity: CallerIdentity,
              "prompt_tokens_details": {"cached_tokens": stats.cached_tokens}}
     # lmk's own timing next to the standard usage: how long the cached part took to come back
     # from disk (what a client cannot see from outside; `lmk bench` reads it)
-    lmk_fields = {"restore_ms": state["restore_ms"], "first_token_ms": state["first_ms"]}
+    lmk_fields = {"restore_ms": state["restore_ms"], "first_token_ms": state["first_ms"],
+                  "seed": prepared.sampling.get("seed")}
     if stats.draft_drafted is not None:
         lmk_fields.update(draft_accepted=stats.draft_accepted, draft_drafted=stats.draft_drafted)
     send({"object": "chat.completion.chunk", "choices": [], "usage": usage, "lmk": lmk_fields})
@@ -191,11 +200,12 @@ def run_chat(engine: Engine, body: dict, identity: CallerIdentity,
              uncachedActual=stats.prompt_tokens - stats.cached_tokens,
              completionTokens=stats.completion_tokens, toolCalls=len(tool_calls),
              restoreMs=state["restore_ms"], ttftMs=state["first_ms"], totalMs=total_ms, finishReason=finish, cancelled=state["cancelled"],
-             sampling=prepared.sampling, stop=prepared.stop_strings or None,
+             sampling={k: v for k, v in prepared.sampling.items() if k != "seed"}, stop=prepared.stop_strings or None,
+             seed=prepared.sampling.get("seed"), seedFrom=prepared.seed_from, **overlap(),
              draftAccepted=stats.draft_accepted, draftDrafted=stats.draft_drafted)
     return {"id": completion_id, "finish_reason": finish, "usage": usage, "tool_calls": tool_calls,
             "content": "".join(state["text"]), "reasoning_content": "".join(state["reasoning"]),
-            "base": base, "cancelled": state["cancelled"]}
+            "base": base, "cancelled": state["cancelled"], "lmk": lmk_fields}
 
 
 # How often a stream carries decode progress (kitten design 2026-09-24-llm-progress §1.8:

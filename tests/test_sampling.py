@@ -2,7 +2,7 @@ import json
 
 import pytest
 
-from lmk.sampling import SamplingError, model_defaults, parse_sampling
+from lmk.sampling import SamplingError, SeedSource, model_defaults, parse_sampling
 
 
 def test_defaults_come_from_the_models_generation_config(tmp_path):
@@ -37,9 +37,14 @@ def test_absent_and_null_fields_leave_the_defaults_alone():
     assert sampling == {"temp": 1.0}          # stop_sequences is not an OpenAI field: ignored, not an error
 
 
-def test_seed_is_reported_as_ignored_not_silently_dropped():
-    sampling, ignored = parse_sampling({"seed": 42}, defaults={})
-    assert sampling == {} and ignored == ["seed"]
+@pytest.mark.parametrize("seed", [0, 42, -7, 2**64 - 1, -(2**63)])
+def test_seed_reaches_the_engine_as_given(seed):
+    sampling, ignored = parse_sampling({"seed": seed}, defaults={})
+    assert sampling == {"seed": seed} and ignored == []
+
+
+def test_a_drawn_seed_fits_in_31_bits():
+    assert all(0 <= SeedSource().draw() < 2**31 for _ in range(200))
 
 
 @pytest.mark.parametrize("body, param, words", [
@@ -55,6 +60,10 @@ def test_seed_is_reported_as_ignored_not_silently_dropped():
     ({"stop": ["a", ""]}, "stop", "non-empty"),
     ({"stop": ["a", "b", "c", "d", "e"]}, "stop", "at most 4"),
     ({"stop": 7}, "stop", "a string or a list of strings"),
+    ({"seed": 1.5}, "seed", "an integer (64-bit)"),
+    ({"seed": "42"}, "seed", "an integer (64-bit)"),
+    ({"seed": True}, "seed", "an integer (64-bit)"),
+    ({"seed": 2**64}, "seed", "an integer (64-bit)"),
 ])
 def test_out_of_range_values_name_the_field_and_the_rule(body, param, words):
     with pytest.raises(SamplingError) as e:

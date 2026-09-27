@@ -56,6 +56,8 @@ class Ticket:
     reason: str = ""
     admitted: bool = field(default=False)
     background: bool = False           # a warmup: lowest priority, yields to any request
+    others_at_start: int = 0           # other admitted requests (warmups included) when this one was let in
+    others_peak: int = 0               # the most at any moment while it was in: 0 = it had the engine alone
 
 
 class Admission:
@@ -125,6 +127,10 @@ class Admission:
                             ticket.admitted = True
                             ticket.reason = ""
                             self._admitted.append(ticket)
+                            others = len(self._admitted) - 1
+                            ticket.others_at_start = others
+                            for a in self._admitted:
+                                a.others_peak = max(a.others_peak, others)
                             self._cond.notify_all()  # the next in line may fit too
                             return
                         ticket.reason = reason

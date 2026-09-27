@@ -210,3 +210,18 @@ def test_a_warmup_that_never_sees_an_idle_engine_answers_not_started(memory):
     finally:
         srv.shutdown()
     assert out == {"outcome": "not_started", "reason": "a warmup waits for an idle engine"}
+
+
+def test_the_done_line_says_whether_a_request_had_the_engine_alone(memory, capsys):
+    engine = HeldEngine(stats=GenerationStats(prompt_tokens=100, cached_tokens=90, completion_tokens=1))
+    srv = serve(engine, max_parallel=2)
+    first, _ = post_in_background(srv, "s/first")
+    second, _ = post_in_background(srv, "s/second")
+    engine.release.set()
+    first.join(5), second.join(5)
+    post(srv, {"model": "kitten-27b", "messages": [{"role": "user", "content": "hi"}]},
+         {"X-Lmk-Ref-Id": "s/alone"}).read()
+    srv.shutdown()
+    done = {l["refId"]: (l["othersAtStart"], l["othersPeak"])
+            for l in (json.loads(l) for l in capsys.readouterr().err.splitlines() if '"LmkChatDone"' in l)}
+    assert done == {"s/first": (0, 1), "s/second": (1, 1), "s/alone": (0, 0)}

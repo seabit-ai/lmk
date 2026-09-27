@@ -130,7 +130,7 @@ class LmkServer:
                 stats = {"prompt_tokens": result["prompt_tokens"], "cached_tokens": result["cached_tokens"]}
                 _send_json(h, 200, result)
             else:
-                result = self._chat_tracked(h, body, identity, running, prepared)
+                result = self._chat_tracked(h, body, identity, running, prepared, ticket)
                 usage = result["usage"]
                 outcome = "cancelled" if result["cancelled"] else result["finish_reason"].replace("tool_calls", "tool call")
                 stats = {"prompt_tokens": usage["prompt_tokens"], "completion_tokens": usage["completion_tokens"],
@@ -148,7 +148,12 @@ class LmkServer:
             self._admission.leave(ticket)
             self._board.finish(running, outcome, **stats)
 
-    def _chat_tracked(self, h, body: dict, identity: CallerIdentity, running: Running, prepared) -> dict:
+    def _chat_tracked(self, h, body: dict, identity: CallerIdentity, running: Running, prepared,
+                      ticket: Ticket) -> dict:
+        # a replay with the same seed matches only if the batch did too: say whether this one ran alone
+        def overlap() -> dict:
+            return {"othersAtStart": ticket.others_at_start, "othersPeak": ticket.others_peak}
+
         def on_progress(event: dict) -> None:
             if "prefill" in event:
                 running.on_prefill(event["prefill"])
@@ -170,7 +175,7 @@ class LmkServer:
                 except (BrokenPipeError, ConnectionResetError) as e:
                     raise ClientGone() from e
 
-            result = run_chat(self._engine, body, identity, emit, on_progress, prepared)
+            result = run_chat(self._engine, body, identity, emit, on_progress, prepared, overlap)
             if not result["cancelled"]:
                 try:
                     h.wfile.write(b"data: [DONE]\n\n")
@@ -179,14 +184,15 @@ class LmkServer:
                     pass
             h.close_connection = True
             return result
-        result = run_chat(self._engine, body, identity, lambda _chunk: None, on_progress, prepared)
+        result = run_chat(self._engine, body, identity, lambda _chunk: None, on_progress, prepared, overlap)
         message = {"role": "assistant", "content": result["content"] or None}
         if result["reasoning_content"]:
             message["reasoning_content"] = result["reasoning_content"]
         if result["tool_calls"]:
             message["tool_calls"] = [{k: v for k, v in c.items() if k != "index"} for c in result["tool_calls"]]
         _send_json(h, 200, {**result["base"], "object": "chat.completion", "usage": result["usage"],
-                            "choices": [{"index": 0, "message": message, "finish_reason": result["finish_reason"]}]})
+                            "choices": [{"index": 0, "message": message, "finish_reason": result["finish_reason"]}],
+                            "lmk": result["lmk"]})
         return result
 
     @property

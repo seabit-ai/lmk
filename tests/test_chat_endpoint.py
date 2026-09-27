@@ -246,7 +246,25 @@ def serve_with_defaults(script, defaults):
     return srv, engine
 
 
-def test_sampling_parameters_reach_the_engine_under_its_own_names_over_the_models_defaults():
+class CountingSeeds:
+    def __init__(self, first=1000):
+        self.next = first
+
+    def draw(self):
+        self.next += 1
+        return self.next - 1
+
+
+@pytest.fixture
+def seeds():
+    from lmk.sampling import get_current_seed_source, set_current_seed_source
+    before, fake = get_current_seed_source(), CountingSeeds()
+    set_current_seed_source(fake)
+    yield fake
+    set_current_seed_source(before)
+
+
+def test_sampling_parameters_reach_the_engine_under_its_own_names_over_the_models_defaults(seeds):
     srv, engine = serve_with_defaults(TEXT_TURN, {"temp": 1.0, "top_p": 0.95, "top_k": 20})
     try:
         post(srv, {"model": "kitten-27b", "messages": [], "temperature": 0.3, "stop": ["\n\n", "END"]}).read()
@@ -254,8 +272,8 @@ def test_sampling_parameters_reach_the_engine_under_its_own_names_over_the_model
     finally:
         srv.shutdown()
     # stop is lmk's to enforce (answer part only); the engine never sees it
-    assert engine.requests[0]["sampling"] == {"temp": 0.3, "top_p": 0.95, "top_k": 20}
-    assert engine.requests[1]["sampling"] == {"temp": 1.0, "top_p": 0.95, "top_k": 20}
+    assert engine.requests[0]["sampling"] == {"temp": 0.3, "top_p": 0.95, "top_k": 20, "seed": 1000}
+    assert engine.requests[1]["sampling"] == {"temp": 1.0, "top_p": 0.95, "top_k": 20, "seed": 1001}
 
 
 def test_an_out_of_range_sampling_value_is_a_400_that_names_the_field():
@@ -270,18 +288,56 @@ def test_an_out_of_range_sampling_value_is_a_400_that_names_the_field():
     assert engine.requests == []
 
 
-def test_seed_is_accepted_but_logged_as_ignored(capsys):
+def _logged(capsys, event):
+    return [l for l in (json.loads(l) for l in capsys.readouterr().err.splitlines() if l.startswith("{"))
+            if l["event"] == event]
+
+
+def test_a_requests_seed_reaches_the_engine_comes_back_and_is_logged(capsys, seeds):
     srv, engine = serve_with_defaults(TEXT_TURN, {})
     try:
-        post(srv, {"model": "kitten-27b", "messages": [], "seed": 7}).read()
+        chunks = stream_chunks(post(srv, {"model": "kitten-27b", "messages": [], "seed": 7, "stream": True}))
     finally:
         srv.shutdown()
-    assert "sampling" in engine.requests[0] and "seed" not in engine.requests[0]["sampling"]
-    logged = [json.loads(l) for l in capsys.readouterr().err.splitlines() if l.startswith("{")]
-    ignored = [l for l in logged if l["event"] == "LmkParamIgnored"]
-    assert ignored and ignored[0]["params"] == ["seed"]
-    done = [l for l in logged if l["event"] == "LmkChatDone"]
-    assert done[0]["sampling"] == {}
+    assert engine.requests[0]["sampling"] == {"seed": 7}
+    assert [c["lmk"]["seed"] for c in chunks if "usage" in c] == [7]
+    done = _logged(capsys, "LmkChatDone")[0]
+    assert (done["seed"], done["seedFrom"], done["sampling"]) == (7, "request", {})
+    assert seeds.next == 1000   # nothing drawn
+
+
+def test_without_a_seed_lmk_draws_one_and_says_so(capsys, seeds):
+    srv, engine = serve_with_defaults(TEXT_TURN, {"temp": 1.0})
+    try:
+        body = json.loads(post(srv, {"model": "kitten-27b", "messages": []}).read())
+    finally:
+        srv.shutdown()
+    assert engine.requests[0]["sampling"] == {"temp": 1.0, "seed": 1000}
+    assert body["lmk"]["seed"] == 1000          # the non-streamed answer carries lmk's fields too
+    logged = capsys.readouterr().err
+    done = [json.loads(l) for l in logged.splitlines() if '"LmkChatDone"' in l][0]
+    assert (done["seed"], done["seedFrom"], done["sampling"]) == (1000, "lmk", {"temp": 1.0})
+    assert '"LmkParamIgnored"' not in logged
+
+
+def test_a_warmup_draws_no_seed(seeds):
+    srv, engine, _ = serve(["x"])
+    try:
+        post_path(srv, "/lmk/v1/warmup", {"model": "kitten-27b", "messages": [{"role": "user", "content": "hi"}]})
+    finally:
+        srv.shutdown()
+    assert engine.requests[0]["sampling"] is None and seeds.next == 1000
+
+
+def test_a_seed_that_is_not_an_integer_is_a_400(seeds):
+    srv, engine = serve_with_defaults(TEXT_TURN, {})
+    try:
+        with pytest.raises(urllib.error.HTTPError) as e:
+            post(srv, {"model": "kitten-27b", "messages": [], "seed": "abc"})
+    finally:
+        srv.shutdown()
+    assert e.value.code == 400 and json.loads(e.value.read())["error"]["param"] == "seed"
+    assert engine.requests == []
 
 
 def test_stop_applies_to_the_answer_not_the_thinking_and_ends_generation():

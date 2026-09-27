@@ -5,6 +5,7 @@ never reads the model's generation_config.json; lmk does, so that with no
 parameters in the request the model runs the way its authors shipped it
 (THK-001, research/2026-09-20-thinking-length)."""
 import json
+import secrets
 from pathlib import Path
 from typing import Optional
 
@@ -18,13 +19,14 @@ class SamplingError(ValueError):
 # generation_config.json key -> engine kwarg
 _MODEL_CONFIG_KEYS = {"temperature": "temp", "top_p": "top_p", "top_k": "top_k"}
 
-# OpenAI request field -> engine kwarg. `stop` is handled apart (list shape); `seed` is
-# accepted by the engine's signature but ignored on the batched path lmk runs on
-# (generate.py: "Seed arg is ignored for batched gen"), so it is reported, not passed.
+# OpenAI request field -> engine kwarg. `stop` is handled apart (list shape), `seed` apart (an integer,
+# and lmk draws one when the request has none: design 2026-09-26-sampling-seed).
 _REQUEST_KEYS = {"temperature": "temp", "top_p": "top_p", "top_k": "top_k", "min_p": "min_p",
                  "repetition_penalty": "repetition_penalty"}
-IGNORED_KEYS = ("seed",)
+IGNORED_KEYS: tuple[str, ...] = ()  # understood but not honoured; logged as LmkParamIgnored
 MAX_STOP_STRINGS = 4  # OpenAI's limit; the engine has none
+# The engine keys draws by the seed's low 64 bits; either signedness is accepted so no client is refused.
+SEED_MIN, SEED_MAX = -(1 << 63), (1 << 64) - 1
 
 
 def model_defaults(model_path: Path) -> dict:
@@ -54,8 +56,33 @@ def parse_sampling(body: dict, defaults: dict) -> tuple[dict, list[str]]:
     stop = body.get("stop")
     if stop is not None:
         sampling["stop_strings"] = _checked_stop(stop)
+    seed = body.get("seed")
+    if seed is not None:
+        if not isinstance(seed, int) or isinstance(seed, bool) or not SEED_MIN <= seed <= SEED_MAX:
+            raise SamplingError("seed", "an integer (64-bit)")
+        sampling["seed"] = seed
     ignored = [k for k in IGNORED_KEYS if body.get(k) is not None]
     return sampling, ignored
+
+
+class SeedSource:
+    """Where the seed of a request that names none comes from. 31 bits: short enough to read in a
+    log line and to survive any JSON client (JavaScript numbers are exact to 2^53)."""
+
+    def draw(self) -> int:
+        return secrets.randbelow(1 << 31)
+
+
+_seed_source = SeedSource()
+
+
+def get_current_seed_source():
+    return _seed_source
+
+
+def set_current_seed_source(source) -> None:
+    global _seed_source
+    _seed_source = source
 
 
 def _checked_number(field: str, value):
@@ -94,4 +121,4 @@ def describe(sampling: Optional[dict]) -> str:
         return "engine default (greedy)"
     if sampling.get("temp", None) == 0:
         return "greedy (temp 0)"
-    return " · ".join(f"{k} {v}" for k, v in sampling.items() if k != "stop_strings")
+    return " · ".join(f"{k} {v}" for k, v in sampling.items() if k not in ("stop_strings", "seed"))
