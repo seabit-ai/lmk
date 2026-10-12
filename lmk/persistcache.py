@@ -219,8 +219,11 @@ def make_persistent_store_class(directory: Path, max_bytes: int, engine_commit: 
             super()._evict_if_needed()
 
         def stats(self) -> dict:
+            # evictions since start, next to used/max: a cache at its cap trades old records for new
+            # ones on every save, and a shrunk chain restores less (research 2026-10-09 PCM-005)
             return {"dir": str(directory), "used_bytes": self._total_bytes, "max_bytes": max_bytes,
                     "records": len(self._record_metadata_by_key),
+                    "evictions": self._cache_evictions, "evicted_bytes": self._cache_evicted_bytes,
                     "disk_low": self._free_disk_bytes() < MIN_FREE_DISK_BYTES}
 
         def _restore_index(self) -> None:

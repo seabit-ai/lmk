@@ -42,6 +42,10 @@ def test_the_header_says_where_it_is_what_runs_memory_cache_and_limits():
     assert "  memory     pressure: normal · 64% of 96.0 GB free · lmk holds 15.1 GB" in text
     assert ("  cache      10.0 GB of 162.0 GB in /Users/someone/.lmk/cache · since start 96% of prompt tokens "
             "came from it (1,204,113 of 1,251,870)") in text
+    assert "evicted" not in text   # nothing evicted: no eviction clause
+    full = dict(STATUS, cache=dict(STATUS["cache"], used_bytes=162 * 1024**3,
+                                   evictions=812, evicted_bytes=34 * 1024**3))
+    assert "· full: evicted 34.0 GB since start" in render.status_block(full, "u")
     assert "  requests   answering 0 of 2 · waiting 0 of 16 · tokens in memory 0 of 979,877" in text
     assert "  since start  412 answered · 0 refused · 1 failed · 2 cancelled · up 3h 12m · build abc1234" in text
     assert "  idle — no requests" in text and "just finished" not in text

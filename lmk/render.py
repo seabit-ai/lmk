@@ -184,6 +184,9 @@ def status_block(status: dict, url: str) -> str:
             # a ratio, with both of its numbers: the size of the cache alone does not say whether it works
             line += (f" · since start {totals['cached_tokens'] * 100 // totals['prompt_tokens']}% of prompt tokens "
                      f"came from it ({totals['cached_tokens']:,} of {totals['prompt_tokens']:,})")
+        if cache.get("evicted_bytes"):
+            # a full cache trades oldest entries for new ones; conversations idle the longest re-read coldest
+            line += f" · full: evicted {human_bytes(cache['evicted_bytes'])} since start"
         lines.append(line)
         if cache.get("disk_low"):
             lines.append("             the disk has less than 10 GB free — lmk has stopped adding to the cache")

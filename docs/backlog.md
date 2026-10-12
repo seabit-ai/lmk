@@ -56,6 +56,16 @@
 - 已做：prefill 段尾 512 个位置的 teacher-forced surprise + 恢复来源，进 `LmkChatDone` / `LmkWarmupDone`；单测。
 - 欠：itest（命令在 `research/2026-09-26-context-check/notes.md`）；开销实测（CTX-003）；正常区间 → 报警阈值（CTX-004，现为只记不报）。
 
+## 2026-10-12 cache miss 可见性（分支 `miss-visibility`，fork 同名分支 a92995e）
+- 起因：owner 的 FR（nova `infra/lmk-feature-requests/prefix-cache-miss-visibility.md`）；根因调查在
+  `research/2026-10-09-prefix-cache-miss/`（结论：两次 miss 都是客户端 prompt 真变了，PCM-001..007）。
+- 已做：`matchedTokens`（token 能匹配多深，忽略 checkpoint；fork 的 `matched_prefix_tokens` → ContextCheck →
+  `LmkChatDone`/`LmkWarmupDone`）；驱逐计数进 `stats()`、status 的 cache 行（`full: evicted N since start`）与
+  每条 Done 日志（`cacheUsedMib`/`cacheEvictedMib`）。单测 + fork 测试（失败集与基线一致）+ itest 全过；
+  已 `make install` 真机验收（冷请求 matched=0、同前缀 matched=768、驱逐计数在动）。
+- 欠：owner push fork 分支 `miss-visibility`（ENGINE_COMMIT=a92995e，没上 GitHub 之前 CI/install.sh 会挂）→ 合 main。
+- 跟进（未裁）：dflash 多 token 一步会越过 256 边界、decode 期不落 checkpoint——答案段下轮可能整段重算；先立实验量损失（见 research notes PCM-004）。
+
 ## 下一个：structured output（`response_format` / `json_schema`）
 owner 已同意方向（2026-09-25），SAD 还没开题。引擎侧已有 `json_schema` 参数；与思考段、工具调用的关系没想清楚（口子留在 `docs/design/2026-09-21-sampling.md`）。
 
