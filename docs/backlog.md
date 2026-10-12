@@ -98,7 +98,7 @@ owner 已同意方向（2026-09-25），SAD 还没开题。引擎侧已有 `json
 - PDF 输入不支持。
 
 ## 想法（没裁过，别当计划）
-- 给上游 mlx-engine 提"持久化前缀 cache"：评论稿在 `research/2026-09-20-mlx-engine-upstream/`（针对其 issue #354），是否已由 owner 发出未确认。
+- ~~给上游 mlx-engine 提"持久化前缀 cache"~~ **已做（2026-10-12，bruce-claw）**：#354 评论与新 issue #379（per-request seed）都已发出（UPS-005/006）。等维护者回应；有回应后 seed rebase 成独立 PR（首次 PR 触发 CLA，签署要 owner 点头）。
 - 给 oMLX 提 issue："混合架构模型在每次请求末尾补一个 256 边界的 snapshot"——它在这类模型上每步慢约 9 秒的原因（SVY-006）。
 - `lmk status` 的 `starting` 阶段要不要细分出 `restore`（`restoreMs` 已在日志里，看板上还是笼统写 starting）。
 - 本地 cache 不过期、命中代价约为重算的 0.5%（MG-009）——对 agent 侧"为保 cache 不敢动历史"的设计是个不同的前提（kitten 的 cache-aware compaction）。
