@@ -42,3 +42,17 @@ without prior discussion"。首次贡献要签 CLA（bot 在 PR 上提示）。
 
 ## 未定
 - 上游不回应怎么办（#354 已晾了两个月）。届时的选项：继续钉 commit + 替换类名；或带着补丁 fork。
+
+### UPS-005 已发出（2026-10-12，bruce-claw 账号）
+- #354 评论已发：https://github.com/lmstudio-ai/mlx-engine/issues/354#issuecomment-6131445624
+  （发出的版本改自 UPS-003 原稿：身份键改为"权重指纹 + 格式版本、特意不含 engine commit"（OOBE §E′）、
+  删掉已被维护者关闭的 #335 的引用、补 12 天生产数据（98% 命中/84.5M token、82k 会话 3.3s 接上）、
+  挂 lmk 公开链接——lmk 已公开，UPS-003 当时"没有可给链接"的前提失效。）
+- 新开 issue #379（seed）：https://github.com/lmstudio-ai/mlx-engine/issues/379
+  正文 `issue-per-request-seed.md`。定性为"文档承诺被批处理路径默默丢弃"的 bug + 现成实现（fork 两个 commit + 33 个测试）。
+
+### UPS-006 决策（2026-10-12）
+- **seed 不直接开 PR，先开 issue**——偏离 10-12 会话里 owner 批过的"seed 做第一个 PR"，原因是 UPS-001
+  （CONTRIBUTING 不欢迎未讨论的功能 PR），已向 owner 标出。维护者点头后再 rebase 到上游 main 出独立 PR。
+- 首次 PR 会触发 **CLA**（UPS-001）：签署是法律动作，到时候要 owner 明确同意，不由 agent 代签。
+- KV 量化与投机解码：继续按 10-12 的裁决,等 #354/#379 有维护者回应再谈（先 issue 讲数字，不做冷 PR）。
