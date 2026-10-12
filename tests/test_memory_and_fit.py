@@ -8,7 +8,9 @@ def test_this_machine_reports_plausible_numbers():
     r = SystemMemory().read()
     assert r.pressure in ("normal", "warning", "critical")
     assert 0 <= r.free_percent <= 100
-    assert r.total_bytes >= 8 * GB
+    # a sanity floor on the reading, not a hardware requirement: GitHub's macOS
+    # arm64 CI runners report 7 GiB (run 38297776763, 2026-10-12)
+    assert r.total_bytes >= 4 * GB
 
 
 def test_only_critical_is_critical():
