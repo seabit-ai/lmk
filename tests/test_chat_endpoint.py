@@ -40,11 +40,11 @@ TOOL_TURN = ["We need one call.\n", "</think>", "\n\n",
 TEXT_TURN = ["Both are done.\n", "</think>", "\n\n", "Here's what", " I found."]
 
 
-def serve(script, stats=None, prefill_steps=None):
+def serve(script, stats=None, prefill_steps=None, cache=None):
     fmt = FakeChatFormat()
     engine = FakeEngine(MODEL, chat_format=fmt, script=script,
                         stats=stats or GenerationStats(prompt_tokens=441, cached_tokens=256, completion_tokens=88),
-                        prefill_steps=prefill_steps)
+                        prefill_steps=prefill_steps, cache=cache)
     srv = LmkServer(engine, "127.0.0.1", 0)
     threading.Thread(target=srv.serve_forever, daemon=True).start()
     return srv, engine, fmt
@@ -449,9 +449,9 @@ def test_stopping_early_closes_the_engines_generator(monkeypatch):
     assert popped == ["r-1"] and generation.stats.context_check == {"scored_tokens": 3}
 
 
-CHECK = {"restore_source": "disk", "restored_tokens": 83712, "hot_trimmed_tokens": 0, "segment_tokens": 1186,
-         "scored_tokens": 512, "ms": 41.5, "unsupported": None, "surprise_mean": 1.2, "surprise_p90": 3.4,
-         "surprise_max": 11.0}
+CHECK = {"restore_source": "disk", "restored_tokens": 83712, "hot_trimmed_tokens": 0, "matched_tokens": 84480,
+         "segment_tokens": 1186, "scored_tokens": 512, "ms": 41.5, "unsupported": None, "surprise_mean": 1.2,
+         "surprise_p90": 3.4, "surprise_max": 11.0}
 
 
 def test_the_context_check_lands_in_the_done_line_of_a_chat_and_a_warmup(capsys):
@@ -465,10 +465,27 @@ def test_the_context_check_lands_in_the_done_line_of_a_chat_and_a_warmup(capsys)
     logged = [json.loads(l) for l in capsys.readouterr().err.splitlines() if l.startswith("{")]
     for event in ("LmkChatDone", "LmkWarmupDone"):
         done = [l for l in logged if l["event"] == event][0]
-        assert (done["restoreSource"], done["restoredTokens"], done["promptSurpriseMean"], done["promptSurpriseP90"],
-                done["promptSurpriseMax"], done["promptSurpriseTokens"], done["promptSurpriseMs"]) == \
-            ("disk", 83712, 1.2, 3.4, 11.0, 512, 41.5)
+        assert (done["restoreSource"], done["restoredTokens"], done["matchedTokens"], done["promptSurpriseMean"],
+                done["promptSurpriseP90"], done["promptSurpriseMax"], done["promptSurpriseTokens"],
+                done["promptSurpriseMs"]) == ("disk", 83712, 84480, 1.2, 3.4, 11.0, 512, 41.5)
+        assert "cacheUsedMib" not in done   # an engine without a cache store logs no cache counters
     assert not [l for l in logged if l["event"] == "LmkContextSurprising"]   # no band measured yet: log only
+
+
+def test_cache_use_and_evictions_land_in_the_done_lines(capsys):
+    cache = {"dir": "/x", "used_bytes": 1000 * 1048576, "max_bytes": 1000 * 1048576, "records": 7,
+             "evictions": 3, "evicted_bytes": 42 * 1048576, "disk_low": False}
+    srv, _, _ = serve(TEXT_TURN, cache=cache)
+    try:
+        post(srv, {"model": "kitten-27b", "messages": []}).read()
+        post_path(srv, "/lmk/v1/warmup", {"model": "kitten-27b", "messages": [{"role": "user", "content": "hi"}]})
+    finally:
+        srv.shutdown()
+    logged = [json.loads(l) for l in capsys.readouterr().err.splitlines() if l.startswith("{")]
+    for event in ("LmkChatDone", "LmkWarmupDone"):
+        done = [l for l in logged if l["event"] == event][0]
+        # the lifetime counters on every line: eviction pressure around a miss is read off the log alone
+        assert (done["cacheUsedMib"], done["cacheEvictedMib"]) == (1000.0, 42.0)
 
 
 @pytest.mark.parametrize("mean, scored, warned", [(6.0, 512, True), (1.2, 512, False), (6.0, 10, False)])

@@ -110,11 +110,26 @@ def context_fields(check: Optional[dict]) -> dict:
     if not check:
         return {}
     return {"restoreSource": check.get("restore_source"), "restoredTokens": check.get("restored_tokens"),
+            # matched = how far token identity against the cache index went, checkpoints ignored.
+            # matched << prompt: the prompt diverged there (go diff the client's last deep-hit request);
+            # restored << matched: retention or checkpoint granularity (research 2026-10-09 PCM-007)
+            "matchedTokens": check.get("matched_tokens"),
             "hotTrimmedTokens": check.get("hot_trimmed_tokens"),
             "promptSurpriseMean": check.get("surprise_mean"), "promptSurpriseP90": check.get("surprise_p90"),
             "promptSurpriseMax": check.get("surprise_max"), "promptSurpriseTokens": check.get("scored_tokens"),
             "promptSurpriseMs": check.get("ms"), "promptSurpriseScored": check.get("scored"),
             "promptSurpriseUnsupported": check.get("unsupported")}
+
+
+def cache_fields(engine: Engine) -> dict:
+    """The cache store's lifetime counters on every Done line: the log then shows eviction
+    pressure around any miss without a separate event stream (research 2026-10-09 PCM-005).
+    cacheEvictedMib staying 0 is the evidence that a short restore was NOT eviction's doing."""
+    stats = engine.cache_stats() or {}
+    if "used_bytes" not in stats:
+        return {}
+    return {"cacheUsedMib": round(stats["used_bytes"] / 1048576, 1),
+            "cacheEvictedMib": round(stats.get("evicted_bytes", 0) / 1048576, 1)}
 
 
 def warn_if_surprised(check: Optional[dict], identity: "CallerIdentity") -> None:
@@ -249,7 +264,8 @@ def run_chat(engine: Engine, body: dict, identity: CallerIdentity,
              restoreMs=state["restore_ms"], ttftMs=state["first_ms"], totalMs=total_ms, finishReason=finish, cancelled=state["cancelled"],
              sampling={k: v for k, v in prepared.sampling.items() if k != "seed"}, stop=prepared.stop_strings or None,
              seed=prepared.sampling.get("seed"), seedFrom=prepared.seed_from, **overlap(),
-             draftAccepted=stats.draft_accepted, draftDrafted=stats.draft_drafted, **context_fields(stats.context_check))
+             draftAccepted=stats.draft_accepted, draftDrafted=stats.draft_drafted,
+             **context_fields(stats.context_check), **cache_fields(engine))
     warn_if_surprised(stats.context_check, identity)
     return {"id": completion_id, "finish_reason": finish, "usage": usage, "tool_calls": tool_calls,
             "content": "".join(state["text"]), "reasoning_content": "".join(state["reasoning"]),
@@ -312,7 +328,8 @@ def run_warmup(engine: Engine, body: dict, identity: CallerIdentity,
     log.info("LmkWarmupDone", "prefix warmed" if outcome == "done" else "warmup yielded to a request",
              purpose=identity.purpose or "warmup", refId=identity.ref_id, traceparent=identity.traceparent,
              outcome=outcome, promptTokens=stats.prompt_tokens, cachedTokens=stats.cached_tokens,
-             yieldedAtTokens=yielded["at"], totalMs=total_ms, **context_fields(stats.context_check))
+             yieldedAtTokens=yielded["at"], totalMs=total_ms,
+             **context_fields(stats.context_check), **cache_fields(engine))
     warn_if_surprised(stats.context_check, identity)
     return {"outcome": outcome, "prompt_tokens": stats.prompt_tokens, "cached_tokens": stats.cached_tokens,
             "total_ms": total_ms}
