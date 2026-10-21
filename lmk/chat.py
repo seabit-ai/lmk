@@ -129,7 +129,8 @@ def cache_fields(engine: Engine) -> dict:
     if "used_bytes" not in stats:
         return {}
     return {"cacheUsedMib": round(stats["used_bytes"] / 1048576, 1),
-            "cacheEvictedMib": round(stats.get("evicted_bytes", 0) / 1048576, 1)}
+            "cacheEvictedMib": round(stats.get("evicted_bytes", 0) / 1048576, 1),
+            "cacheOtherModelsMib": round(stats.get("other_models_bytes", 0) / 1048576, 1)}
 
 
 def warn_if_surprised(check: Optional[dict], identity: "CallerIdentity") -> None:

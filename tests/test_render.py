@@ -202,3 +202,12 @@ def test_the_settings_line_says_whose_head_a_repo_models_draft_is():
     assert "(mtp, the model's own head)" in render.model_settings({**base, "draft_weights": "model"})
     assert "(mtp, lmk's copy of the original Qwen3.8-27B head)" in render.model_settings({**base, "draft_weights": "official"})
     assert "(mtp, head from org/Some-Draft)" in render.model_settings({**base, "draft_weights": "org/Some-Draft"})
+
+
+def test_the_cache_line_counts_every_models_records_against_the_one_limit():
+    """Owner, 2026-10-20: cache.max_size is for all models, so the line says what the whole directory holds."""
+    other = dict(STATUS, cache=dict(STATUS["cache"], used_bytes=0, other_models_bytes=int(199.9 * 1024**3), max_bytes=200 * 1024**3))
+    text = render.status_block(other, "u")
+    assert "  cache      199.9 GB of 200.0 GB in /Users/someone/.lmk/cache (this model 0 B · other models 199.9 GB)" in text
+    alone = dict(STATUS, cache=dict(STATUS["cache"], other_models_bytes=0))
+    assert "(this model" not in render.status_block(alone, "u")

@@ -299,8 +299,8 @@ def _install_persistent_cache(cache_dir: Path, max_bytes: Optional[int], model_p
     identity = model_identity(model_path, repo=repo, revision=revision, kv_cache_bits=kv_cache_bits)
     if max_bytes is None:
         max_bytes = 1 << 62  # no limit of ours; the engine's own budget still applies
-    live_budget = prepare_cache_root(cache_dir, identity, max_bytes)
-    vision_kit.VlmPromptCacheStore = make_persistent_store_class(cache_dir / identity, live_budget,
+    prepare_cache_root(cache_dir)
+    vision_kit.VlmPromptCacheStore = make_persistent_store_class(cache_dir / identity, max_bytes,
                                                                  engine_commit(), created)
 
 

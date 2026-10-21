@@ -32,6 +32,12 @@
   主分片里带 `mtp.*` 的转换还没支持（会明确拒绝）。
 - 跟进（未做）：贪心下有草稿与无草稿的输出分叉（换头不变，疑似验证那一遍的浮点取整），没做区分实验。
 
+## 2026-10-20 cache.max_size 跨模型淘汰（分支 `cache-spans-models`，未合）
+- 设计 `docs/design/2026-10-20-cache-limit-spans-models.md`。bug：换模型后新模型只拿到 `max_size` 减旧模型占用的余量（owner 机器上 77.7 MB），
+  要等重启。已做：按记录跨模型 LRU、状态行合并报告、单测（253 过）、独立 LMK_HOME 真机验证（见设计文档）。
+- 欠：`make itest`；合并前和 `draft-for-any-model` 分支会在 README/configfiles 上有小冲突；Trimmed 日志偏碎（每次存盘一条）；owner 机器上要部署后看一次
+  200G 的实际表现（旧模型的 cache 会被按记录淘汰，不是整个丢）。
+
 ## 2026-09-25 长上下文与 KV 精度（`research/2026-09-25-spec-long-context`）
 - 本机已改 kv16（SLC-007：128k 22.1 对 15.4 tok/s）。在做：MLX 缓冲池上限（128k 时进程 52–54 GB、MLX 峰值 42–43 GB，约 10 GB 是缓冲池；
   `mx.set_cache_limit` lmk 与引擎都没调）；补量 kv8 的进程内存，定"按内存自动选 KV 精度"的档位线（kv16 同时在内存的 token 1.84M → 0.98M）。
