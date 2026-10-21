@@ -38,6 +38,15 @@
 - 欠：`make itest`；合并前和 `draft-for-any-model` 分支会在 README/configfiles 上有小冲突；Trimmed 日志偏碎（每次存盘一条）；owner 机器上要部署后看一次
   200G 的实际表现（旧模型的 cache 会被按记录淘汰，不是整个丢）。
 
+## 2026-10-20 谎报 "image in"（分支 `truthful-modalities`，未合）
+- 现象：纯文本权重（无视觉塔）的 Qwen3.8 微调版，`lmk status` 报 `text, image in`；带图片的请求进引擎后 `vision_tower is None`，
+  引擎后台线程致命退出，之后所有请求（含 warmup）都失败，服务仍显示 up，要重启。根因：`input_modalities()` 只看引擎类名里有没有 "Vision"，
+  而批处理路径对所有这类架构都用 `BatchedVisionModelKit`。
+- 已做：改为同时要求 `kit.model.vision_tower is not None`；单测；真机（独立 LMK_HOME）：纯文本权重 → `text in`、图片请求 400 且服务继续；
+  默认的 qwen3.8-27b-4bit → `text, image in`、图片请求 200。
+- 欠：引擎一个坏请求就让后台线程死掉、服务仍报 up，是引擎 fork 的健壮性问题（lmk 侧至少该发现并报 `LmkEngineDead` 或退出让 launchd 重拉），没做；
+  `make itest`。
+
 ## 2026-09-25 长上下文与 KV 精度（`research/2026-09-25-spec-long-context`）
 - 本机已改 kv16（SLC-007：128k 22.1 对 15.4 tok/s）。在做：MLX 缓冲池上限（128k 时进程 52–54 GB、MLX 峰值 42–43 GB，约 10 GB 是缓冲池；
   `mx.set_cache_limit` lmk 与引擎都没调）；补量 kv8 的进程内存，定"按内存自动选 KV 精度"的档位线（kv16 同时在内存的 token 1.84M → 0.98M）。

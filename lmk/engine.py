@@ -163,8 +163,10 @@ class MlxEngine:
         return self._format
 
     def input_modalities(self) -> list[str]:
-        # the engine picks its vision kit for models whose config has vision_config
-        return ["text", "image"] if "Vision" in type(self._kit).__name__ else ["text"]
+        # The vision kit also runs text-only checkpoints of vision architectures (weights without the vision part):
+        # mlx-vlm leaves their vision_tower None, and a request with a picture then kills the engine's backend thread.
+        has_tower = getattr(getattr(self._kit, "model", None), "vision_tower", None) is not None
+        return ["text", "image"] if "Vision" in type(self._kit).__name__ and has_tower else ["text"]
 
     def cache_stats(self) -> Optional[dict]:
         return self._cache_stores[-1].stats() if self._cache_stores else None

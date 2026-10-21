@@ -533,3 +533,36 @@ def test_the_models_own_turns_are_what_the_context_check_scores():
     finally:
         srv.shutdown()
     assert engine.requests[0]["check_targets"] == [1, 2, 4]
+
+
+# 2026-10-20: a text-only checkpoint of a vision architecture runs on the vision kit but has no vision tower;
+# reporting "image" for it let a request with a picture reach the engine, whose backend thread then died
+class _Kit:
+    pass
+
+
+class BatchedVisionModelKit(_Kit):
+    pass
+
+
+def _engine_with(kit):
+    from lmk.engine import MlxEngine
+
+    engine = MlxEngine.__new__(MlxEngine)   # the real class without loading a model
+    engine._kit = kit
+    return engine
+
+
+def test_a_model_takes_images_only_when_it_has_a_vision_tower():
+    with_tower = BatchedVisionModelKit()
+    with_tower.model = type("M", (), {"vision_tower": object()})()
+    text_only = BatchedVisionModelKit()
+    text_only.model = type("M", (), {"vision_tower": None})()
+    no_attribute = BatchedVisionModelKit()
+    no_attribute.model = object()
+    assert _engine_with(with_tower).input_modalities() == ["text", "image"]
+    assert _engine_with(text_only).input_modalities() == ["text"]
+    assert _engine_with(no_attribute).input_modalities() == ["text"]
+    plain = _Kit()   # the text kit: no vision in its name
+    plain.model = type("M", (), {"vision_tower": object()})()
+    assert _engine_with(plain).input_modalities() == ["text"]
