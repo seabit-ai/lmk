@@ -26,11 +26,14 @@ owner 想在本机跑一个社区微调版的 Qwen3.8-27B（MLX 4-bit，仓库�
 5. **键名**（owner 2026-10-20 "y"）：`model.draft`（种类，同现在）旁加 `model.draft_weights`：`model`（缺省，仓库自带）/ `official`（lmk 拆自
    原版的头）/ HF 仓库名或本地目录。只对 `repo:`/`path:` 有效，给 `name:` 模型设它 → 报错；`draft: dflash2` 配 `repo:`/`path:` → 报错。
    固定词 `model` / `official`；同名本地目录要写 `./official`。
+6. **转换在 `lmk serve` 启动时做**（owner 2026-10-20 "ok"）：纯本地计算，产物放 `~/.lmk/drafts/`，目录名带来源 revision，已存在就跳过。
+   自带头已在模型仓库里，随模型下载；`draft_weights` 指向别的仓库时才多一次下载，仍由 `lmk up` / `lmk pull` 负责（与现在的草稿器下载同路径）。
+   自带头缺失、维度/词表不符 → `lmk serve` exit 0，`lmk up` 读 launchd 状态立刻把原因报给用户。
 
 ## 被否 / 暂缓
 - 自带头缺失时自动退到官方头（`lmk up` 打印一行说明）——被 owner 否（见上 4）：隐式行为，要靠读输出才知道发生了什么。
 - 我的提议："缺省用 lmk 现有头，自带头不做"——被 owner 否（见上 2）。我的理由是这个模型上自带头没有收益；owner 的理由是方向对，不该按单个模型的实测定缺省。
 - DFlash 给 `repo:` 模型：不做。DFlash 草稿器是为原版目标的 5 层隐状态训练的，没人验证过能配微调版。
 
-## 未定（一次一个）
-- 自带头的转换（改名、norm +1、写 quantization）放在哪、产物放哪：`~/.lmk` 下由 `lmk pull` 生成，还是载入时现转。
+## 未定
+无。开工等 owner 的 "go"。
