@@ -178,8 +178,13 @@ def status_block(status: dict, url: str) -> str:
                      f"{human_bytes(memory['total_bytes'])} free · lmk holds {human_bytes(memory['lmk_gpu_bytes'])}")
     cache, totals = status.get("cache"), status.get("totals") or {}
     if cache:
-        line = (f"  cache      {human_bytes(cache['used_bytes'])} of {human_bytes(cache['max_bytes'])} in "
+        # cache.max_size is one limit for every model's records: the first pair is the whole directory,
+        # the split in brackets says whose they are
+        other = cache.get("other_models_bytes") or 0
+        line = (f"  cache      {human_bytes(cache['used_bytes'] + other)} of {human_bytes(cache['max_bytes'])} in "
                 f"{short_path(str(Path(cache['dir']).parent))}")
+        if other:
+            line += f" (this model {human_bytes(cache['used_bytes'])} · other models {human_bytes(other)})"
         if totals.get("prompt_tokens"):
             # a ratio, with both of its numbers: the size of the cache alone does not say whether it works
             line += (f" · since start {totals['cached_tokens'] * 100 // totals['prompt_tokens']}% of prompt tokens "

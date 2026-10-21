@@ -27,7 +27,7 @@ _WHAT = {
     "context_length": "default: the model's maximum, lowered if memory is short; `lmk status` shows the value in use",
     "draft_tokens": "advanced: tokens the draft guesses per round (default: the draft's own)",
     "cache_dir": "processed prompts kept on disk: a conversation continues in about a second, also after a reboot",
-    "max_size": "when full, what was used longest ago is dropped first",
+    "max_size": "all models' caches together; when full, what was used longest ago is dropped first",
     "max_parallel": "answered at the same time (README: what it gains, measured)",
     "max_queue": "waiting for their turn; one more is refused at once",
     "max_wait_seconds": "a request that could not start by then is refused, and told why",

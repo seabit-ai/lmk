@@ -194,3 +194,12 @@ def test_speculative_decoding_shows_on_the_model_line_and_its_acceptance_below()
     fresh = dict(on, draft={"rounds": 0, "accepted": 0, "drafted": 0})
     assert "  draft      no tokens drafted yet" in render.status_block(fresh, "http://127.0.0.1:1235")
     assert "  draft" not in render.status_block(dict(on, draft=None), "http://127.0.0.1:1235")   # no draft model at all
+
+
+def test_the_cache_line_counts_every_models_records_against_the_one_limit():
+    """Owner, 2026-10-20: cache.max_size is for all models, so the line says what the whole directory holds."""
+    other = dict(STATUS, cache=dict(STATUS["cache"], used_bytes=0, other_models_bytes=int(199.9 * 1024**3), max_bytes=200 * 1024**3))
+    text = render.status_block(other, "u")
+    assert "  cache      199.9 GB of 200.0 GB in /Users/someone/.lmk/cache (this model 0 B · other models 199.9 GB)" in text
+    alone = dict(STATUS, cache=dict(STATUS["cache"], other_models_bytes=0))
+    assert "(this model" not in render.status_block(alone, "u")

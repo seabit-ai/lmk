@@ -1,7 +1,7 @@
 from pathlib import Path
 
-from lmk.persistcache import (MIN_FREE_DISK_BYTES, PersistentBlobStore, _file_name, _key_of, cache_budget,
-                              model_identity, prepare_cache_root)
+from lmk.persistcache import (MIN_FREE_DISK_BYTES, OtherModelsRecords, PersistentBlobStore, _file_name, _key_of,
+                              cache_budget, model_identity, prepare_cache_root, trim_to_limit)
 
 
 def make_model(tmp_path, weights=b"w1", config=b"{}"):
@@ -43,36 +43,94 @@ def fill(directory, size, used_at_s):
 def test_cache_root_is_tagged_and_excluded_from_backup_once(tmp_path):
     excluded = []
     root = tmp_path / "cache"
-    assert prepare_cache_root(root, "live", 1000, exclude_from_backup=excluded.append) == 1000
+    prepare_cache_root(root, exclude_from_backup=excluded.append)
     assert (root / "CACHEDIR.TAG").read_text().startswith("Signature: 8a477f597d28d172789f06886806bc55")
-    prepare_cache_root(root, "live", 1000, exclude_from_backup=excluded.append)
+    prepare_cache_root(root, exclude_from_backup=excluded.append)
     assert excluded == [root]
 
 
-def test_other_models_caches_are_kept_while_everything_fits(tmp_path):
+# design 2026-10-20-cache-limit-spans-models: cache.max_size is one limit for every model's records
+def record(directory, name, size, used_at_s):
+    import os
+    directory.mkdir(parents=True, exist_ok=True)
+    f = directory / f"record@{name}@kv_delta.safetensors"
+    f.write_bytes(b"x" * size)
+    os.utime(f, ns=(used_at_s * 10**9, used_at_s * 10**9))
+    return f
+
+
+def test_the_other_models_records_are_counted_whole_and_listed_oldest_first(tmp_path):
     root = tmp_path / "cache"
-    fill(root / "live", 300, used_at_s=30)
-    fill(root / "old-a", 200, used_at_s=10)
-    fill(root / "old-b", 100, used_at_s=20)
-    assert prepare_cache_root(root, "live", 1000, exclude_from_backup=lambda d: None) == 700
-    assert (root / "old-a").is_dir() and (root / "old-b").is_dir()
+    record(root / "live", "mine", 300, 30)
+    record(root / "old-a", "a1", 200, 10)
+    record(root / "old-b", "b1", 100, 20)
+    (root / "old-b" / "layout.json").write_text("{}" * 5)
+    others = OtherModelsRecords(root, "live")
+    assert others.bytes == 200 + 100 + 10
+    assert others.oldest_used() == 10 * 10**9
+    assert others.evict_oldest() == 200
+    assert others.bytes == 110 and others.oldest_used() == 20 * 10**9
 
 
-def test_over_the_limit_other_models_caches_go_first_longest_unused_first(tmp_path):
+def test_evicting_a_models_last_record_removes_its_directory(tmp_path):
     root = tmp_path / "cache"
-    fill(root / "live", 300, used_at_s=30)
-    fill(root / "old-a", 200, used_at_s=10)
-    fill(root / "old-b", 100, used_at_s=20)
-    assert prepare_cache_root(root, "live", 450, exclude_from_backup=lambda d: None) == 350
-    assert not (root / "old-a").exists() and (root / "old-b").is_dir() and (root / "live").is_dir()
+    record(root / "old-a", "a1", 200, 10)
+    (root / "old-a" / "layout.json").write_text("{}")
+    others = OtherModelsRecords(root, "live")
+    others.evict_oldest()
+    assert not (root / "old-a").exists() and others.bytes == 0 and others.oldest_used() is None
 
 
-def test_the_live_cache_is_never_dropped_here_even_when_alone_over_the_limit(tmp_path):
+class Live:
+    """The live model's side of trim_to_limit: records as (used_at, size), oldest first."""
+    def __init__(self, records):
+        self.records = sorted(records)
+
+    def used(self):
+        return sum(size for _, size in self.records)
+
+    def oldest_used(self):
+        return self.records[0][0] if self.records else None
+
+    def evict_oldest(self):
+        self.records.pop(0)
+
+
+def test_the_oldest_record_anywhere_goes_first_whichever_model_it_belongs_to(tmp_path):
     root = tmp_path / "cache"
-    fill(root / "live", 300, used_at_s=30)
-    fill(root / "old-a", 200, used_at_s=10)
-    assert prepare_cache_root(root, "live", 100, exclude_from_backup=lambda d: None) == 100
-    assert not (root / "old-a").exists() and (root / "live").is_dir()  # the store trims itself, record by record
+    record(root / "old-a", "a1", 100, 10)
+    record(root / "old-a", "a2", 100, 40)
+    others = OtherModelsRecords(root, "live")
+    live = Live([(20 * 10**9, 100), (30 * 10**9, 100)])
+    trim_to_limit(450, live.used, live.oldest_used, live.evict_oldest, others)   # 400 held: fits, nothing goes
+    assert others.bytes == 200 and len(live.records) == 2
+    trim_to_limit(300, live.used, live.oldest_used, live.evict_oldest, others)   # 400 held, 300 allowed: a1 (t=10) goes
+    assert others.bytes == 100 and len(live.records) == 2
+    trim_to_limit(200, live.used, live.oldest_used, live.evict_oldest, others)   # now live's t=20 goes, then t=30 ties to nothing older
+    assert (others.bytes, [t for t, _ in live.records]) == (100, [30 * 10**9])
+    assert live.used() + others.bytes <= 200
+
+
+def test_a_tie_in_age_goes_to_the_other_model_and_the_live_model_can_empty_the_rest(tmp_path):
+    root = tmp_path / "cache"
+    record(root / "old-a", "a1", 100, 10)
+    others = OtherModelsRecords(root, "live")
+    live = Live([(10 * 10**9, 100)])
+    trim_to_limit(100, live.used, live.oldest_used, live.evict_oldest, others)
+    assert others.bytes == 0 and len(live.records) == 1      # the tie: the other model's goes
+    trim_to_limit(0, live.used, live.oldest_used, live.evict_oldest, others)
+    assert live.records == []                                  # nothing else to take: the live model's own go
+
+
+def test_trimming_reports_what_it_took_from_other_models_once(tmp_path):
+    root = tmp_path / "cache"
+    record(root / "old-a", "a1", 100, 10)
+    record(root / "old-b", "b1", 50, 20)
+    others = OtherModelsRecords(root, "live")
+    live = Live([])
+    trim_to_limit(0, live.used, live.oldest_used, live.evict_oldest, others)
+    assert others.take_evicted() == (2, 150, 2)    # records, bytes, directories emptied
+    assert others.take_evicted() == (0, 0, 0)
 
 
 def test_record_keys_round_trip_through_file_names():

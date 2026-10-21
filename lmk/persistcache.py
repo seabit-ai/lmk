@@ -61,16 +61,6 @@ def _exclude_from_time_machine(directory: Path) -> None:
         pass  # not macOS, or tmutil unavailable: the tag file still marks it for other backup tools
 
 
-def _dir_bytes_and_last_use(directory: Path) -> tuple[int, int]:
-    total, newest = 0, 0
-    for f in directory.rglob("*"):
-        if f.is_file():
-            st = f.stat()
-            total += st.st_size
-            newest = max(newest, st.st_mtime_ns)
-    return total, newest
-
-
 MIN_FREE_DISK_BYTES = 10 * 1024**3
 
 
@@ -86,33 +76,73 @@ def cache_budget(max_bytes: int, used_bytes: int, free_disk_bytes: int) -> int:
     return max(0, min(max_bytes, used_bytes + free_disk_bytes - MIN_FREE_DISK_BYTES))
 
 
-def prepare_cache_root(cache_root: Path, live_identity: str, max_bytes: int,
-                       exclude_from_backup: Callable[[Path], None] = _exclude_from_time_machine) -> int:
-    """One size limit for the whole cache directory (design OOBE §C2). Directories
-    of other identities — a model used before, a retired record format — are
-    never touched again, so they are the least recently used: they go first,
-    whole, until the directory fits. Returns what is left for the live model."""
+def prepare_cache_root(cache_root: Path,
+                       exclude_from_backup: Callable[[Path], None] = _exclude_from_time_machine) -> None:
+    """The cache directory, tagged and kept out of Time Machine. What goes when it is full is
+    decided record by record across every model (OtherModelsRecords, trim_to_limit)."""
     cache_root.mkdir(parents=True, exist_ok=True)
     tag = cache_root / "CACHEDIR.TAG"
     if not tag.exists():
         tag.write_text(_CACHEDIR_TAG)
         exclude_from_backup(cache_root)
 
-    live_bytes = _dir_bytes_and_last_use(cache_root / live_identity)[0] if (cache_root / live_identity).is_dir() else 0
-    others = []
-    for d in cache_root.iterdir():
-        if d.is_dir() and d.name != live_identity:
-            size, last_use = _dir_bytes_and_last_use(d)
-            others.append((last_use, size, d))
-    others.sort()
-    others_bytes = sum(size for _, size, _ in others)
-    while others and live_bytes + others_bytes > max_bytes:
-        _, size, d = others.pop(0)
-        shutil.rmtree(d, ignore_errors=True)
-        others_bytes -= size
-        log.info("LmkCacheOrphanDropped", "dropped the cache of a model no longer in use to fit cache.max_size",
-                 dir=str(d), mib=round(size / 1048576, 1))
-    return max(0, max_bytes - others_bytes)
+
+class OtherModelsRecords:
+    """Everything the other models' directories hold, so cache.max_size can be one limit for all of
+    them (design 2026-10-20-cache-limit-spans-models). Scanned once: while lmk runs, only the live
+    model's store writes here, and this object is the only one that removes from the others."""
+
+    def __init__(self, cache_root: Path, live_identity: str):
+        self.bytes = 0
+        self._records: list[tuple[int, int, Path]] = []  # (last used, size, file), newest first: pop() takes the oldest
+        self._evicted_records = self._evicted_bytes = self._emptied_dirs = 0
+        for d in cache_root.iterdir():
+            if not d.is_dir() or d.name == live_identity:
+                continue
+            for f in d.rglob("*"):
+                if f.is_file():
+                    st = f.stat()
+                    self.bytes += st.st_size
+                    if f.name.endswith(_SUFFIX):
+                        self._records.append((st.st_mtime_ns, st.st_size, f))
+        self._records.sort(reverse=True)
+
+    def oldest_used(self) -> Optional[int]:
+        return self._records[-1][0] if self._records else None
+
+    def evict_oldest(self) -> int:
+        """Removes the least recently used record of any other model; returns its bytes."""
+        _, size, path = self._records.pop()
+        path.unlink(missing_ok=True)
+        self.bytes -= size
+        self._evicted_records += 1
+        self._evicted_bytes += size
+        directory = path.parent
+        if not any(f.name.endswith(_SUFFIX) for f in directory.iterdir()):  # a model with no records left: its layout file goes too
+            self.bytes -= sum(f.stat().st_size for f in directory.rglob("*") if f.is_file())
+            shutil.rmtree(directory, ignore_errors=True)
+            self._emptied_dirs += 1
+        return size
+
+    def take_evicted(self) -> tuple[int, int, int]:
+        """(records, bytes, directories emptied) since the last call; for one log line per trim."""
+        taken = (self._evicted_records, self._evicted_bytes, self._emptied_dirs)
+        self._evicted_records = self._evicted_bytes = self._emptied_dirs = 0
+        return taken
+
+
+def trim_to_limit(limit: int, live_used: Callable[[], int], live_oldest_used: Callable[[], Optional[int]],
+                  live_evict_oldest: Callable[[], None], others: OtherModelsRecords) -> None:
+    """While the live model's records and everyone else's hold more than `limit`, the record used
+    longest ago goes, whichever model it belongs to. On a tie the other model's goes."""
+    while live_used() + others.bytes > limit:
+        theirs, mine = others.oldest_used(), live_oldest_used()
+        if theirs is not None and (mine is None or theirs <= mine):
+            others.evict_oldest()
+        elif mine is not None:
+            live_evict_oldest()
+        else:
+            break
 
 
 # Keys look like "record:<sha256>:<kind>", and kinds contain underscores
@@ -170,6 +200,12 @@ class PersistentBlobStore:
     def size(self, key: str) -> int:
         return (self._dir / _file_name(key)).stat().st_size
 
+    def last_used_ns(self, key: str) -> int:
+        try:
+            return (self._dir / _file_name(key)).stat().st_mtime_ns
+        except FileNotFoundError:
+            return 0  # a record that vanished is the oldest thing there is
+
     def touch(self, key: str) -> None:
         try:
             os.utime(self._dir / _file_name(key))
@@ -202,6 +238,7 @@ def make_persistent_store_class(directory: Path, max_bytes: int, engine_commit: 
             super().__init__(max_kv_size=max_kv_size, enable_disk_cache=False)  # skip the temp-file store
             self._base_dir = directory
             self._blob_store = PersistentBlobStore(directory)
+            self._others = OtherModelsRecords(directory.parent, directory.name)
             self._empirical_budget_set = False
             self._max_cache_store_bytes = max_bytes  # _restore_index evicts against the real budget below
             self._restore_index()
@@ -210,18 +247,37 @@ def make_persistent_store_class(directory: Path, max_bytes: int, engine_commit: 
         def _free_disk_bytes(self) -> int:
             return shutil.disk_usage(directory).free
 
+        def _limit(self) -> int:
+            """cache.max_size for the whole directory, lowered while the disk is nearly full."""
+            return cache_budget(max_bytes, self._total_bytes + self._others.bytes, self._free_disk_bytes())
+
         def commit_budget_update(self, max_cache_store_bytes: int) -> None:
             # the engine's estimate is ignored on purpose: see cache_budget
-            super().commit_budget_update(cache_budget(max_bytes, self._total_bytes, self._free_disk_bytes()))
+            super().commit_budget_update(self._limit())
 
         def _evict_if_needed(self) -> None:
-            self._max_cache_store_bytes = cache_budget(max_bytes, self._total_bytes, self._free_disk_bytes())
-            super()._evict_if_needed()
+            # the limit is shared: this model may take other models' oldest records to make room, and they
+            # are taken before this model's own newer ones (design 2026-10-20-cache-limit-spans-models)
+            limit = self._max_cache_store_bytes = self._limit()
+            trim_to_limit(limit, lambda: self._total_bytes, self._oldest_own_use, self._evict_oldest_own, self._others)
+            records, freed, dirs = self._others.take_evicted()
+            if records:
+                log.info("LmkCacheOtherModelsTrimmed", "dropped the least recently used records of other models to stay within cache.max_size",
+                         records=records, mib=round(freed / 1048576, 1), modelsEmptied=dirs,
+                         limitMib=round(limit / 1048576, 1), otherModelsMib=round(self._others.bytes / 1048576, 1))
+
+        def _oldest_own_use(self) -> Optional[int]:
+            key = next(iter(self._lru_keys), None)
+            return None if key is None else self._blob_store.last_used_ns(key)
+
+        def _evict_oldest_own(self) -> None:
+            self._evict_key(next(iter(self._lru_keys)))
 
         def stats(self) -> dict:
             # evictions since start, next to used/max: a cache at its cap trades old records for new
             # ones on every save, and a shrunk chain restores less (research 2026-10-09 PCM-005)
             return {"dir": str(directory), "used_bytes": self._total_bytes, "max_bytes": max_bytes,
+                    "other_models_bytes": self._others.bytes,
                     "records": len(self._record_metadata_by_key),
                     "evictions": self._cache_evictions, "evicted_bytes": self._cache_evicted_bytes,
                     "disk_low": self._free_disk_bytes() < MIN_FREE_DISK_BYTES}

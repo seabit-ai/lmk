@@ -233,7 +233,7 @@ model:
   # context_length: 65536     # default: the model's maximum; lmk lowers it if memory is short, and `lmk status`
                              # shows the value in use
 listen: {host: 127.0.0.1, port: 1235}
-cache:  {dir: ~/.lmk/cache, max_size: 200G}     # when full, what was used longest ago goes first
+cache:  {dir: ~/.lmk/cache, max_size: 200G}     # all models' caches together; when full, what was used longest ago goes first
 requests:
   max_parallel: 2            # answered at the same time
   max_queue: 16              # waiting for their turn; one more is refused at once
@@ -241,7 +241,7 @@ requests:
 log:    {dir: ~/.lmk/logs}
 ```
 
-`max_size` is the limit. One guard on top of it: when the disk has less than 10 GB free, lmk stops
+`max_size` is the limit for the whole cache directory, the caches of models you used before included: when it is full, the record used longest ago goes, whichever model it belongs to, and `lmk status` shows the split. One guard on top of it: when the disk has less than 10 GB free, lmk stops
 adding to the cache and gives space back, oldest first.
 
 To switch models: change `model:`, then `lmk up` (it downloads the new model first).
