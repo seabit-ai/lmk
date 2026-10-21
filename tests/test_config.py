@@ -179,3 +179,21 @@ def test_a_misspelled_model_setting_is_refused_not_ignored(tmp_path):
     with pytest.raises(ConfigError) as e:
         load_config(write(tmp_path, "model: {name: qwen3.8-27b-4bit, thnking: false}"))
     assert "model: unknown setting thnking" in str(e.value) and "thinking" in str(e.value)
+
+
+# design 2026-10-20-draft-for-any-model: repo / path models choose where the MTP head's weights come from
+def test_draft_weights_defaults_to_the_models_own_and_takes_official_a_repo_or_a_folder(tmp_path):
+    cfg = load_config(write(tmp_path, "model: {repo: org/Some-Model, speculative_decoding: true}"))
+    assert cfg.model.draft_weights is None  # None = the model's own; serve says so by name
+    for value in ("model", "official", "org/Some-Draft", "./official", "~/drafts/mtp"):
+        cfg = load_config(write(tmp_path, f"model: {{path: /m, speculative_decoding: true, draft_weights: {value}}}"))
+        assert cfg.model.draft_weights == value
+
+
+def test_draft_weights_is_refused_where_it_would_be_ignored(tmp_path):
+    with pytest.raises(ConfigError, match="draft_weights only applies to model.repo and model.path"):
+        load_config(write(tmp_path, "model: {name: qwen3.8-27b-4bit, draft_weights: official}"))
+    with pytest.raises(ConfigError, match="dflash2 is trained for the tested Qwen3.8-27B"):
+        load_config(write(tmp_path, "model: {repo: org/Some-Model, speculative_decoding: true, draft: dflash2}"))
+    with pytest.raises(ConfigError, match="draft_weights must be"):
+        load_config(write(tmp_path, "model: {repo: org/Some-Model, draft_weights: 3}"))

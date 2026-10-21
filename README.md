@@ -230,6 +230,9 @@ model:
                              # models have one. Default false
   # draft: mtp                # which drafter: mtp (the model's own head) or dflash2 (z-lab's; the 27B-4bit's default,
                              # guesses more per round; the model page has both measured). Only with speculative_decoding
+  # draft_weights: model      # model.repo / model.path only: whose MTP head drafts. model (default) = the head in the
+                             # model's own files — lmk refuses to start if it has none; official = lmk's copy of the
+                             # original Qwen3.8-27B head; or another draft's HuggingFace repo, or a folder (./ or / or ~)
   # context_length: 65536     # default: the model's maximum; lmk lowers it if memory is short, and `lmk status`
                              # shows the value in use
 listen: {host: 127.0.0.1, port: 1235}
@@ -336,6 +339,10 @@ from 39 to 60 tokens/s on code and copy-editing, with 86–89% of its guesses ac
 tests, and to 45 on prose.
 It runs while one request is being answered; several at once are decoded plainly.
 `lmk up` fetches the draft for the models that have one; the model page says so.
+For a model you add with `model.repo` or `model.path`, `speculative_decoding: true` uses the MTP head that ships
+with the model (read from `optiq/mtp.safetensors`, the layout of the OptiQ conversions; another layout is refused, not guessed), or the one `draft_weights` names. lmk refuses to
+start, and says why, when the model has no head, or when the head was made for a different model (hidden size or
+vocabulary differ); it never switches to another head by itself. `lmk status` shows whose head is in use.
 
 The model runtime is [mlx-engine](https://github.com/lmstudio-ai/mlx-engine), the open-source
 engine behind LM Studio, run from lmk's own fork ([seabit-ai/mlx-engine](https://github.com/seabit-ai/mlx-engine),

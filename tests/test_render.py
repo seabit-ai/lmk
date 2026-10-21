@@ -194,3 +194,11 @@ def test_speculative_decoding_shows_on_the_model_line_and_its_acceptance_below()
     fresh = dict(on, draft={"rounds": 0, "accepted": 0, "drafted": 0})
     assert "  draft      no tokens drafted yet" in render.status_block(fresh, "http://127.0.0.1:1235")
     assert "  draft" not in render.status_block(dict(on, draft=None), "http://127.0.0.1:1235")   # no draft model at all
+
+
+def test_the_settings_line_says_whose_head_a_repo_models_draft_is():
+    base = {"speculative_decoding": True, "draft_kind": "mtp", "kv_cache_bits": 16}
+    assert "speculative decoding on (mtp)" in render.model_settings(base)  # a tested model: its page says
+    assert "(mtp, the model's own head)" in render.model_settings({**base, "draft_weights": "model"})
+    assert "(mtp, lmk's copy of the original Qwen3.8-27B head)" in render.model_settings({**base, "draft_weights": "official"})
+    assert "(mtp, head from org/Some-Draft)" in render.model_settings({**base, "draft_weights": "org/Some-Draft"})

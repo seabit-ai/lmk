@@ -9,6 +9,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Optional
 
+from lmk.drafts import is_folder
+
 
 @dataclass(frozen=True)
 class MemoryFit:
@@ -245,17 +247,25 @@ def draft_kind_for(source, kind: Optional[str] = None) -> Optional[str]:
     return chosen if chosen in tested.drafts else None
 
 
-def draft_repo_for(source, kind: Optional[str] = None) -> Optional[str]:
-    """The draft model lmk knows for this source and kind (model.draft; the model page's default
-    when unset); None for repo / path sources and for tested models without one."""
+def draft_repo_for(source, kind: Optional[str] = None, weights: Optional[str] = None) -> Optional[str]:
+    """The draft model lmk would download for this source and kind (model.draft; the model page's
+    default when unset). For repo / path sources `weights` (model.draft_weights) decides: `official`
+    is lmk's copy of the original Qwen3.8-27B head, a HuggingFace repo is that repo; the model's own
+    head and a folder need no download (lmk.drafts), so None."""
+    if source.kind != "name":
+        if weights == "official":
+            return DRAFT_QWEN38_27B
+        if weights and weights != "model" and not is_folder(weights):
+            return weights
+        return None
     effective = draft_kind_for(source, kind)
     return None if effective is None else TESTED_MODELS[source.value].drafts[effective]
 
 
-def resolve_draft(source, kind: Optional[str] = None) -> Optional[Path]:
+def resolve_draft(source, kind: Optional[str] = None, weights: Optional[str] = None) -> Optional[Path]:
     """The downloaded draft model's directory; None when this model has none. Never
     touches the network."""
-    repo = draft_repo_for(source, kind)
+    repo = draft_repo_for(source, kind, weights)
     if repo is None:
         return None
     snapshot = _hf_snapshot_dir(repo)

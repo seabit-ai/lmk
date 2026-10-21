@@ -182,3 +182,21 @@ def test_the_27b_has_a_draft_and_other_sources_have_none(tmp_path, monkeypatch):
         resolve_draft(ModelSource("name", "qwen3.8-27b-4bit"), "mtp")
     snap = _draft_in_cache(tmp_path, monkeypatch)
     assert resolve_draft(ModelSource("name", "qwen3.8-27b-4bit"), "mtp") == snap
+
+
+def test_a_repo_model_downloads_a_draft_only_when_draft_weights_names_one(tmp_path, monkeypatch):
+    from lmk.models import DraftNotDownloaded, draft_repo_for, resolve_draft
+
+    repo_model = ModelSource("repo", "org/Some-Model")
+    assert draft_repo_for(repo_model, None, None) is None                       # the model's own head: in its files
+    assert draft_repo_for(repo_model, None, "model") is None
+    assert draft_repo_for(repo_model, None, "./drafts/mtp") is None             # a folder is on this disk already
+    assert draft_repo_for(repo_model, None, "official") == "seabit-ai/Qwen3.8-27B-MTP-draft"
+    assert draft_repo_for(repo_model, None, "org/Some-Draft") == "org/Some-Draft"
+    assert draft_repo_for(ModelSource("path", "/m"), None, "official") == "seabit-ai/Qwen3.8-27B-MTP-draft"
+    import huggingface_hub.constants as constants
+    monkeypatch.setattr(constants, "HF_HUB_CACHE", str(tmp_path))  # not this Mac's real cache
+    with pytest.raises(DraftNotDownloaded, match="seabit-ai/Qwen3.8-27B-MTP-draft is not downloaded"):
+        resolve_draft(repo_model, None, "official")
+    snap = _draft_in_cache(tmp_path, monkeypatch)
+    assert resolve_draft(repo_model, None, "official") == snap

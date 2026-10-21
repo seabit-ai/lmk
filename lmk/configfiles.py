@@ -23,6 +23,9 @@ _WHAT = {
                       "8 below where the model page tested it (about twice the context); `lmk status` shows which"),
     "speculative_decoding": "a draft guesses tokens, the model checks them (`lmk up` fetches the draft)",
     "draft": "which drafter: mtp (the model's own head, 0.8 GB) or dflash2 (z-lab's, 1.1 GB, guesses more per round); default: the model page's",
+    "draft_weights": ("model.repo / model.path only: whose MTP head drafts. model (default) = the head in the model's own files, "
+                      "refused if it has none; official = lmk's copy of the original Qwen3.8-27B head; or another draft's "
+                      "HuggingFace repo, or a folder starting with ./ or / or ~"),
     "thinking": "false = answer without thinking — not for agents on Qwen3.8 (it invents facts instead of using tools; see its model page); default: the template's own (on for Qwen, off for Gemma)",
     "context_length": "default: the model's maximum, lowered if memory is short; `lmk status` shows the value in use",
     "draft_tokens": "advanced: tokens the draft guesses per round (default: the draft's own)",
@@ -106,6 +109,7 @@ model:
   # kv_cache_bits: 16            # 16 on any Mac
   # kv_cache_bits: 8             # 8 on any Mac; on a model whose page does not list it, untested by us
   # draft: dflash2               # {_WHAT["draft"]}
+  # draft_weights: official      # {_WHAT["draft_weights"]}
   # thinking: false              # {_WHAT["thinking"]}
   # context_length: 65536        # {_WHAT["context_length"]}
   # draft_tokens: 3              # {_WHAT["draft_tokens"]}

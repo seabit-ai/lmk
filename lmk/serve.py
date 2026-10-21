@@ -3,7 +3,8 @@ import errno
 import signal
 
 from lmk import log
-from lmk.config import ConfigError, app_dir, build_id, config_path, fingerprint, load_config
+from lmk import drafts
+from lmk.config import ConfigError, app_dir, build_id, config_path, fingerprint, load_config, lmk_home
 from lmk.configfiles import refresh_example, seed_config
 from lmk.models import DraftNotDownloaded, ModelNotDownloaded, draft_kind_for, draft_repo_for, resolve_draft, resolve_model
 
@@ -28,7 +29,18 @@ def serve() -> int:
         return EXIT_WILL_NOT_FIX_ITSELF
 
     draft_path, draft_kind = None, None
-    if cfg.model.speculative_decoding:
+    if cfg.model.speculative_decoding and cfg.model.source.kind != "name":
+        draft_kind = "mtp"
+        try:
+            draft_path = drafts.resolve(cfg.model.source, cfg.model.draft_weights, resolved.path, resolved.revision, lmk_home() / "drafts")
+        except drafts.DraftProblem as e:
+            log.error("LmkDraftUnusable", f"model.speculative_decoding is on, but {e}", path=str(config_path()), model=cfg.model.id,
+                      draftWeights=cfg.model.draft_weights or drafts.OWN)
+            return EXIT_WILL_NOT_FIX_ITSELF
+        except DraftNotDownloaded as e:
+            log.error("LmkDraftMissing", f"{e} — run `lmk pull`, then `lmk up`")
+            return EXIT_WILL_NOT_FIX_ITSELF
+    elif cfg.model.speculative_decoding:
         draft_kind = draft_kind_for(cfg.model.source, cfg.model.draft)
         if draft_repo_for(cfg.model.source, cfg.model.draft) is None:
             wanted = f" of kind {cfg.model.draft!r}" if cfg.model.draft else ""
@@ -58,16 +70,18 @@ def serve() -> int:
                   runtimeDir=str(app_dir() / ".engine" / "mlx-engine"))
         return EXIT_WILL_NOT_FIX_ITSELF
 
+    draft_weights = (cfg.model.draft_weights or drafts.OWN) if draft_path is not None and cfg.model.source.kind != "name" else None
     log.info("LmkStarting", "loading the resident model", model=cfg.model.id, path=str(resolved.path),
              requestedContextLength=cfg.model.context_length, build=build_id(),
              kvCacheBits=cfg.model.kv_cache_bits, kvCacheBitsAuto=cfg.model.kv_cache_bits_auto,
              speculativeDecoding=cfg.model.speculative_decoding,
-             draftPath=None if draft_path is None else str(draft_path), draftKind=draft_kind, thinking=cfg.model.thinking,
+             draftPath=None if draft_path is None else str(draft_path), draftKind=draft_kind,
+             draftWeights=draft_weights, thinking=cfg.model.thinking,
              reasoningEffort=cfg.model.reasoning_effort)
     engine = MlxEngine(cfg.model.id, resolved.path, cfg.model.context_length, cache_dir=cfg.cache_dir,
                        cache_max_bytes=cfg.cache_max_bytes, repo=cfg.model.source.repo, revision=resolved.revision,
                        max_parallel=cfg.requests.max_parallel, template_kwargs=cfg.model.template_kwargs(),
-                       kv_cache_bits=cfg.model.kv_cache_bits, draft_path=draft_path, draft_kind=draft_kind,
+                       kv_cache_bits=cfg.model.kv_cache_bits, draft_path=draft_path, draft_kind=draft_kind, draft_weights=draft_weights,
                        draft_tokens=cfg.model.draft_tokens)
     try:
         # a value the template rejects (Qwen3.8 accepts exactly xhigh / medium / low for reasoning_effort)
@@ -95,7 +109,7 @@ def serve() -> int:
     log.info("LmkReady", "serving", host=cfg.host, port=server.port, model=cfg.model.id,
              contextLength=model.context_length, maxParallel=cfg.requests.max_parallel,
              tokenBudget=engine.token_budget(), kvCacheBits=model.kv_cache_bits, kvCacheBitsAuto=cfg.model.kv_cache_bits_auto,
-             speculativeDecoding=model.speculative_decoding, draftKind=model.draft_kind, thinking=engine.thinking_enabled(),
+             speculativeDecoding=model.speculative_decoding, draftKind=model.draft_kind, draftWeights=model.draft_weights, thinking=engine.thinking_enabled(),
              reasoningEffort=engine.reasoning_effort(), bufferCacheLimitBytes=BUFFER_CACHE_LIMIT_BYTES)
 
     def stop(signum, _frame):  # launchd stops us with SIGTERM

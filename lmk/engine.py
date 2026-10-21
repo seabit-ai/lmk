@@ -17,6 +17,7 @@ class LoadedModel:
     kv_cache_bits: int = 16
     speculative_decoding: bool = False
     draft_kind: Optional[str] = None   # mtp / dflash2 when a draft is loaded
+    draft_weights: Optional[str] = None  # repo / path models: model / official / a repo / a folder (model.draft_weights)
 
 
 @dataclass
@@ -108,7 +109,8 @@ class MlxEngine:
                  cache_dir: Optional[Path] = None, cache_max_bytes: Optional[int] = None,
                  repo: Optional[str] = None, revision: Optional[str] = None, max_parallel: int = 2,
                  template_kwargs: Optional[dict] = None, kv_cache_bits: int = 16,
-                 draft_path: Optional[Path] = None, draft_kind: Optional[str] = None, draft_tokens: Optional[int] = None):
+                 draft_path: Optional[Path] = None, draft_kind: Optional[str] = None, draft_weights: Optional[str] = None,
+                 draft_tokens: Optional[int] = None):
         from mlx_engine.generate import get_runtime_load_info, load_draft_model, load_model  # heavy import, kept out of module scope
 
         if not model_path.exists():
@@ -137,7 +139,8 @@ class MlxEngine:
         self._model = LoadedModel(id=model_id, path=model_path, context_length=in_use,
                                   requested_context_length=requested, kv_cache_bits=kv_cache_bits,
                                   speculative_decoding=draft_path is not None,
-                                  draft_kind=draft_kind if draft_path is not None else None)
+                                  draft_kind=draft_kind if draft_path is not None else None,
+                                  draft_weights=draft_weights if draft_path is not None else None)
         self._format = TemplateChatFormat(self._kit.tokenizer, template_kwargs)
         self._thinking = bool((template_kwargs or {}).get("enable_thinking", self._format.dialect.thinking_default))
         self._effort = (template_kwargs or {}).get("reasoning_effort")

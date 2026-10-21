@@ -58,7 +58,7 @@ class ModelSource:
 
 KV_CACHE_BITS = (16, 8, 4)  # what the engine's batched path quantizes to; 16 means no quantization
 MODEL_KEYS = {"name", "repo", "path", "context_length", "thinking", "reasoning_effort", "kv_cache_bits",
-              "speculative_decoding", "draft", "draft_tokens", "id"}  # id: refused with its own message below
+              "speculative_decoding", "draft", "draft_weights", "draft_tokens", "id"}  # id: refused with its own message below
 DRAFT_KINDS = ("mtp", "dflash2")
 
 
@@ -73,6 +73,7 @@ class ModelConfig:
     kv_cache_bits_auto: bool = False  # not set in config.yaml: chosen by this Mac's memory (models.auto_kv_cache_bits)
     speculative_decoding: bool = False  # draft tokens and let the model check them; needs the draft lmk up fetched
     draft: Optional[str] = None         # which drafter: mtp (the model's own head) / dflash2; None: the model page's default
+    draft_weights: Optional[str] = None  # repo / path models only: model (None) / official / a repo / a folder; design 2026-10-20-draft-for-any-model
     draft_tokens: Optional[int] = None  # tokens drafted per round; None: the draft model's own setting
 
     def template_kwargs(self) -> dict:
@@ -193,6 +194,17 @@ def load_config(path: Optional[Path] = None) -> LmkConfig:
     if draft is not None and draft not in DRAFT_KINDS:
         raise ConfigError(f"model.draft must be one of {', '.join(DRAFT_KINDS)} (which drafter speculative decoding uses; "
                           f"leave it out for the model page's default) — got {draft!r}")
+    draft_weights = model.get("draft_weights")
+    if draft_weights is not None:
+        if not isinstance(draft_weights, str) or not draft_weights:
+            raise ConfigError("model.draft_weights must be model (the model's own head), official (lmk's copy of the original "
+                              f"Qwen3.8-27B head), a HuggingFace repo, or a folder starting with ./ or / or ~ — got {draft_weights!r}")
+        if source.kind == "name":
+            raise ConfigError("model.draft_weights only applies to model.repo and model.path; a tested model uses the draft its "
+                              "page lists (model.draft picks mtp or dflash2)")
+    if draft == "dflash2" and source.kind != "name":
+        raise ConfigError("model.draft: dflash2 is trained for the tested Qwen3.8-27B and not checked against other models; "
+                          "for model.repo / model.path use mtp (model.draft_weights says whose head)")
     draft_tokens = model.get("draft_tokens")
     if draft_tokens is not None and (isinstance(draft_tokens, bool) or not isinstance(draft_tokens, int)
                                      or not 1 <= draft_tokens <= 16):
@@ -200,7 +212,7 @@ def load_config(path: Optional[Path] = None) -> LmkConfig:
     return LmkConfig(
         model=ModelConfig(id=_default_model_id(source), source=source,
                           context_length=context_length, thinking=thinking, reasoning_effort=effort,
-                          kv_cache_bits=int(kv_bits), kv_cache_bits_auto=kv_bits_auto, speculative_decoding=speculative, draft=draft, draft_tokens=draft_tokens),
+                          kv_cache_bits=int(kv_bits), kv_cache_bits_auto=kv_bits_auto, speculative_decoding=speculative, draft=draft, draft_weights=draft_weights, draft_tokens=draft_tokens),
         host=str(listen.get("host") or DEFAULT_HOST),
         port=int(listen.get("port") or DEFAULT_PORT),
         cache_dir=Path(str(cache.get("dir") or lmk_home() / "cache")).expanduser(),

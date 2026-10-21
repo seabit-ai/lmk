@@ -130,6 +130,13 @@ def _finished_line(f: dict, who_width: int) -> str:
     return f"  {_who(f):<{who_width}}  " + " · ".join(parts)
 
 
+def _head_from(weights: str | None) -> str:
+    """Where a repo / path model's draft head came from; tested models have none to say (their page does)."""
+    if not weights:
+        return ""
+    return {"model": ", the model's own head", "official": ", lmk's copy of the original Qwen3.8-27B head"}.get(weights, f", head from {weights}")
+
+
 def model_settings(model: dict) -> str:
     """The switches a user can set, each stated even when off: a reader must be able to tell
     'off' from 'this lmk does not have it' (explicit over short). `model` is the status document's."""
@@ -138,7 +145,7 @@ def model_settings(model: dict) -> str:
         thinking += f" (effort {model['reasoning_effort']})"
     speculative = "on" if model.get("speculative_decoding") else "off"
     if model.get("speculative_decoding") and model.get("draft_kind"):
-        speculative += f" ({model['draft_kind']})"
+        speculative += f" ({model['draft_kind']}" + _head_from(model.get("draft_weights")) + ")"
     kv = f"{model.get('kv_cache_bits', 16)}-bit"
     if model.get("kv_cache_bits_auto"):
         kv += f" (automatic for a {model['mac_memory_gb']} GB Mac)"

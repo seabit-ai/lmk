@@ -24,6 +24,14 @@
 
 
 
+## 2026-10-20 repo/path 模型用 MTP 草稿器（分支 `draft-for-any-model`，未合）
+- 设计 `docs/design/2026-10-20-draft-for-any-model.md`（全部裁完）。已做：`lmk/drafts.py`（自带头转换、兼容检查）、`model.draft_weights`、
+  `serve` 干净退出路径（`LmkDraftUnusable`）、`lmk status` 说明头从哪来、README/配置模板；单测 266 过。
+- 真机验收（临时 lmk，端口 1299，社区 4-bit 微调版，自带头）：不带 tools 接受 244/310，带 tools 41/50，tool call 正确。载荷与原始输出在 owner 私有笔记，不在本 repo。
+- 欠：`make itest`；`draft_weights: official` 与 `model` 之外取值（仓库/目录）只有单测、没在真机跑；只认 `optiq/mtp.safetensors` 一种边文件布局，
+  主分片里带 `mtp.*` 的转换还没支持（会明确拒绝）。
+- 跟进（未做）：贪心下有草稿与无草稿的输出分叉（换头不变，疑似验证那一遍的浮点取整），没做区分实验。
+
 ## 2026-09-25 长上下文与 KV 精度（`research/2026-09-25-spec-long-context`）
 - 本机已改 kv16（SLC-007：128k 22.1 对 15.4 tok/s）。在做：MLX 缓冲池上限（128k 时进程 52–54 GB、MLX 峰值 42–43 GB，约 10 GB 是缓冲池；
   `mx.set_cache_limit` lmk 与引擎都没调）；补量 kv8 的进程内存，定"按内存自动选 KV 精度"的档位线（kv16 同时在内存的 token 1.84M → 0.98M）。
