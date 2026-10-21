@@ -23,6 +23,9 @@ owner 想在本机跑一个社区微调版的 Qwen3.8-27B（MLX 4-bit，仓库�
 3. **配置里能指定 MTP 权重**，包括指定回"官方"那份（lmk 现有的头）。
 4. **自带头缺失 → 拒绝启动**（exit 0，说明这个 repo 没有 MTP 头，并告诉用户可以改指哪份）。不自动退到官方头。
    owner："I want explicit, and predictability, I don't want implicit magic."
+5. **键名**（owner 2026-10-20 "y"）：`model.draft`（种类，同现在）旁加 `model.draft_weights`：`model`（缺省，仓库自带）/ `official`（lmk 拆自
+   原版的头）/ HF 仓库名或本地目录。只对 `repo:`/`path:` 有效，给 `name:` 模型设它 → 报错；`draft: dflash2` 配 `repo:`/`path:` → 报错。
+   固定词 `model` / `official`；同名本地目录要写 `./official`。
 
 ## 被否 / 暂缓
 - 自带头缺失时自动退到官方头（`lmk up` 打印一行说明）——被 owner 否（见上 4）：隐式行为，要靠读输出才知道发生了什么。
@@ -30,5 +33,4 @@ owner 想在本机跑一个社区微调版的 Qwen3.8-27B（MLX 4-bit，仓库�
 - DFlash 给 `repo:` 模型：不做。DFlash 草稿器是为原版目标的 5 层隐状态训练的，没人验证过能配微调版。
 
 ## 未定（一次一个）
-- 配置键名与取值。
 - 自带头的转换（改名、norm +1、写 quantization）放在哪、产物放哪：`~/.lmk` 下由 `lmk pull` 生成，还是载入时现转。
