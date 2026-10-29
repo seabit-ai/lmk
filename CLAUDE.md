@@ -28,6 +28,8 @@ Known issues）、启动时校验会炸的配置值。加模型的工作量大�
 `research/2026-09-20-local-server-survey/`。这个优势来自 mlx-engine 的 checkpoint 策略；对用户来说"谁写的"无所谓，体验才是结论。
 
 ## 怎么和 owner 做设计（SAD：Socratic ADR Dialogue）
+完整做法见 [`skills/socratic-adr-dialogue.md`](skills/socratic-adr-dialogue.md)；一步一步配置、做实验时 owner 说 "SPL" 就是
+[`skills/socratic-pairing-log.md`](skills/socratic-pairing-log.md)。下面是这个 repo 里的具体规矩。
 - 一次一个设计点：先摆事实（查过的、量过的），再给推理链和**一个**推荐，最后问一个问题。回合要短，让他能插话。
 - 裁决与**被否的方案**都记进 `docs/design/YYYY-MM-DD-slug.md`，被否的连理由一起记——包括我自己被否的提议。
 - **设计裁决不是开工令。** 开工只认显式指令（"go" / "start"）。偏离已有裁决时要显式标出，并先假定那条裁决是对的。
