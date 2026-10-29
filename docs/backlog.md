@@ -24,6 +24,16 @@
 
 
 
+## 2026-10-29 已合 main、还欠的验收与未决（owner 2026-10-29 要求记入）
+- **`make itest` 一次都没跑**，欠三项已合并的改动：MTP 草稿器（repo/path 模型）、cache.max_size 跨模型淘汰、`input_modalities()` 看视觉塔。
+  对应最相关的 itest：`test_the_model_reads_an_image`（需要有视觉塔的模型）、`test_a_request_with_tools_drafts_when_a_draft_is_loaded`（`LMK_ITEST_DRAFT`）、
+  `test_prefix_cache_survives_a_process_restart`。真机上按用户的样子跑过（见下面各节），但那不是 itest。
+- **引擎后台线程死掉的处理（未裁）**：引擎对致命异常 `sys.exit(1)`，在 lmk 的同进程里只结束那个线程，进程不退，`lmk status` 仍报 up，之后每个请求 500。
+  `stream: true` 的请求先发 200 再跑引擎，出错时 `server.py` 什么都不写就断连，客户端（kitten）只看到 `LmkConnectionDropped`。
+  方案 A（lmk 侧）：检测线程已死 → 记一次 `LmkEngineDead` → 流已开始就写一条 SSE 错误事件、没开始就返回 503（消息只带异常末行，不放 traceback）→ 退出让 launchd 重拉。
+  方案 B（fork）：给一个请求准备输入时出错只让这个请求失败。**未决：死后是退出让 launchd 重拉（推荐），还是留着报 503 直到 `lmk up`**（即 2026-09-24 候选第 4 条）。
+- 补测：新模型（有视觉，官方 MTP 头）关掉 thinking 后的代码请求的接受率；上一次的数是在思考文本上量的（不带 tools 72%、带 tools 91%、合计 74%）。
+
 ## 2026-10-20 repo/path 模型用 MTP 草稿器（分支 `draft-for-any-model`，未合）
 - 设计 `docs/design/2026-10-20-draft-for-any-model.md`（全部裁完）。已做：`lmk/drafts.py`（自带头转换、兼容检查）、`model.draft_weights`、
   `serve` 干净退出路径（`LmkDraftUnusable`）、`lmk status` 说明头从哪来、README/配置模板；单测 266 过。
