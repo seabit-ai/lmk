@@ -191,6 +191,24 @@ both gain the same.
 Peak at 50k on the 27B, this machine, by chunk (GB): 2048 → 25.5 (fp16) /
 24.2 (kv8); 1024 → 20.9 (kv8); 512 → 20.8 (fp16) / 19.5 (kv8).
 
+## SMR-012 exp04: chunk 512 cuts the other request's stall during a long prefill 3.7×
+
+Two requests on the 27B (fp16 cache, `max_seq_nums=2`): A decoding, B reading
+a 30k prompt. The batched generator runs one decode step per prefill chunk,
+so A gets one token per chunk and the gap is the chunk's prefill time:
+
+| chunk | A's median gap during B's prefill | A tok/s during | B prefill s |
+|---|---|---|---|
+| 2048 | 6.7 s (max 7.6) | 0.18 | 102.2 |
+| 512 | 1.8 s (max 2.1) | 0.58 | 106.3 |
+
+A alone runs at 25 ms per token. This is the "near-stop" CLAUDE.md records
+and the reason for the admission queue's rule two; 512 does not remove it
+(1.8 s per token is still a crawl) but turns a 7-second freeze into a
+visible trickle, and B pays nothing for A's interleaved steps (its prefill
+matches the solo number in both arms). This, not memory, is the benefit to
+lead with for a two-agent machine.
+
 ## Recommendation
 
 Keep the mask patch (correct, cheap, helps the `model.path` case in

@@ -1,0 +1,11 @@
+[cache_store][INFO]: VLM prompt cache disk store disabled
+[context_fit][INFO]: Model context auto-fit: family=qwen3_5 max=262,144 fitted=262,144 working_set=77.76GiB reserve=3.00GiB baseline=14.95GiB full_kv=65536B/token prompt_inputs=10240B/token attention_coefficient=48B/context/step rotating_constant=0.00GiB rotating_per_step=0B steps=2048:262,144,1024:262,144,512:262,144
+[cache_store][INFO]: VLM prompt cache context target: configured=65,536 fitted=262,144 effective=262,144
+[coordinator][INFO]: Prompt cache restore: cached_tokens=0 uncached_tokens=14 lifetime_efficiency=0.00%
+[model_kit][INFO]: Request prefill plan: prompt=15 cached=0 segments=2048:15
+[coordinator][INFO]: Prompt cache restore: cached_tokens=0 uncached_tokens=28 lifetime_efficiency=0.00%
+[model_kit][INFO]: Request prefill plan: prompt=29 cached=0 segments=2048:29
+[coordinator][INFO]: Prompt cache restore: cached_tokens=0 uncached_tokens=30011 lifetime_efficiency=0.00%
+[model_kit][INFO]: Request prefill plan: prompt=30,012 cached=0 segments=2048:30,012
+[request_lifecycle][WARNING]: Could not cancel request_id=B
+{"arm": "kv16-step2048-B30000", "prompt_tokens_B": 30012, "b_prefill_s": 102.2, "a_tokens_before": 10, "a_gap_before_ms": 25, "a_tokens_during": 18, "a_gap_during_median_ms": 6669, "a_gap_during_max_ms": 7579, "a_tok_s_during": 0.18}
