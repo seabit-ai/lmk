@@ -33,6 +33,13 @@ $(ENGINE)/.pinned: ENGINE_COMMIT
 test: venv ## unit tests (no GPU, no model)
 	$(PY) -m pytest -q tests
 
+# Engine-side test target that deliberately does NOT depend on venv/.pinned:
+# while the engine worktree carries uncommitted patches, a checkout to
+# ENGINE_COMMIT would clobber them. Uses the existing .venv and the global
+# PYTHONPATH export above.
+engine-sink-test: ## run the rotating-sink-mask engine unit test (no checkout side effects)
+	cd $(ENGINE) && $(CURDIR)/$(PY) -m pytest -q tests/test_rotating_sink_mask.py
+
 itest: venv ## integration tests — need the configured model on disk and a free GPU
 	LMK_ITEST=1 $(PY) -m pytest -q tests -m itest
 
