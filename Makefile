@@ -70,4 +70,4 @@ install: ## install this tree into ~/.lmk and (re)start the service
 uninstall: ## stop the service (keeps ~/.lmk: app, config, cache)
 	$${LMK_HOME:-$(HOME)/.lmk}/bin/lmk down
 
-.PHONY: help all venv test itest cache-fixture cache-compat lint run clean install uninstall
+.PHONY: help all venv test engine-sink-test itest cache-fixture cache-compat lint run clean install uninstall
