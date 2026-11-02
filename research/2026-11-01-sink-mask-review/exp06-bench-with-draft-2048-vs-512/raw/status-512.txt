@@ -1,0 +1,18 @@
+✓ lmk is up    http://127.0.0.1:1299/v1   (OpenAI-compatible)
+  model      6067b15cf581666a4aecf6af3afaba4bb5efc20c · text, image in · 262,144 tokens
+  settings   thinking on (effort low) · KV cache 16-bit (set in config) · speculative decoding on (mtp, lmk's copy of the original Qwen3.8-27B head)
+  draft      63% of drafted tokens accepted (539 of 853) · 2.3 tokens per round
+  sampling   temp 1.0 · top_p 0.95 · top_k 20   (the model's generation_config; a request may override)
+  memory     pressure: normal · 68% of 96.0 GB free · lmk holds 16.5 GB
+  cache      1.6 GB of 20.0 GB in /tmp/lmk-exp06-eaKK/cache · since start 46% of prompt tokens came from it (3,840 of 8,345)
+  requests   answering 0 of 2 · waiting 0 of 16 · tokens in memory 0 of 979,877
+  since start  6 answered · 0 refused · 0 failed · 0 cancelled · up 37s · build dev
+
+  idle — no requests
+
+  just finished
+  bench  61 prompt (0 cached) · first token 0.3s · 400 tokens at 55/s · length · 0s ago
+  bench  54 prompt (0 cached) · first token 0.3s · 400 tokens at 41/s · length · 7s ago
+  bench  4,062 prompt (3,840 cached) · first token 0.9s · 32 tokens at 56/s · length · 17s ago
+  bench  4,062 prompt (0 cached) · first token 12.9s · 32 tokens at 56/s · length · 19s ago
+  bench  59 prompt (0 cached) · first token 0.3s · 101 tokens at 60/s · stop · 32s ago

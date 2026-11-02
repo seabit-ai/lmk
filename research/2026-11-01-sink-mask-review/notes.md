@@ -218,6 +218,18 @@ conversation (later turns come from the cache). Not measured: its own stall
 under concurrency (a 2048 chunk takes 0.8 s on this model, so it was never
 the freeze the 27B is).
 
+## SMR-014 exp06: with the draft model on, chunk 512 changes nothing in decode or acceptance
+
+`lmk bench` against two temporary instances of the catalog 27B-4bit (official
+head, kv16, effort low), same seed, both cold: acceptance 48% prose / 74%
+code in both arms; decode 42.1 vs 41.2 prose, 54.6 vs 54.9 code; prefill 324
+vs 314 tok/s on the 4k probe; cached prefill 53k both. The drafter only
+runs in decode steps, and the chunk does not change them. The owner's 50%
+prose acceptance on the private variant after the deploy is therefore the
+head's number, not a regression. Two attempts failed on my side first
+(no `draft_weights: official` for a `path:` model; `--url` given with `/v1`),
+logs kept as `attempt1-*` / `attempt2-*`.
+
 ## Recommendation
 
 Keep the mask patch (correct, cheap, helps the `model.path` case in

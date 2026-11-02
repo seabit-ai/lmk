@@ -1,0 +1,10 @@
+6067b15cf581666a4aecf6af3afaba4bb5efc20c on Apple M3 Ultra 96 GB — thinking on (effort low) · KV cache 16-bit (set in config) · speculative decoding on (mtp, lmk's copy of the original Qwen3.8-27B head) — measuring, about a minute
+  answer           matches the reference   (1, 2, 3, 4, 5… 20)
+  prefill              314 tokens/s
+  cached prefill       53k tokens/s   (3,840 of 4,062 from disk; first token 0.94 s incl. the last partial block)
+  decode, prose       41.2 tokens/s (48% of drafted tokens accepted)
+  decode, code        54.9 tokens/s (74% of drafted tokens accepted)
+  answers start    prose '' · code '```python """A Least Recently Used (LRU) cache w…'
+
+  seed 20261101   ·   row for docs/benchmarks.md:
+| Apple M3 Ultra | 96 GB | 6067b15cf581666a4aecf6af3afaba4bb5efc20c (speculative decoding) | 262,144 | 314 tok/s (4,062 tokens) | 53k tok/s (3,840 cached; first token 0.94 s) | 41.2 tok/s prose · 54.9 code (74% of drafted tokens accepted) | dev | e863778 | 2026-11-01 |

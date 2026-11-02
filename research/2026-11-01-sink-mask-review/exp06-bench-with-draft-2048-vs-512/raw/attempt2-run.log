@@ -1,0 +1,10 @@
+model /Users/xinkai/.cache/huggingface/hub/models--lmstudio-community--Qwen3.8-27B-MLX-4bit/snapshots/6067b15cf581666a4aecf6af3afaba4bb5efc20c/ seed 20261101 Sun Nov  1 19:45:47 PST 2026
+=== chunk 2048 engine c3ee66f home /tmp/lmk-exp06-gyHO 19:45:47
+up after 20s 19:46:05
+bench exit 1 19:46:05
+stopped pid 15209 19:46:06
+=== chunk 512 engine e863778 home /tmp/lmk-exp06-2OnI 19:46:06
+up after 18s 19:46:22
+bench exit 1 19:46:22
+stopped pid 15543 19:46:23
+done Sun Nov  1 19:46:23 PST 2026

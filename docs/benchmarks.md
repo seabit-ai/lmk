@@ -41,5 +41,6 @@ cache, the cache survived, and the run says so instead of reporting a cold numbe
 | Apple M3 Ultra | 96 GB | gemma-4-e4b-4bit | 131,072 | 2,199 tok/s (4,028 tokens) | 183k tok/s (3,840 cached; first token 0.19 s) | 93.5 tok/s | v0.5.0+ | 08f0c07 | 2026-09-22 |
 | Apple M3 Ultra | 96 GB | gemma-4-31b-4bit | 262,144 | 252 tok/s (4,028 tokens) | 26k tok/s (3,840 cached; first token 1.23 s) | 33.0 tok/s | v0.6.0+ | 08f0c07 | 2026-09-22 |
 | Apple M3 Ultra | 96 GB | gemma-4-12b-4bit ([tried, not listed](models/gemma-4-12b-4bit.md)) | 262,144 | 666 tok/s (4,028 tokens) | 52k tok/s (3,840 cached; first token 0.51 s) | 71.8 tok/s | v0.5.0+ | 08f0c07 | 2026-09-22 |
+| Apple M3 Ultra | 96 GB | qwen3.8-27b-4bit (speculative decoding, lmk's copy of the official head) — prefill chunk 512 (design 2026-11-01-prefill-chunk; at 2048 the same run gave 324 tok/s, 42.1 prose · 54.6 code, same acceptance) | 262,144 | 314 tok/s (4,062 tokens) | 53k tok/s (3,840 cached; first token 0.94 s) | 41.2 tok/s prose · 54.9 code (48% prose · 74% code of drafted tokens accepted) | dev | e863778 | 2026-11-01 |
 
 Numbers from real agent traffic (a 56-tool, 11k-token system prompt; a 27k-token conversation) are in the [README](../README.md); they differ from these synthetic probes and both are true under their conditions.
