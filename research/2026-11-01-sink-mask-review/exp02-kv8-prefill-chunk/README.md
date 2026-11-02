@@ -67,3 +67,29 @@ research/2026-11-01-sink-mask-review/exp02-kv8-prefill-chunk/run.sh
 ```
 Raw: `raw/<arm>.jsonl` (one row per prompt length, first row = load info),
 `raw/<arm>.log` (engine log), `raw/run.log` (arm order, exit codes, times).
+
+## Result (2026-11-01 18:21, single run per arm, `raw/*.jsonl`)
+
+| arm | peak GB 4k / 16k / 30k / 50k | prefill s 4k / 16k / 30k / 50k | decode tok/s 4k / 16k / 30k / 50k |
+|---|---|---|---|
+| kv16 @ 2048 | 18.1 / 19.9 / 22.2 / 25.5 | 13 / 52 / 102 / 187 | 38 / 35 / 33 / 30 |
+| kv8 @ 2048 | 18.0 / 19.4 / 21.4 / 24.2 | 13 / 52 / 103 / 191 | 37 / 33 / 29 / 25 |
+| kv8 @ 1024 | 16.9 / 17.9 / 19.3 / 20.9 | 13 / 52 / 103 / 187 | 38 / 33 / 29 / 25 |
+| kv8 @ 512 | 16.4 / 17.4 / 18.7 / 19.5 | 13 / 54 / 106 / 192 | 38 / 31 / 29 / 25 |
+
+Weights 14.95 GB in every arm; auto context fit chose a single 2048 segment
+for every prompt on this 96 GB machine (`Request prefill plan: … segments=2048:…`).
+
+Against the expectation:
+- kv8 @ 2048 vs fp16 @ 2048: as expected, kv8 peaks *below* fp16 (−1.3 GB at
+  50k), nothing like the convert path's +66–73%.
+- kv8 @ 512 vs kv8 @ 2048: −4.7 GB at 50k, −2.7 GB at 30k, −1.6 GB at 4k. I
+  guessed 1–3 GB at 50k; the saving is larger, and it already shows at 4k.
+- prefill time: +0.5% at 50k, +3% at 30k. I guessed 5–25% slower; wrong on
+  the high side — at this model size the GEMMs are big enough at 512.
+- decode: unchanged by the chunk (25 tok/s at 50k in all three kv8 arms);
+  the kv8-vs-fp16 decode gap (25 vs 30) is the known quantized-cache cost.
+
+Reading rule set in advance (≥ 2 GB saved at 50k and ≤ 10% prefill cost):
+met by 512, also by 1024 (−3.3 GB, −2%). exp03 decides whether the condition
+"when quantized" is the right one.

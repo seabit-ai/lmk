@@ -1,0 +1,20 @@
+[cache_store][INFO]: VLM prompt cache disk store disabled
+[context_fit][INFO]: Model context auto-fit: family=qwen3_5 max=262,144 fitted=262,144 working_set=77.76GiB reserve=3.00GiB baseline=14.95GiB full_kv=65536B/token prompt_inputs=10240B/token attention_coefficient=48B/context/step rotating_constant=0.00GiB rotating_per_step=0B steps=2048:262,144,1024:262,144,512:262,144
+[cache_store][INFO]: VLM prompt cache context target: configured=65,536 fitted=262,144 effective=262,144
+{"arm": "kv16-step2048", "kit": "BatchedVisionModelKit", "load_s": 4.4, "kit_step": 2048, "fit": "ContextFitResult(context_length=262144, runtime_reserve_bytes=3221225472, safe_ceiling_bytes=80272949248, profile=CacheFitProfile(family='qwen3_5', allocation_step=256, full_kv_bytes_per_token=65536, prompt_input_bytes_per_token=10240, materializes_attention_scores=True, query_attention_heads=24, activation_dtype_bytes=2, prefill_step_size=2048, rotating_constant_bytes=0, rotating_bytes_per_prefill_token=0, fixed_ssm_bytes=153944064, max_context_length=262144), baseline_bytes=16055717366, working_set_bytes=83494174720, prefill_step_sizes=(2048, 1024, 512), step_context_limits=((2048, 262144), (1024, 262144), (512, 262144)))", "weights_gb": 14.95, "mlx": "0.32.0"}
+[coordinator][INFO]: Prompt cache restore: cached_tokens=0 uncached_tokens=4018 lifetime_efficiency=0.00%
+[model_kit][INFO]: Request prefill plan: prompt=4,019 cached=0 segments=2048:4,019
+{"arm": "kv16-step2048", "prompt_tokens": 4019, "prefill_s": 12.85, "prefill_tok_s": 313, "peak_gb": 18.12, "decode_tok_s": 38.2, "tokens": 9, "answer": "The crew worked on the retaining wall."}
+[request_lifecycle][WARNING]: Could not cancel request_id=exp02-16-2048-4000
+[coordinator][INFO]: Prompt cache restore: cached_tokens=0 uncached_tokens=16020 lifetime_efficiency=0.00%
+[model_kit][INFO]: Request prefill plan: prompt=16,021 cached=0 segments=2048:16,021
+{"arm": "kv16-step2048", "prompt_tokens": 16021, "prefill_s": 51.92, "prefill_tok_s": 309, "peak_gb": 19.85, "decode_tok_s": 35.4, "tokens": 9, "answer": "The crew worked on the retaining wall."}
+[request_lifecycle][WARNING]: Could not cancel request_id=exp02-16-2048-16000
+[coordinator][INFO]: Prompt cache restore: cached_tokens=0 uncached_tokens=30011 lifetime_efficiency=0.00%
+[model_kit][INFO]: Request prefill plan: prompt=30,012 cached=0 segments=2048:30,012
+{"arm": "kv16-step2048", "prompt_tokens": 30012, "prefill_s": 102.01, "prefill_tok_s": 294, "peak_gb": 22.17, "decode_tok_s": 33.0, "tokens": 9, "answer": "The crew worked on the retaining wall."}
+[request_lifecycle][WARNING]: Could not cancel request_id=exp02-16-2048-30000
+[coordinator][INFO]: Prompt cache restore: cached_tokens=0 uncached_tokens=50020 lifetime_efficiency=0.00%
+[model_kit][INFO]: Request prefill plan: prompt=50,021 cached=0 segments=2048:50,021
+{"arm": "kv16-step2048", "prompt_tokens": 50021, "prefill_s": 186.97, "prefill_tok_s": 268, "peak_gb": 25.49, "decode_tok_s": 30.0, "tokens": 9, "answer": "The crew worked on the retaining wall."}
+[request_lifecycle][WARNING]: Could not cancel request_id=exp02-16-2048-50000

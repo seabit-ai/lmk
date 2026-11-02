@@ -137,10 +137,52 @@ Needs its own exp before it ships.
   observed (their §7 says the A/B errored). §5 says the batched path "only
   serves models without `.merge`" — backwards.
 
+## SMR-009 The batched kit already plans its prefill chunk per request
+
+`ContextFitResult.make_request_prefill_plan` (`batched_vision/context_fit.py:113`)
+builds, for each prompt, a schedule of segments that step down through
+`PREFILL_STEP_CANDIDATES = (2048, 1024, 512)` as the cache grows past what the
+safe ceiling (free memory minus a 3 GiB reserve) allows; `_next_prompt_step_size`
+in the batch generator follows it. So on a tight machine upstream mlx-engine
+lowers the chunk by itself, per request, for both cache kinds. On the 96 GB
+test machine the ceiling is 80 GB and every exp02 prompt ran as one 2048
+segment. The fork's rule and this plan compose: a configured 512 leaves the
+plan only `[512]`. The fork's rule is therefore about the *default* on
+machines where the fit sees no pressure — exactly where exp02 measured.
+
+## SMR-010 exp02: chunk 512 on lmk's batched kv8 path costs nothing and saves 2–5 GB
+
+Qwen3.8-27B-4bit, M3 Ultra 96 GB, batched kit, one process per arm, greedy
+64 tokens (`exp02-kv8-prefill-chunk/`, single run each):
+
+| arm | peak GB 4k / 16k / 30k / 50k | prefill s 4k / 16k / 30k / 50k |
+|---|---|---|
+| kv16 @ 2048 | 18.1 / 19.9 / 22.2 / 25.5 | 13 / 52 / 102 / 187 |
+| kv8 @ 2048 | 18.0 / 19.4 / 21.4 / 24.2 | 13 / 52 / 103 / 191 |
+| kv8 @ 1024 | 16.9 / 17.9 / 19.3 / 20.9 | 13 / 52 / 103 / 187 |
+| kv8 @ 512 | 16.4 / 17.4 / 18.7 / 19.5 | 13 / 54 / 106 / 192 |
+
+- The gist's "+66–73% above fp16" does not happen here: kv8 peaks 1.3 GB
+  *below* fp16 at 50k. Convert-path artefact, as SMR-001 predicted.
+- 2048 → 512 under kv8: −4.7 GB at 50k, −1.6 GB already at 4k; prefill +0.5%
+  at 50k; decode identical. My expectation undershot the saving (1–3 GB) and
+  overshot the cost (5–25%).
+- Cold prefill on this model is ~300 tok/s (model page: 323), so each arm
+  took 6 minutes, not the 2 I had assumed when scheduling.
+
+Not measured: fp16 at 512 (exp03), a memory-tight machine where the fit's own
+plan (SMR-009) would already step down, the effect with the draft model and
+disk cache on, run-to-run drift (one run per arm; the four arms agree to
+0.1 GB where they should, which argues against the ±30% drift the earlier
+notes assumed).
+
 ## Recommendation
 
 Keep the mask patch (correct, cheap, helps the `model.path` case in
 SMR-006), as its own commit. Drop the two needle itests and the
-`itest-needle` target, or gate them on a text-only `LMK_ITEST_MODEL`. Hold
-the chunk-512 change until an exp on the batched kv8 path reports peak
-memory and prefill seconds at 2048 vs 512 on the 27B.
+`itest-needle` target, or gate them on a text-only `LMK_ITEST_MODEL`. The
+chunk-512 change passed exp02's pre-set rule on the batched kv8 path (SMR-010:
+−4.7 GB at 50k, +0.5% prefill); whether the condition should be "when
+quantized" or "always" waits on exp03 (fp16 at 512). Either way it is a
+product default change and the owner's call before fork branch
+`kv-quant-chunk` moves onto `lmk`.
