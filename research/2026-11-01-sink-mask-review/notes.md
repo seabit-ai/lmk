@@ -209,6 +209,15 @@ visible trickle, and B pays nothing for A's interleaved steps (its prefill
 matches the solo number in both arms). This, not memory, is the benefit to
 lead with for a two-agent machine.
 
+## SMR-013 exp05: on the smallest catalog model, 512 costs 9–11% of prefill at 30k+ and saves 1.1 GB
+
+gemma-4-E4B-it 4-bit, fp16 cache: prefill 20.1 → 22.0 s at 50k (2,488 → 2,277
+tok/s), 11.3 → 12.6 s at 30k; peak 10.7 → 9.5 GB at 50k; decode unchanged.
+Right on the 10% line set in advance. Absolute cost 1.9 s once per
+conversation (later turns come from the cache). Not measured: its own stall
+under concurrency (a 2048 chunk takes 0.8 s on this model, so it was never
+the freeze the 27B is).
+
 ## Recommendation
 
 Keep the mask patch (correct, cheap, helps the `model.path` case in
@@ -216,11 +225,11 @@ SMR-006), as its own commit. Drop the two needle itests and the
 `itest-needle` target, or gate them on a text-only `LMK_ITEST_MODEL`. The
 chunk change passed the pre-set rule on lmk's path for both cache kinds
 (SMR-010, SMR-011: −4.7 GB at 50k, ≤ 1% prefill cost, decode unchanged).
-Proposal: make 512 the default prefill chunk for **every** load — one line,
-`PROMPT_PROCESSING_CHUNK_SIZE` 2048 → 512 in the fork, with the exp IDs as its
-provenance — and drop `lower_prefill_chunk_for_kv_quant` (branch
-`kv-quant-chunk`) since its condition is wrong. A product default, so the
-owner's call; not applied. Worth measuring after: how much a concurrent
+Decided 2026-11-01 (`docs/design/2026-11-01-prefill-chunk.md`): 512 for
+**every** load, one line in the fork; `kv-quant-chunk` dropped. The benefit
+that carried it is SMR-012 (the other agent's 7 s freeze becomes 1.8 s), the
+cost SMR-013 (E4B +9–11% prefill at 30k+). 1024 and a size rule rejected
+there. Worth measuring after: how much a concurrent
 decode stalls during another request's prefill at 512 vs 2048 (the admission
 queue's rule two exists because of that stall), and the model pages' prefill
 numbers at 512.

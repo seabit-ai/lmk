@@ -1,0 +1,6 @@
+engine c3ee66f lmk bf78d92 model /Users/xinkai/.cache/huggingface/hub/models--lmstudio-community--gemma-4-E4B-it-MLX-4bit/snapshots/ce713a0013bb7090305edfb8e3773a07ccae35c1/ Sun Nov  1 19:23:51 PST 2026
+=== e4b kv16 step2048 19:23:51
+exit 0 19:24:38
+=== e4b kv16 step512 19:24:38
+exit 0 19:25:27
+done Sun Nov  1 19:25:27 PST 2026

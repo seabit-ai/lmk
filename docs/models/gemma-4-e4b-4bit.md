@@ -19,6 +19,10 @@ Text and images in, tool calls. 7 GB of weights: the model for a 16 GB Mac.
 |---|---|---|
 | 2,199 tok/s | 183k tok/s | 94 tok/s |
 
+Measured with the engine's former 2,048-token prefill chunk. Since 2026-11-01 the chunk is 512, which on this
+model costs 9–11% of prefill speed on prompts of 30k tokens and more (2,646 → 2,388 tok/s at 30k, 2,488 → 2,277 at
+50k) and nothing on decode; the table is due a re-run. Why 512 anyway: .
+
 Reads prompts faster than anything else here; writes a little slower than the 26B-A4B mixture of
 experts (94 against 120 tok/s) because all of its 4B are active for every token.
 

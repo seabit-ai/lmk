@@ -122,7 +122,8 @@ Known issues）、启动时校验会炸的配置值。加模型的工作量大�
   **不用 0.6.16 的 exact verifier**（慢 2 倍，SPD-012）。DFlash 的 config `model_type` 写的是目标家族名，种类看 `architectures` / `dflash_config`。
   用户面 `model.draft`，缺省按模型页（`TestedModel.default_draft`）。
 - 思考 / 回答 / 工具调用的区分**引擎不知道**（对模型都是 token），是 lmk 从文本标记读出来的；换模型家族时靠模板自动选解析器。
-- 读长 prompt 会把所有正在生成的请求拖到近乎停顿（引擎每圈：大家各出 1 token + 一块 2048 的 prefill）。这是准入队列规则二存在的原因。
+- 读长 prompt 会把所有正在生成的请求拖到近乎停顿（引擎每圈：大家各出 1 token + 一块 prefill）。这是准入队列规则二存在的原因。
+  块是 512（2026-11-01 起；原 2048）：27B 读 30k 时另一个请求 2048 一块等 6.7 秒、512 等 1.8 秒，读的总时间不变——`docs/design/2026-11-01-prefill-chunk.md`。
 - 模型模板把 `enable_thinking` / `reasoning_effort` 渲染在 prompt 最前面：**中途换档 = 整段对话冷算**。力度是 server 级常量（未实现，见 backlog）。
 - **部署前两件事**（2026-09-20 踩的）：① 测试命令别接管道再 `&&`——`make test | tail -1 && make install` 里 `tail` 的成功会盖住测试的失败，
   一个没过的测试就这样被部署了。用 `set -o pipefail`，或让测试单独成一步。② `make install` 会重启服务：先看 `lmk status` 确认

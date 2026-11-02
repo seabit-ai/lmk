@@ -23,8 +23,11 @@ from lmk import log
 from lmk.clock import get_current_clock
 from lmk.memory import get_current_memory
 
-# One prefill step of the engine (DEFAULT_PREFILL_STEP_SIZE): a prompt whose uncached
-# part fits in it is read in a single scheduler turn and stalls nobody.
+# A prompt whose uncached part is at most this long is admitted while others decode (rule two).
+# Set when the engine's prefill chunk was 2048 (one chunk = one scheduler turn); the chunk is 512
+# since 2026-11-01 and this stayed on purpose: it bounds the prefill *work* let through (about 7 s
+# on the 27B), which the decoders now feel as four 1.8 s gaps instead of one 7 s freeze
+# (design 2026-11-01-prefill-chunk, rejected option 4).
 SHORT_PROMPT_TOKENS = 2048
 
 # How long a warmup waits for an idle engine before it gives up. FABRICATED: its caller

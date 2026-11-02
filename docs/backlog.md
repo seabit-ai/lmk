@@ -24,6 +24,12 @@
 
 
 
+## 2026-11-01 prefill 块 512（分支 `prefill-chunk`，待合）与 sink-mask 修复（已合 main）
+- 裁决 `docs/design/2026-11-01-prefill-chunk.md`；取证 `research/2026-11-01-sink-mask-review/`（SMR-001..013，exp01–05）。
+- **fork 要 owner push**（`seabit-ai/mlx-engine` 分支 `lmk`：`c3ee66f` sink mask + `e863778` chunk 512）才能过 CI（install.sh 按 hash 下 tarball）。fork 分支 `kv-quant-chunk` 已作废删除。
+- 欠：E4B 页的 Speed 表在 512 下重跑 `lmk bench`（exp05 量到 prefill 慢 9–11%）；122B / 26B-a4b / 31B 在 512 下没量（27B 差 <1%，推测同）；多于 2 个并发、小于 512 的块都没试。
+- Robert Price 的回信草稿在 owner 的 Gmail Drafts 里，待 owner 过目。
+
 ## 2026-10-29 已合 main、还欠的验收与未决（owner 2026-10-29 要求记入）
 - **`make itest` 一次都没跑**，欠三项已合并的改动：MTP 草稿器（repo/path 模型）、cache.max_size 跨模型淘汰、`input_modalities()` 看视觉塔。
   对应最相关的 itest：`test_the_model_reads_an_image`（需要有视觉塔的模型）、`test_a_request_with_tools_drafts_when_a_draft_is_loaded`（`LMK_ITEST_DRAFT`）、

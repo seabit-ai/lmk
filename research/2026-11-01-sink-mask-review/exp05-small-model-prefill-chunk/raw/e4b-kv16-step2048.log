@@ -1,0 +1,22 @@
+[cache_store][INFO]: VLM prompt cache disk store disabled
+/Users/xinkai/src/lmk/.venv/lib/python3.11/site-packages/transformers/audio_utils.py:723: UserWarning: At least one mel filter has all zero values. The value for `num_mel_filters` (128) may be set too high. Or, the value for `num_frequency_bins` (257) may be set too low.
+  warnings.warn(
+[context_fit][INFO]: Model context auto-fit: family=gemma4 max=131,072 fitted=131,072 working_set=77.76GiB reserve=3.00GiB baseline=6.33GiB full_kv=16384B/token prompt_inputs=26624B/token attention_coefficient=16B/context/step rotating_constant=0.02GiB rotating_per_step=40960B steps=2048:131,072,1024:131,072,512:131,072
+[cache_store][INFO]: VLM prompt cache context target: configured=65,536 fitted=131,072 effective=131,072
+{"arm": "e4b-kv16-step2048", "kit": "BatchedVisionModelKit", "load_s": 4.7, "kit_step": 2048, "fit": "ContextFitResult(context_length=131072, runtime_reserve_bytes=3221225472, safe_ceiling_bytes=80272949248, profile=CacheFitProfile(family='gemma4', allocation_step=256, full_kv_bytes_per_token=16384, prompt_input_bytes_per_token=26624, materializes_attention_scores=True, query_attention_heads=8, activation_dtype_bytes=2, prefill_step_size=2048, rotating_constant_bytes=20930560, rotating_bytes_per_prefill_token=40960, fixed_ssm_bytes=0, max_context_length=131072), baseline_bytes=6800733018, working_set_bytes=83494174720, prefill_step_sizes=(2048, 1024, 512), step_context_limits=((2048, 131072), (1024, 131072), (512, 131072)))", "weights_gb": 6.33, "mlx": "0.32.0"}
+[coordinator][INFO]: Prompt cache restore: cached_tokens=0 uncached_tokens=4016 lifetime_efficiency=0.00%
+[model_kit][INFO]: Request prefill plan: prompt=4,017 cached=0 segments=2048:4,017
+{"arm": "e4b-kv16-step2048", "prompt_tokens": 4017, "prefill_s": 1.93, "prefill_tok_s": 2086, "peak_gb": 7.35, "decode_tok_s": 86.0, "tokens": 9, "answer": "The crew worked on the retaining wall."}
+[request_lifecycle][WARNING]: Could not cancel request_id=exp02-16-2048-4000
+[coordinator][INFO]: Prompt cache restore: cached_tokens=0 uncached_tokens=16018 lifetime_efficiency=0.00%
+[model_kit][INFO]: Request prefill plan: prompt=16,019 cached=0 segments=2048:16,019
+{"arm": "e4b-kv16-step2048", "prompt_tokens": 16019, "prefill_s": 6.1, "prefill_tok_s": 2628, "peak_gb": 8.12, "decode_tok_s": 74.1, "tokens": 9, "answer": "The crew worked on the retaining wall."}
+[request_lifecycle][WARNING]: Could not cancel request_id=exp02-16-2048-16000
+[coordinator][INFO]: Prompt cache restore: cached_tokens=0 uncached_tokens=30009 lifetime_efficiency=0.00%
+[model_kit][INFO]: Request prefill plan: prompt=30,010 cached=0 segments=2048:30,010
+{"arm": "e4b-kv16-step2048", "prompt_tokens": 30010, "prefill_s": 11.34, "prefill_tok_s": 2646, "peak_gb": 9.13, "decode_tok_s": 61.8, "tokens": 9, "answer": "The crew worked on the retaining wall."}
+[request_lifecycle][WARNING]: Could not cancel request_id=exp02-16-2048-30000
+[coordinator][INFO]: Prompt cache restore: cached_tokens=0 uncached_tokens=50018 lifetime_efficiency=0.00%
+[model_kit][INFO]: Request prefill plan: prompt=50,019 cached=0 segments=2048:50,019
+{"arm": "e4b-kv16-step2048", "prompt_tokens": 50019, "prefill_s": 20.1, "prefill_tok_s": 2488, "peak_gb": 10.65, "decode_tok_s": 48.9, "tokens": 9, "answer": "The crew worked on the retaining wall."}
+[request_lifecycle][WARNING]: Could not cancel request_id=exp02-16-2048-50000
