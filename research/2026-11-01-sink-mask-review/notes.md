@@ -176,13 +176,33 @@ disk cache on, run-to-run drift (one run per arm; the four arms agree to
 0.1 GB where they should, which argues against the ±30% drift the earlier
 notes assumed).
 
+## SMR-011 exp03: the chunk saving is the same with the fp16 cache — the "when quantized" condition is wrong
+
+fp16 cache, same bench, chunk 512 vs exp02's 2048: peak 16.5 / 17.5 / 18.9 /
+20.8 GB vs 18.1 / 19.9 / 22.2 / 25.5 (−4.7 GB at 50k, the same as kv8's
+−4.7), prefill 189 s vs 187 s at 50k, decode unchanged. The transient the
+chunk size controls is the per-chunk attention working set, independent of
+KV bits; the gist's own Phi/Llama fp16-at-512 columns show it too. So the
+fork's rule (`lower_prefill_chunk_for_kv_quant`: 512 only when `kv_bits` is
+set) keys on the wrong condition: on this path it would leave the 96 GB
+machines (fp16 by default) at 2048 and the under-96 GB ones at 512, when
+both gain the same.
+
+Peak at 50k on the 27B, this machine, by chunk (GB): 2048 → 25.5 (fp16) /
+24.2 (kv8); 1024 → 20.9 (kv8); 512 → 20.8 (fp16) / 19.5 (kv8).
+
 ## Recommendation
 
 Keep the mask patch (correct, cheap, helps the `model.path` case in
 SMR-006), as its own commit. Drop the two needle itests and the
 `itest-needle` target, or gate them on a text-only `LMK_ITEST_MODEL`. The
-chunk-512 change passed exp02's pre-set rule on the batched kv8 path (SMR-010:
-−4.7 GB at 50k, +0.5% prefill); whether the condition should be "when
-quantized" or "always" waits on exp03 (fp16 at 512). Either way it is a
-product default change and the owner's call before fork branch
-`kv-quant-chunk` moves onto `lmk`.
+chunk change passed the pre-set rule on lmk's path for both cache kinds
+(SMR-010, SMR-011: −4.7 GB at 50k, ≤ 1% prefill cost, decode unchanged).
+Proposal: make 512 the default prefill chunk for **every** load — one line,
+`PROMPT_PROCESSING_CHUNK_SIZE` 2048 → 512 in the fork, with the exp IDs as its
+provenance — and drop `lower_prefill_chunk_for_kv_quant` (branch
+`kv-quant-chunk`) since its condition is wrong. A product default, so the
+owner's call; not applied. Worth measuring after: how much a concurrent
+decode stalls during another request's prefill at 512 vs 2048 (the admission
+queue's rule two exists because of that stall), and the model pages' prefill
+numbers at 512.

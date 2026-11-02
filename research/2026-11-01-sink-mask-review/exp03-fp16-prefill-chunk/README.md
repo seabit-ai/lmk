@@ -41,3 +41,15 @@ exp02, arm `kv16-step2048`: peak 18.1 / 19.9 / 22.2 / 25.5 GB, prefill
 ```
 research/2026-11-01-sink-mask-review/exp03-fp16-prefill-chunk/run.sh
 ```
+
+## Result (2026-11-01 18:28, single run, `raw/kv16-step512.jsonl`)
+
+| arm | peak GB 4k / 16k / 30k / 50k | prefill s 4k / 16k / 30k / 50k | decode tok/s 4k / 16k / 30k / 50k |
+|---|---|---|---|
+| kv16 @ 2048 (exp02) | 18.1 / 19.9 / 22.2 / 25.5 | 13 / 52 / 102 / 187 | 38 / 35 / 33 / 30 |
+| kv16 @ 512 | 16.5 / 17.5 / 18.9 / 20.8 | 13 / 54 / 106 / 189 | 38 / 35 / 32 / 30 |
+
+As expected: −4.7 GB at 50k (predicted ~21 GB, got 20.8), prefill +0.9% at
+50k, decode unchanged. The saving is the same size as kv8's (exp02: −4.7 GB),
+so the transient does not depend on how the cache is stored. Reading rule
+met: the chunk default should drop for every load, not only quantized ones.
